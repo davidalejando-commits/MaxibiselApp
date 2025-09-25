@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAXI BISEL || Sistema de Inventario</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+</head>
+
+<body>
+    <!-- Contenedor de Autenticación -->
+    <div id="auth-container" class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white text-center">
+                        <h3>MAXI BISEL</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="login-form">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Usuario</label>
+                                <input type="text" class="form-control" id="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" id="password" required>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                            </div>
+                        </form>
+                        <div id="login-error" class="alert alert-danger mt-3 d-none"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor Principal de la Aplicación (inicialmente oculto) -->
+    <div id="app-container" class="d-none">
+        <!-- Barra de Navegación -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">
+                    <i class="bi bi-eye-fill me-2"></i>Sistema de Inventario
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" data-view="products">Productos</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-view="sales">Salidas</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-view="transactions">Almacenamiento</a>
+                        </li>
+                        <li class="nav-item" id="admin-menu-item">
+                            <a class="nav-link" href="#" data-view="users">Códigos de barra</a>
+                        </li>
+                    </ul>
+                    <div class="d-flex">
+                        <span class="navbar-text me-3" id="user-display"></span>
+                        <button id="logout-btn" class="btn btn-outline-light">Cerrar Sesión</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Contenedor de vistas -->
+        <div class="container-fluid mt-4">
+            <!-- Vista de Productos -->
+            <div id="products-view" class="view-container">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi bi-box-seam me-2"></i>Inventario de Productos</h2>
+                    <div>
+                        <div class="input-group">
+                            <input type="text" id="product-search" class="form-control"
+                                placeholder="Buscar producto...">
+                            <button class="btn btn-outline-secondary" type="button" id="barcode-scan-btn">
+                                <i class="bi bi-upc-scan"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="add-product-btn">
+                        <i class="bi bi-plus-circle me-1"></i>Nuevo Lente
+                    </button>
+                </div>
+
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="products-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Nombre</th>
+                                        <th>Esfera</th>
+                                        <th>Cilindro</th>
+                                        <th>Adición</th>
+                                        <th>Stock</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="products-table-body">
+                                    <!-- Los productos se cargarán dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Otras vistas se cargarán dinámicamente -->
+            <div id="sales-view" class="view-container d-none">
+                <!-- Contenido de la vista de ventas -->
+
+            </div>
+
+            <div id="transactions-view" class="view-container d-none">
+                <!-- Contenido de la vista de transacciones -->
+            </div>
+
+            <div id="users-view" class="view-container d-none">
+                <!-- Contenido de la vista de usuarios -->
+            </div>
+        </div>
+
+        <!-- Modal para añadir/editar producto -->
+        <div class="modal fade" id="product-modal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="product-modal-title">Nuevo Lente</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="product-form">
+                            <input type="hidden" id="product-id">
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="product-name" class="form-label">Nombre</label>
+                                    <input type="text" class="form-control" id="product-name" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="product-barcode" class="form-label">Código de Barras</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="product-barcode">
+                                        <button class="btn btn-outline-secondary" type="button"
+                                            id="generate-barcode-btn">
+                                            Generar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="prescription-container" class="mb-3 border rounded p-3 bg-light">
+                                <h6>Rango de Fórmula</h6>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Esfera</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="product-sphere" step="0.25">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Cilindro</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="product-cylinder" step="0.25">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Adición</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="product-addition" step="0.25">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="product-stock" class="form-label">Stock(Uds)</label>
+                                    <input type="number" class="form-control" id="product-stock" required min="0">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="save-product-btn">Guardar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para escanear código de barras -->
+        <div class="modal fade" id="barcode-scanner-modal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">Escanear Código de Barras</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center mb-3">
+                            <div id="scanner-placeholder" class="border rounded p-3 bg-light text-center mb-3">
+                                <i class="bi bi-upc-scan" style="font-size: 3rem;"></i>
+                                <p>Cámara no disponible. Ingrese el código manualmente.</p>
+                            </div>
+                            <div id="scanner-container" class="d-none">
+                                <video id="scanner-video" class="border rounded w-100"></video>
+                            </div>
+                        </div>
+                        <div class="input-group mb-3">
+                            <input type="text" id="manual-barcode-input" class="form-control"
+                                placeholder="Ingrese el código de barras...">
+                            <button class="btn btn-primary" id="manual-barcode-btn">Buscar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para actualizar stock -->
+        <div class="modal fade" id="stock-modal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">Actualizar Stock</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="stock-form">
+                            <input type="hidden" id="stock-product-id">
+
+                            <!-- Información del producto (solo lectura) -->
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <h6 class="text-muted"><i class="bi bi-info-circle me-2"></i>Información del
+                                        Producto</h6>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Nombre:</label>
+                                    <p class="form-control-plaintext fw-semibold" id="stock-product-name">-</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Código de Barras:</label>
+                                    <p class="form-control-plaintext" id="stock-product-barcode">-</p>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Esfera:</label>
+                                    <p class="form-control-plaintext" id="stock-product-sphere">-</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Cilindro:</label>
+                                    <p class="form-control-plaintext" id="stock-product-cylinder">-</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Adición:</label>
+                                    <p class="form-control-plaintext" id="stock-product-addition">-</p>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <!-- Actualización de stock -->
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <h6 class="text-muted"><i class="bi bi-box me-2"></i>Gestión de Stock</h6>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Stock Actual:</label>
+                                    <p class="form-control-plaintext fw-bold text-primary fs-5"
+                                        id="stock-current-stock">0</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="stock-new-value" class="form-label">Nuevo Stock: <span
+                                            class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="stock-new-value" min="0" required>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Solo se actualizará la cantidad en stock. Los demás datos del producto permanecerán sin
+                                cambios.
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="save-stock-btn">
+                            <i class="bi bi-check-lg me-1"></i>
+                            Actualizar Stock
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="scripts/app.js" type="module"></script>
+</body>
+
+</html>

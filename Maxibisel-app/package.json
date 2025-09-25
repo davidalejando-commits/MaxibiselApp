@@ -1,0 +1,59 @@
+{
+  "name": "maxibisel",
+  "version": "1.0.0",
+  "description": "Aplicación de escritorio para gestión de inventario",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "electron-store": "^8.2.0",
+    "mongodb": "^6.16.0"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.opticinventory.app",
+    "productName": "Sistema de Inventario Óptico",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
+    "mac": {
+      "icon": "renderer/assets/logoMMini.png",
+      "category": "public.app-category.business"
+    },
+    "win": {
+      "icon": "renderer/assets/logoMMini.png",
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "icon": "renderer/assets/logoMMini.png",
+      "target": [
+        "deb",
+        "AppImage"
+      ],
+      "category": "Office"
+    }
+  }
+}

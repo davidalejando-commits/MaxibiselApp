@@ -1,0 +1,626 @@
+/*Estilos de la aplicación*/
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+}
+
+.navbar-brand {
+    font-weight: 600;
+}
+
+.card {
+    border-radius: 8px;
+    border: none;
+}
+
+.card-header {
+    border-radius: 8px 8px 0 0 !important;
+}
+
+.table {
+    font-size: 0.95rem;
+}
+
+.table thead th {
+    font-weight: 600;
+    border-bottom-width: 1px;
+}
+
+.btn-icon {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.view-container {
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Custom styles for the barcode scanner */
+#scanner-video {
+    max-height: 300px;
+    object-fit: cover;
+}
+
+#scanner-placeholder {
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Estilos para las etiquetas de filtros */
+.filter-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    margin-right: 0.25rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 12px;
+    background-color: #e2f6ff;
+    color: #0d6efd;
+}
+
+/* Indicadores de nivel de stock */
+.stock-high {
+    color: #28a745;
+}
+
+.stock-medium {
+    color: #ffc107;
+}
+
+.stock-low {
+    color: #dc3545;
+}
+
+/* Estilos para sales view */
+
+
+body.sale {
+    background-color: #f5f5f5;
+    padding: 20px;
+    color: #333;
+}
+
+.container-sale {
+    /*display: flex;
+     gap: 20px;
+     height: calc(100vh - 40px);
+    display: flex;*/
+    display: flex;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto;
+    gap: 20px;
+}
+
+/* Estilos para los paneles */
+.panel {
+    background-color: #fff;
+    border-radius: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 50%;
+}
+
+.panel-title {
+    font-size: 1.2em;
+    margin-bottom: 20px;
+    color: #2c3e50;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+}
+
+/* Estilos para el buscador */
+.search-container {
+    margin-bottom: 20px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.search-input:focus {
+    border-color: #3498db;
+    outline: none;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+}
+
+/* Estilos para los resultados de búsqueda */
+.results-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    background-color: #fafafa;
+}
+
+.lens-item {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.lens-item:hover {
+    background-color: #f0f7fc;
+}
+
+.lens-item:last-child {
+    border-bottom: none;
+}
+
+/* Estilos para los lentes seleccionados */
+.selected-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    background-color: #fafafa;
+    margin-bottom: 20px;
+}
+
+.selected-lens {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.selected-lens:last-child {
+    border-bottom: none;
+}
+
+.lens-info {
+    flex-grow: 1;
+}
+
+.lens-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.quantity-input {
+    width: 60px;
+    padding: 6px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.remove-btn {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.remove-btn:hover {
+    background-color: #c0392b;
+}
+
+/* Estilos para los botones de acción */
+.action-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.action-btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    flex-grow: 1;
+}
+
+.save-btn {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.save-btn:hover {
+    background-color: #1b5cbe;
+}
+
+.cancel-btn {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.cancel-btn:hover {
+    background-color: #c0392b;
+}
+
+/* Estilos para el modal de confirmación */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    width: 400px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.modal-title {
+    font-size: 1.4em;
+    margin-bottom: 15px;
+    color: #2c3e50;
+}
+
+.modal-message {
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.modal-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.confirm-btn {
+    background-color: #3498db;
+    color: white;
+}
+
+.confirm-btn:hover {
+    background-color: #2980b9;
+}
+
+.cancel-modal-btn {
+    background-color: #95a5a6;
+    color: white;
+}
+
+.cancel-modal-btn:hover {
+    background-color: #7f8c8d;
+}
+
+/* Clase auxiliar para mostrar el modal */
+.show {
+    display: flex;
+}
+
+/* Para destacar elementos relevantes */
+.highlight {
+    background-color: #e8f4fc;
+    border-left: 3px solid #3498db;
+}
+
+.stock-warning {
+    color: #e74c3c;
+    font-weight: bold;
+    margin-left: 10px;
+    font-size: 0.9em;
+}
+
+.quantity-control {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+}
+
+.qty-btn {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    border: 1px solid #ced4da;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    user-select: none;
+}
+
+.qty-value {
+    margin: 0 10px;
+    font-size: 0.9rem;
+}
+
+.remove-lens {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* Estilos de totales y acciones */
+.total-section {
+    text-align: right;
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin: 10px 0;
+    color: #343a40;
+}
+ .container-sale {
+     display: flex;
+     gap: 20px;
+     height: calc(100vh - 200px);
+     min-height: 600px;
+ }
+
+ .panel {
+     flex: 1;
+     display: flex;
+     flex-direction: column;
+     background: white;
+     border-radius: 8px;
+     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+     overflow: hidden;
+ }
+
+ .panel-header {
+     flex-shrink: 0;
+     padding: 20px;
+     border-bottom: 1px solid #e0e0e0;
+     background: #f8f9fa;
+ }
+
+ .panel-title {
+     margin: 0 0 15px 0;
+     font-size: 1.2rem;
+     font-weight: 600;
+     color: #333;
+ }
+
+ .search-container {
+     margin: 0;
+ }
+
+ .search-input {
+     width: 100%;
+     padding: 10px 15px;
+     border: 1px solid #ddd;
+     border-radius: 5px;
+     font-size: 14px;
+ }
+
+ .scrollable-content {
+     flex: 1;
+     overflow-y: auto;
+     padding: 15px;
+     max-height: calc(100vh - 350px);
+ }
+
+ .scrollable-content::-webkit-scrollbar {
+     width: 8px;
+ }
+
+ .scrollable-content::-webkit-scrollbar-track {
+     background: #f1f1f1;
+     border-radius: 4px;
+ }
+
+ .scrollable-content::-webkit-scrollbar-thumb {
+     background: #c1c1c1;
+     border-radius: 4px;
+ }
+
+ .scrollable-content::-webkit-scrollbar-thumb:hover {
+     background: #a8a8a8;
+ }
+
+ .panel-footer {
+     flex-shrink: 0;
+     padding: 20px;
+     border-top: 1px solid #e0e0e0;
+     background: #f8f9fa;
+ }
+
+ .action-buttons {
+     display: flex;
+     gap: 10px;
+     justify-content: flex-end;
+ }
+
+ .action-btn {
+     padding: 12px 24px;
+     border: none;
+     border-radius: 5px;
+     font-weight: 600;
+     cursor: pointer;
+     transition: all 0.3s ease;
+ }
+
+ .save-btn {
+     background: #3498db;
+     color: white;
+ }
+
+ .save-btn:hover {
+     background: #1b6ca1;
+ }
+
+ .cancel-btn {
+     background: #6c757d;
+     color: white;
+ }
+
+ .cancel-btn:hover {
+     background: #5a6268;
+ }
+
+ .lens-item {
+     background: #f8f9fa;
+     border: 1px solid #e0e0e0;
+     border-radius: 5px;
+     padding: 15px;
+     margin-bottom: 10px;
+     cursor: pointer;
+     transition: all 0.2s ease;
+ }
+
+ .lens-item:hover {
+     background: #e9ecef;
+     border-color: #007bff;
+ }
+
+ .selected-lens {
+     background: #f8f9fa;
+     border: 1px solid #e0e0e0;
+     border-radius: 5px;
+     padding: 12px;
+     margin-bottom: 8px;
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     gap: 15px;
+ }
+
+ .lens-info {
+     flex: 1;
+     display: flex;
+     align-items: center;
+     gap: 15px;
+     min-width: 0;
+ }
+
+ .lens-details-compact {
+     flex: 1;
+     min-width: 0;
+ }
+
+ .lens-details-compact h4 {
+     margin: 0 0 4px 0;
+     font-size: 0.95rem;
+     font-weight: 600;
+     color: #333;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+ }
+
+ .lens-details-compact p {
+     margin: 0;
+     font-size: 0.85rem;
+     color: #666;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+ }
+
+ .quantity-control {
+     display: flex;
+     align-items: center;
+     gap: 8px;
+     flex-shrink: 0;
+ }
+
+ .qty-btn {
+     width: 30px;
+     height: 30px;
+     border: 1px solid #ddd;
+     background: white;
+     border-radius: 4px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     cursor: pointer;
+     transition: all 0.2s ease;
+ }
+
+ .qty-btn:hover {
+     background: #f8f9fa;
+     border-color: #007bff;
+ }
+
+ .qty-value {
+     min-width: 30px;
+     text-align: center;
+     font-weight: 600;
+     font-size: 0.9rem;
+ }
+
+ .remove-lens {
+     background: #dc3545;
+     color: white;
+     border: none;
+     border-radius: 4px;
+     width: 35px;
+     height: 35px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     cursor: pointer;
+     transition: all 0.2s ease;
+     flex-shrink: 0;
+ }
+
+ .remove-lens:hover {
+     background: #c82333;
+ }
+
+ /* Responsive */
+ @media (max-width: 768px) {
+     .container-sale {
+         flex-direction: column;
+         height: auto;
+     }
+
+     .panel {
+         min-height: 300px;
+     }
+
+     .scrollable-content {
+         max-height: 250px;
+     }
+ }
