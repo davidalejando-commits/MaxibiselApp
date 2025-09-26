@@ -406,32 +406,67 @@ export const transactionManager = {
 
   async loadProducts() {
     try {
-      this.products = await window.api.getProducts();
+      console.log('Cargando productos...');
+      const productData = await window.api.getProducts();
+      
+      // CORRECCIÓN: Verificar que los datos sean un array
+      if (Array.isArray(productData)) {
+        this.products = productData;
+      } else {
+        console.warn('Los productos no son un array:', productData);
+        this.products = [];
+      }
+      
+      console.log(`Productos cargados: ${this.products.length}`);
       this.sortProductsById();
       this.extractUniqueNames();
       this.populateReferenceSelect();
     } catch (error) {
       console.error('Error al cargar productos:', error);
+      this.products = []; // Asegurar que products sea un array vacío en caso de error
       uiManager.showAlert('Error al cargar los productos', 'danger');
     }
   },
 
   sortProductsById() {
-    this.products.sort((a, b) => {
-      if (a._id < b._id) return -1;
-      if (a._id > b._id) return 1;
-      return 0;
-    });
+    // CORRECCIÓN: Verificar que this.products sea un array antes de ordenar
+    if (!Array.isArray(this.products)) {
+      console.warn('this.products no es un array, inicializando como array vacío');
+      this.products = [];
+      return;
+    }
+
+    try {
+      this.products.sort((a, b) => {
+        // Manejo seguro de IDs que podrían ser undefined
+        const idA = a._id || a.id || '';
+        const idB = b._id || b.id || '';
+        
+        if (idA < idB) return -1;
+        if (idA > idB) return 1;
+        return 0;
+      });
+      console.log('Productos ordenados correctamente');
+    } catch (error) {
+      console.error('Error al ordenar productos:', error);
+    }
   },
 
   extractUniqueNames() {
+    // CORRECCIÓN: Verificar que this.products sea un array
+    if (!Array.isArray(this.products)) {
+      this.uniqueNames = [];
+      return;
+    }
+
     const namesSet = new Set();
     this.products.forEach(product => {
-      if (product.name && product.name.trim()) {
+      if (product && product.name && product.name.trim()) {
         namesSet.add(product.name.trim());
       }
     });
     this.uniqueNames = Array.from(namesSet).sort();
+    console.log(`Referencias únicas encontradas: ${this.uniqueNames.length}`);
   },
 
   populateReferenceSelect() {
@@ -480,7 +515,7 @@ export const transactionManager = {
 
   getStatusInfo(stock_surtido) {
     if (stock_surtido >= 10) return { class: 'text-success', text: 'Bueno', icon: '🟢' };
-    if (stock_surtido >= 5 & stock_surtido < 10) return { class: 'text-warning', text: 'Bajo', icon: '🟡' };
+    if (stock_surtido >= 5 && stock_surtido < 10) return { class: 'text-warning', text: 'Bajo', icon: '🟡' };
     return { class: 'text-danger', text: 'Crítico', icon: '🔴' };
   },
 
@@ -498,9 +533,16 @@ export const transactionManager = {
       return;
     }
 
-    this.filteredProducts = this.products.filter(product =>
-      product.name && product.name.trim() === referencia
-    );
+    // CORRECCIÓN: Verificar que this.products sea un array
+    if (!Array.isArray(this.products)) {
+      console.error('this.products no es un array');
+      this.filteredProducts = [];
+    } else {
+      this.filteredProducts = this.products.filter(product =>
+        product && product.name && product.name.trim() === referencia
+      );
+    }
+    
     this.currentReference = referencia;
 
     if (this.filteredProducts.length === 0) {
@@ -538,10 +580,10 @@ export const transactionManager = {
 
     const searchResults = this.filteredProducts.filter(product => {
       return (
-        product.barcode.toLowerCase().includes(term) ||
-        product.sphere.toLowerCase().includes(term) ||
-        product.cylinder.toLowerCase().includes(term) ||
-        product.addition.toLowerCase().includes(term) ||
+        (product.barcode && product.barcode.toLowerCase().includes(term)) ||
+        (product.sphere && product.sphere.toLowerCase().includes(term)) ||
+        (product.cylinder && product.cylinder.toLowerCase().includes(term)) ||
+        (product.addition && product.addition.toLowerCase().includes(term)) ||
         this.getStatusInfo(product.stock_surtido || 0).text.toLowerCase().includes(term)
       );
     });
@@ -582,11 +624,11 @@ export const transactionManager = {
 
       const row = document.createElement('tr');
       row.innerHTML = `
-            <td>${product.barcode}</td>
-            <td><strong>${product.name}</strong></td>
-            <td>${product.sphere}</td>
-            <td>${product.cylinder}</td>
-            <td>${product.addition}</td>
+            <td>${product.barcode || ''}</td>
+            <td><strong>${product.name || ''}</strong></td>
+            <td>${product.sphere || ''}</td>
+            <td>${product.cylinder || ''}</td>
+            <td>${product.addition || ''}</td>
             <td>
                 <div class="d-flex align-items-center">
                     <button class="btn btn-sm btn-outline-secondary me-1 quantity-btn" 
@@ -818,8 +860,14 @@ export const transactionManager = {
       return;
     }
 
+    // CORRECCIÓN: Verificar que this.products sea un array
+    if (!Array.isArray(this.products)) {
+      uiManager.showAlert('Error: No se han cargado los productos correctamente', 'danger');
+      return;
+    }
+
     const filteredProducts = this.products.filter(product =>
-      product.name && product.name.trim() === referencia
+      product && product.name && product.name.trim() === referencia
     );
 
     if (filteredProducts.length === 0) {
@@ -828,7 +876,6 @@ export const transactionManager = {
     }
 
     try {
-      // CORREGIDO: Usar exportUnifiedCSV en lugar de exportUnifiedHTML
       const result = unifiedExportSystem.exportUnifiedCSV(filteredProducts, referencia);
 
       uiManager.showAlert(

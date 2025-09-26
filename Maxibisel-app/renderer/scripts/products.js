@@ -45,7 +45,14 @@ export const productManager = {
             await this._waitForDOMElements(10000);
             this._initializeModals();
             this.setupEventListeners();
-            dataSync.subscribe(this.viewName, 'products', this.handleDataChange.bind(this));
+            
+            // ✅ VALIDACIÓN: Verificar métodos de dataSync antes de usar
+            if (dataSync && typeof dataSync.subscribe === 'function') {
+                dataSync.subscribe(this.viewName, 'products', this.handleDataChange.bind(this));
+            } else {
+                console.warn('⚠️ dataSync.subscribe no disponible');
+            }
+            
             await this.loadProducts();
             await this._validateInitialization();
 
@@ -151,13 +158,21 @@ export const productManager = {
         });
     },
 
+    // ✅ FUNCIÓN CORREGIDA: Validación con verificaciones de métodos
     async _validateInitialization() {
         console.log('🔍 Validando inicialización...');
 
         const validations = [
             { name: 'Tabla de productos', check: () => document.getElementById('products-table-body') !== null },
             { name: 'Datos cargados', check: () => Array.isArray(this.products) },
-            { name: 'Suscripción a dataSync', check: () => dataSync.isSubscribed(this.viewName, 'products') },
+            { name: 'Suscripción a dataSync', check: () => {
+                // ✅ CORRECCIÓN: Verificar métodos antes de usar
+                if (!dataSync || typeof dataSync.isSubscribed !== 'function') {
+                    console.warn('⚠️ dataSync.isSubscribed no disponible');
+                    return true; // Asumir válido si no está disponible
+                }
+                return dataSync.isSubscribed(this.viewName, 'products');
+            }},
             { name: 'Event listeners configurados', check: () => document.getElementById('add-product-btn') !== null }
         ];
 
@@ -278,6 +293,12 @@ export const productManager = {
     _handleProductCreatedImmediate(product) {
         console.log('🆕 Manejando producto creado inmediatamente:', product._id);
 
+        // ✅ VALIDACIÓN: Asegurar que products sea un array
+        if (!Array.isArray(this.products)) {
+            console.warn('⚠️ this.products no es un array, inicializando...');
+            this.products = [];
+        }
+
         const exists = this.products.some(p => p._id === product._id);
         if (!exists) {
             this.products.push(product);
@@ -292,6 +313,12 @@ export const productManager = {
 
     _handleProductUpdatedImmediate(product) {
         console.log('✏️ Manejando producto actualizado inmediatamente:', product._id);
+
+        // ✅ VALIDACIÓN: Asegurar que products sea un array
+        if (!Array.isArray(this.products)) {
+            console.warn('⚠️ this.products no es un array, inicializando...');
+            this.products = [];
+        }
 
         const index = this.products.findIndex(p => p._id === product._id);
         if (index !== -1) {
@@ -314,6 +341,13 @@ export const productManager = {
     _handleProductDeletedImmediate(productId) {
         console.log('🗑️ Manejando producto eliminado inmediatamente:', productId);
 
+        // ✅ VALIDACIÓN: Asegurar que products sea un array
+        if (!Array.isArray(this.products)) {
+            console.warn('⚠️ this.products no es un array, inicializando...');
+            this.products = [];
+            return;
+        }
+
         const initialLength = this.products.length;
         this.products = this.products.filter(p => p._id !== productId);
 
@@ -326,7 +360,7 @@ export const productManager = {
     },
 
     _handleProductsRefreshedImmediate(products) {
-        console.log('🔄 Manejando refrescado de productos inmediatamente:', products.length);
+        console.log('🔄 Manejando refrescado de productos inmediatamente:', Array.isArray(products) ? products.length : 'no-array');
 
         this.products = Array.isArray(products) ? products : [];
         this.sortProductsById();
@@ -336,6 +370,12 @@ export const productManager = {
 
     _handleStockUpdatedImmediate(data) {
         console.log('📦 Manejando actualización de stock inmediatamente:', data);
+
+        // ✅ VALIDACIÓN: Asegurar que products sea un array
+        if (!Array.isArray(this.products)) {
+            console.warn('⚠️ this.products no es un array, inicializando...');
+            this.products = [];
+        }
 
         const { productId, newStock, product } = data;
 
@@ -426,7 +466,13 @@ export const productManager = {
 
             while (retryCount < maxRetries) {
                 try {
-                    products = await dataSync.getData('products');
+                    // ✅ VALIDACIÓN: Verificar método dataSync antes de usar
+                    if (dataSync && typeof dataSync.getData === 'function') {
+                        products = await dataSync.getData('products');
+                    } else {
+                        console.warn('⚠️ dataSync.getData no disponible, usando API directa');
+                        products = await window.api.getProducts();
+                    }
                     break;
                 } catch (error) {
                     retryCount++;
@@ -447,13 +493,19 @@ export const productManager = {
                 }
             }
 
+            // ✅ VALIDACIÓN ESTRICTA: Múltiples formatos de respuesta
             if (Array.isArray(products)) {
                 this.products = products;
-                console.log(`✅ ${this.products.length} productos cargados exitosamente`);
+            } else if (products && Array.isArray(products.products)) {
+                this.products = products.products;
+            } else if (products && Array.isArray(products.data)) {
+                this.products = products.data;
             } else {
                 console.warn('⚠️ Datos no válidos recibidos:', products);
                 this.products = [];
             }
+
+            console.log(`✅ ${this.products.length} productos cargados exitosamente`);
 
             this.sortProductsById();
             this.renderProductsTable();
@@ -513,12 +565,42 @@ export const productManager = {
         }
     },
 
+    // ✅ FUNCIÓN CORREGIDA: sortProductsById con validaciones
     sortProductsById() {
-        this.products.sort((a, b) => {
-            if (a._id < b._id) return -1;
-            if (a._id > b._id) return 1;
-            return 0;
-        });
+        // ✅ VALIDACIÓN: Verificar que products sea un array
+        if (!Array.isArray(this.products)) {
+            console.warn('⚠️ this.products no es un array, no se puede ordenar:', typeof this.products);
+            this.products = [];
+            return;
+        }
+
+        // ✅ VALIDACIÓN: Verificar que tenga método sort
+        if (typeof this.products.sort !== 'function') {
+            console.error('❌ this.products no tiene método sort:', this.products);
+            this.products = [];
+            return;
+        }
+
+        try {
+            this.products.sort((a, b) => {
+                // ✅ VALIDACIÓN: Verificar que ambos elementos tengan _id
+                if (!a || !a._id) {
+                    console.warn('⚠️ Elemento sin _id encontrado:', a);
+                    return 1;
+                }
+                if (!b || !b._id) {
+                    console.warn('⚠️ Elemento sin _id encontrado:', b);
+                    return -1;
+                }
+                
+                if (a._id < b._id) return -1;
+                if (a._id > b._id) return 1;
+                return 0;
+            });
+        } catch (error) {
+            console.error('❌ Error ordenando productos:', error);
+            this.products = Array.isArray(this.products) ? this.products : [];
+        }
     },
 
     renderProductsTable() {
@@ -526,6 +608,12 @@ export const productManager = {
         if (!tableBody) {
             console.error('❌ Elemento products-table-body no encontrado');
             return;
+        }
+
+        // ✅ VALIDACIÓN: Asegurar que products sea un array
+        if (!Array.isArray(this.products)) {
+            console.warn('⚠️ this.products no es un array, inicializando como array vacío');
+            this.products = [];
         }
 
         console.log(`🔄 Renderizando ${this.products.length} productos`);
@@ -706,7 +794,7 @@ export const productManager = {
         }
     },
 
-    // ✅ FUNCIÓN COMPLETAMENTE CORREGIDA: saveProduct con manejo correcto de respuestas
+    // FUNCIÓN COMPLETAMENTE CORREGIDA: saveProduct con manejo correcto de respuestas
     async saveProduct() {
         try {
             const productId = document.getElementById('product-id')?.value;
@@ -728,7 +816,7 @@ export const productManager = {
             }
 
             let response;
-            let finalProduct; // Variable para el producto final válido
+            let finalProduct;
 
             if (productId) {
                 // EDICIÓN - Manejar stock por separado si cambió
@@ -746,7 +834,7 @@ export const productManager = {
                     };
                     response = await window.api.updateProductStock(productId, stockData);
 
-                    // ✅ CORRECCIÓN: Extraer producto de la respuesta de stock
+                    // Extraer producto de la respuesta de stock
                     finalProduct = response.product;
 
                     console.log('✅ Producto y stock actualizados por separado');
@@ -754,17 +842,17 @@ export const productManager = {
                     // Solo actualizar datos del producto
                     response = await window.api.updateProduct(productId, productData);
 
-                    // ✅ CORRECCIÓN: La respuesta puede ser el producto directamente o un wrapper
+                    // La respuesta puede ser el producto directamente o un wrapper
                     finalProduct = response.product || response;
                 }
 
-                // ✅ VALIDACIÓN: Verificar que tenemos un producto válido
+                // VALIDACIÓN: Verificar que tenemos un producto válido
                 if (!finalProduct || !finalProduct._id) {
                     console.error('❌ Respuesta de actualización inválida:', response);
                     throw new Error('Respuesta del servidor inválida');
                 }
 
-                // ✅ SINCRONIZACIÓN INMEDIATA MEJORADA
+                // SINCRONIZACIÓN INMEDIATA MEJORADA
                 await this._syncProductUpdateImmediate(finalProduct, productId);
 
                 uiManager.showAlert('Producto actualizado correctamente', 'success');
@@ -772,16 +860,16 @@ export const productManager = {
                 // CREACIÓN
                 response = await window.api.createProduct(productData);
 
-                // ✅ CORRECCIÓN: Extraer producto de la respuesta
+                // Extraer producto de la respuesta
                 finalProduct = response.product || response;
 
-                // ✅ VALIDACIÓN: Verificar que tenemos un producto válido
+                // VALIDACIÓN: Verificar que tenemos un producto válido
                 if (!finalProduct || !finalProduct._id) {
                     console.error('❌ Respuesta de creación inválida:', response);
                     throw new Error('Respuesta del servidor inválida');
                 }
 
-                // ✅ SINCRONIZACIÓN INMEDIATA PARA CREACIÓN
+                // SINCRONIZACIÓN INMEDIATA PARA CREACIÓN
                 await this._syncProductCreateImmediate(finalProduct);
 
                 uiManager.showAlert('Producto creado correctamente', 'success');
@@ -809,15 +897,21 @@ export const productManager = {
         }
     },
 
-    // ✅ FUNCIÓN CORREGIDA: Sincronización inmediata para actualizaciones
+    // FUNCIÓN CORREGIDA: Sincronización inmediata para actualizaciones
     async _syncProductUpdateImmediate(updatedProduct, productId) {
         console.log('🔄 Sincronizando actualización inmediatamente...', updatedProduct);
 
         try {
-            // ✅ VALIDACIÓN: Asegurar que tenemos un producto válido
+            // VALIDACIÓN: Asegurar que tenemos un producto válido
             if (!updatedProduct || !updatedProduct._id) {
                 console.error('❌ Producto inválido para sincronización:', updatedProduct);
                 throw new Error('Producto inválido recibido para sincronización');
+            }
+
+            // VALIDACIÓN: Asegurar que products sea un array
+            if (!Array.isArray(this.products)) {
+                console.warn('⚠️ this.products no es un array, inicializando...');
+                this.products = [];
             }
 
             // Actualizar en cache local
@@ -839,8 +933,10 @@ export const productManager = {
             // Re-renderizar tabla inmediatamente
             this._renderTableImmediate();
 
-            // ✅ CORRECCIÓN: Notificar con el producto válido
-            eventManager.emit('data:product:updated', updatedProduct);
+            // Notificar con el producto válido
+            if (eventManager && typeof eventManager.emit === 'function') {
+                eventManager.emit('data:product:updated', updatedProduct);
+            }
 
             // Forzar actualización de estilos
             await this._forceStyleRefresh();
@@ -854,15 +950,21 @@ export const productManager = {
         }
     },
 
-    // ✅ FUNCIÓN CORREGIDA: Sincronización inmediata para creaciones
+    // FUNCIÓN CORREGIDA: Sincronización inmediata para creaciones
     async _syncProductCreateImmediate(newProduct) {
         console.log('🆕 Sincronizando creación inmediatamente...', newProduct);
 
         try {
-            // ✅ VALIDACIÓN: Asegurar que tenemos un producto válido
+            // VALIDACIÓN: Asegurar que tenemos un producto válido
             if (!newProduct || !newProduct._id) {
                 console.error('❌ Producto inválido para sincronización de creación:', newProduct);
                 throw new Error('Producto inválido recibido para sincronización de creación');
+            }
+
+            // VALIDACIÓN: Asegurar que products sea un array
+            if (!Array.isArray(this.products)) {
+                console.warn('⚠️ this.products no es un array, inicializando...');
+                this.products = [];
             }
 
             // Verificar si ya existe (evitar duplicados)
@@ -880,8 +982,10 @@ export const productManager = {
             // Re-renderizar tabla inmediatamente
             this._renderTableImmediate();
 
-            // ✅ CORRECCIÓN: Notificar con el producto válido
-            eventManager.emit('data:product:created', newProduct);
+            // Notificar con el producto válido
+            if (eventManager && typeof eventManager.emit === 'function') {
+                eventManager.emit('data:product:created', newProduct);
+            }
 
             // Forzar actualización de estilos
             await this._forceStyleRefresh();
@@ -895,7 +999,7 @@ export const productManager = {
         }
     },
 
-    // ✅ FUNCIÓN CORREGIDA: updateStock con emisión de eventos corregida
+    // FUNCIÓN CORREGIDA: updateStock con emisión de eventos corregida
     async updateStock() {
         try {
             const productId = document.getElementById('stock-product-id')?.value;
@@ -930,7 +1034,7 @@ export const productManager = {
             // Actualizar en backend
             const response = await window.api.updateProductStock(productId, stockData);
 
-            // ✅ CORRECCIÓN: Extraer el producto de la respuesta antes de sincronizar
+            // Extraer el producto de la respuesta antes de sincronizar
             const updatedProduct = response.product; // Extraer el producto real de la respuesta
 
             if (!updatedProduct || !updatedProduct._id) {
@@ -938,7 +1042,7 @@ export const productManager = {
                 throw new Error('Respuesta del servidor inválida');
             }
 
-            // ✅ SINCRONIZACIÓN INMEDIATA CORREGIDA
+            // SINCRONIZACIÓN INMEDIATA CORREGIDA
             await this._syncStockUpdateImmediate(updatedProduct, productId);
 
             uiManager.showAlert('Stock actualizado correctamente', 'success');
@@ -967,15 +1071,21 @@ export const productManager = {
         }
     },
 
-    // ✅ FUNCIÓN CORREGIDA: Sincronización inmediata para stock
+    // FUNCIÓN CORREGIDA: Sincronización inmediata para stock
     async _syncStockUpdateImmediate(updatedProduct, productId) {
         console.log('📦 Sincronizando actualización de stock inmediatamente...', updatedProduct);
 
         try {
-            // ✅ VALIDACIÓN: Asegurar que tenemos un producto válido
+            // VALIDACIÓN: Asegurar que tenemos un producto válido
             if (!updatedProduct || !updatedProduct._id) {
                 console.error('❌ Producto inválido para sincronización:', updatedProduct);
                 throw new Error('Producto inválido recibido para sincronización');
+            }
+
+            // VALIDACIÓN: Asegurar que products sea un array
+            if (!Array.isArray(this.products)) {
+                console.warn('⚠️ this.products no es un array, inicializando...');
+                this.products = [];
             }
 
             // Actualizar en cache local
@@ -1000,12 +1110,14 @@ export const productManager = {
             // Re-renderizar tabla inmediatamente
             this._renderTableImmediate();
 
-            // ✅ CORRECCIÓN: Emitir evento con datos correctos
-            eventManager.emit('data:product:stock-updated', {
-                productId,
-                newStock: updatedProduct.stock, // ✅ Usar el stock del producto real
-                product: updatedProduct // ✅ Pasar el producto real, no la respuesta completa
-            });
+            // Emitir evento con datos correctos
+            if (eventManager && typeof eventManager.emit === 'function') {
+                eventManager.emit('data:product:stock-updated', {
+                    productId,
+                    newStock: updatedProduct.stock, // Usar el stock del producto real
+                    product: updatedProduct // Pasar el producto real, no la respuesta completa
+                });
+            }
 
             // Forzar actualización de estilos
             await this._forceStyleRefresh();
@@ -1019,8 +1131,14 @@ export const productManager = {
         }
     },
 
-    // ✅ FUNCIÓN MEJORADA: deleteProduct con sincronización inmediata
+    // FUNCIÓN MEJORADA: deleteProduct con sincronización inmediata
     async deleteProduct(productId) {
+        // VALIDACIÓN: Asegurar que products sea un array
+        if (!Array.isArray(this.products)) {
+            console.warn('⚠️ this.products no es un array, inicializando...');
+            this.products = [];
+        }
+
         const productToDelete = this.products.find(p => p._id === productId);
         const productName = productToDelete ? productToDelete.name : 'el producto';
 
@@ -1028,7 +1146,7 @@ export const productManager = {
             try {
                 await window.api.deleteProduct(productId);
 
-                // ✅ SINCRONIZACIÓN INMEDIATA: Eliminar del cache local
+                // SINCRONIZACIÓN INMEDIATA: Eliminar del cache local
                 const initialLength = this.products.length;
                 this.products = this.products.filter(p => p._id !== productId);
 
@@ -1037,7 +1155,9 @@ export const productManager = {
                     this._renderTableImmediate();
                 }
 
-                eventManager.emit('data:product:deleted', productId);
+                if (eventManager && typeof eventManager.emit === 'function') {
+                    eventManager.emit('data:product:deleted', productId);
+                }
                 uiManager.showAlert(`${productName} eliminado correctamente`, 'success');
 
                 console.log('✅ Producto eliminado y sincronizado:', productId);
@@ -1121,6 +1241,12 @@ export const productManager = {
             return;
         }
 
+        // VALIDACIÓN: Asegurar que products sea un array
+        if (!Array.isArray(this.products)) {
+            console.warn('⚠️ this.products no es un array para filtrar');
+            return;
+        }
+
         const filteredProducts = this.products.filter(product =>
             (product.name || '').toLowerCase().includes(searchTerm) ||
             (product.barcode || '').toLowerCase().includes(searchTerm) ||
@@ -1137,7 +1263,17 @@ export const productManager = {
         console.log('🔄 Refrescando productos manualmente...');
         try {
             const freshProducts = await window.api.getProducts();
-            this.products = freshProducts || [];
+            
+            // VALIDACIÓN: Verificar formato de respuesta
+            if (Array.isArray(freshProducts)) {
+                this.products = freshProducts;
+            } else if (freshProducts && Array.isArray(freshProducts.products)) {
+                this.products = freshProducts.products;
+            } else {
+                console.warn('⚠️ Formato de respuesta inesperado:', freshProducts);
+                this.products = [];
+            }
+            
             this.sortProductsById();
             this._renderTableImmediate();
             console.log('✅ Productos refrescados manualmente');
@@ -1153,17 +1289,28 @@ export const productManager = {
         }
     },
 
-    // ✅ NUEVA FUNCIÓN: Verificar y corregir sincronización
+    // NUEVA FUNCIÓN: Verificar y corregir sincronización
     async checkAndFixSync() {
         console.log('🔍 Verificando sincronización...');
 
         try {
             const freshProducts = await window.api.getProducts();
+            
+            // VALIDACIÓN: Verificar formato
+            let validFreshProducts;
+            if (Array.isArray(freshProducts)) {
+                validFreshProducts = freshProducts;
+            } else if (freshProducts && Array.isArray(freshProducts.products)) {
+                validFreshProducts = freshProducts.products;
+            } else {
+                console.error('❌ Formato inválido de productos:', freshProducts);
+                return false;
+            }
 
             // Comparar con cache local
-            if (freshProducts.length !== this.products.length) {
+            if (validFreshProducts.length !== this.products.length) {
                 console.log('⚠️ Diferencia en cantidad detectada, sincronizando...');
-                this.products = freshProducts;
+                this.products = validFreshProducts;
                 this.sortProductsById();
                 this._renderTableImmediate();
                 return true;
@@ -1171,7 +1318,7 @@ export const productManager = {
 
             // Verificar actualizaciones
             let hasChanges = false;
-            freshProducts.forEach(freshProduct => {
+            validFreshProducts.forEach(freshProduct => {
                 const localProduct = this.products.find(p => p._id === freshProduct._id);
                 if (localProduct && localProduct.lastUpdated !== freshProduct.lastUpdated) {
                     console.log('⚠️ Producto desincronizado detectado:', freshProduct.name);
@@ -1181,7 +1328,7 @@ export const productManager = {
 
             if (hasChanges) {
                 console.log('🔄 Sincronizando cambios detectados...');
-                this.products = freshProducts;
+                this.products = validFreshProducts;
                 this.sortProductsById();
                 this._renderTableImmediate();
                 return true;
@@ -1196,7 +1343,7 @@ export const productManager = {
         }
     },
 
-    // ✅ NUEVA FUNCIÓN: Forzar actualización de estilos
+    // NUEVA FUNCIÓN: Forzar actualización de estilos
     async _forceStyleRefresh() {
         return new Promise(resolve => {
             setTimeout(() => {
@@ -1241,9 +1388,11 @@ export const productManager = {
     getStatus() {
         return {
             isInitialized: this.isInitialized,
-            productsCount: this.products.length,
+            productsCount: Array.isArray(this.products) ? this.products.length : 0,
             hasModals: !!(this.productModal && this.stockModal),
-            isSubscribed: dataSync.isSubscribed(this.viewName, 'products'),
+            isSubscribed: dataSync && typeof dataSync.isSubscribed === 'function' 
+                ? dataSync.isSubscribed(this.viewName, 'products') 
+                : false,
             initializationInProgress: !!this.initializationPromise
         };
     },
@@ -1258,9 +1407,13 @@ export const productManager = {
     validateDataIntegrity() {
         console.log('🔍 Validando integridad de datos...');
 
+        if (!Array.isArray(this.products)) {
+            return { valid: false, issues: ['products no es un array'] };
+        }
+
         const issues = [];
 
-        const ids = this.products.map(p => p._id);
+        const ids = this.products.map(p => p._id).filter(id => id);
         const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
         if (duplicateIds.length > 0) {
             issues.push(`IDs duplicados: ${duplicateIds.join(', ')}`);
@@ -1286,6 +1439,10 @@ export const productManager = {
     },
 
     getStats() {
+        if (!Array.isArray(this.products)) {
+            return { error: 'products no es un array válido' };
+        }
+
         const totalProducts = this.products.length;
         const totalStock = this.products.reduce((sum, p) => sum + (p.stock || 0), 0);
         const lowStock = this.products.filter(p => (p.stock || 0) <= 0).length;
@@ -1309,10 +1466,10 @@ export const productManager = {
 
     exportData() {
         const data = {
-            products: this.products,
+            products: Array.isArray(this.products) ? this.products : [],
             metadata: {
                 exportDate: new Date().toISOString(),
-                totalCount: this.products.length,
+                totalCount: Array.isArray(this.products) ? this.products.length : 0,
                 version: '2.0',
                 status: this.getStatus()
             }
@@ -1336,13 +1493,19 @@ export const productManager = {
         }
     },
 
+    // FUNCIÓN CORREGIDA: destroy con validaciones mejoradas
     destroy() {
         console.log('🧹 Destruyendo ProductManager...');
 
         try {
-            if (dataSync && dataSync.isSubscribed && dataSync.isSubscribed(this.viewName, 'products')) {
-                dataSync.unsubscribe(this.viewName, 'products');
-                console.log('✅ Desuscrito de dataSync');
+            // VALIDACIÓN mejorada para dataSync
+            if (dataSync && typeof dataSync.isSubscribed === 'function' && typeof dataSync.unsubscribe === 'function') {
+                if (dataSync.isSubscribed(this.viewName, 'products')) {
+                    dataSync.unsubscribe(this.viewName, 'products');
+                    console.log('✅ Desuscrito de dataSync');
+                }
+            } else {
+                console.warn('⚠️ dataSync no disponible o métodos faltantes');
             }
 
             if (this.productModal) {
@@ -1391,4 +1554,4 @@ export const productManager = {
             console.error('❌ Error durante la destrucción:', error);
         }
     }
-}; 
+};

@@ -21,6 +21,28 @@ export const dataSync = {
         console.log('✅ Sistema de sincronización inicializado');
     },
 
+    // ✅ FUNCIÓN CORREGIDA: setupEventListeners debe existir
+    setupEventListeners() {
+        console.log('🔧 Configurando event listeners del sistema de sincronización...');
+        
+        // Listener para actualizaciones de productos
+        eventManager.on('product:updated', (product) => {
+            this.handleProductUpdated(product);
+        });
+
+        // Listener para actualizaciones de stock
+        eventManager.on('product:stock-updated', (data) => {
+            this.handleProductStockUpdated(data);
+        });
+
+        // Listener para invalidación de cache
+        eventManager.on('cache:invalidate', (dataType) => {
+            this.invalidateCache(dataType);
+        });
+
+        console.log('✅ Event listeners configurados');
+    },
+
     // ✅ NUEVA FUNCIÓN: Configurar WebSocket listeners
     setupWebSocketListeners() {
         if (window.socket) {
@@ -55,7 +77,109 @@ export const dataSync = {
             });
 
             console.log('✅ WebSocket listeners configurados en dataSync');
+        } else {
+            console.log('⚠️ WebSocket no disponible, omitiendo configuración');
         }
+    },
+
+    // ✅ FUNCIÓN REQUERIDA: getData para obtener datos del cache o servidor
+    async getData(dataType, forceRefresh = false) {
+        console.log(`📊 Obteniendo datos: ${dataType} (force: ${forceRefresh})`);
+
+        // Si no forzamos refresh y tenemos datos en cache, devolverlos
+        if (!forceRefresh && this.cache.has(dataType)) {
+            const cachedData = this.cache.get(dataType);
+            const timestamp = this.cache.get(`${dataType}_timestamp`);
+            const maxAge = 5 * 60 * 1000; // 5 minutos
+
+            if (timestamp && (Date.now() - timestamp) < maxAge) {
+                console.log(`✅ Datos devueltos desde cache: ${dataType}`);
+                return cachedData;
+            }
+        }
+
+        // Obtener datos del servidor
+        try {
+            let data;
+            switch (dataType) {
+                case 'products':
+                    data = await window.api.getProducts();
+                    break;
+                case 'sales':
+                    data = await window.api.getSales();
+                    break;
+                case 'transactions':
+                    data = await window.api.getTransactions();
+                    break;
+                case 'users':
+                    data = await window.api.getUsers();
+                    break;
+                default:
+                    throw new Error(`Tipo de datos no soportado: ${dataType}`);
+            }
+
+            // Guardar en cache
+            this.cache.set(dataType, data);
+            this.cache.set(`${dataType}_timestamp`, Date.now());
+
+            console.log(`✅ Datos obtenidos y cacheados: ${dataType} (${data.length} elementos)`);
+            return data;
+
+        } catch (error) {
+            console.error(`❌ Error obteniendo datos ${dataType}:`, error);
+            
+            // Devolver datos en cache como fallback
+            if (this.cache.has(dataType)) {
+                console.log(`⚠️ Devolviendo datos en cache como fallback: ${dataType}`);
+                return this.cache.get(dataType);
+            }
+            
+            throw error;
+        }
+    },
+
+    // ✅ FUNCIÓN REQUERIDA: subscribe para suscripciones
+    subscribe(dataType, viewName, callback) {
+        const key = `${dataType}:${viewName}`;
+        console.log(`📝 Suscripción: ${key}`);
+        
+        this.subscriptions.set(key, callback);
+        
+        return () => {
+            console.log(`🗑️ Desuscripción: ${key}`);
+            this.subscriptions.delete(key);
+        };
+    },
+
+    // ✅ FUNCIÓN REQUERIDA: invalidateCache
+    invalidateCache(dataType, notify = true) {
+        console.log(`🗑️ Invalidando cache: ${dataType}`);
+        
+        this.cache.delete(dataType);
+        this.cache.delete(`${dataType}_timestamp`);
+        
+        if (notify) {
+            this.notifySubscribers(dataType, 'cache-invalidated', null);
+        }
+    },
+
+    // ✅ FUNCIÓN REQUERIDA: notifySubscribers
+    notifySubscribers(dataType, action, data) {
+        console.log(`📢 Notificando suscriptores: ${dataType} - ${action}`);
+        
+        let notifiedCount = 0;
+        this.subscriptions.forEach((callback, key) => {
+            if (key.startsWith(`${dataType}:`)) {
+                try {
+                    callback({ action, data, dataType });
+                    notifiedCount++;
+                } catch (error) {
+                    console.error(`❌ Error notificando suscriptor ${key}:`, error);
+                }
+            }
+        });
+
+        console.log(`📊 Suscriptores notificados: ${notifiedCount}`);
     },
 
     // ✅ NUEVA FUNCIÓN: Actualizar cache desde eventos del servidor
@@ -96,6 +220,25 @@ export const dataSync = {
                 this.cache.set(`${dataType}_timestamp`, Date.now());
             }
         }
+    },
+
+    // ✅ FUNCIÓN REQUERIDA: handleProductUpdated
+    handleProductUpdated(product) {
+        console.log('📦 DataSync manejando producto actualizado:', product);
+        
+        if (!product || !product._id) {
+            console.error('❌ Producto inválido para actualización');
+            return;
+        }
+
+        // Actualizar cache
+        this.updateCacheFromServerEvent('products', product);
+        
+        // Notificar suscriptores
+        this.notifySubscribers('products', 'updated', product);
+        
+        // Emitir evento global
+        eventManager.emit('data:product:updated', product);
     },
 
     // ✅ FUNCIÓN CORREGIDA: handleProductStockUpdated mejorada
@@ -208,8 +351,6 @@ export const dataSync = {
         }
     },
 
-    // ... resto del código permanece igual con pequeñas mejoras ...
-
     // ✅ FUNCIÓN MEJORADA: notifySubscribersImmediate con mejor logging
     notifySubscribersImmediate(dataType, action, data) {
         console.log(`📢 Notificación inmediata: ${dataType} - ${action}`);
@@ -232,7 +373,69 @@ export const dataSync = {
         });
 
         console.log(`📊 Total notificado: ${notifiedViews} vistas [${notifications.join(', ')}]`);
-    }
+    },
 
-    // ... resto del código permanece igual ...
+    // ✅ NUEVAS FUNCIONES REQUERIDAS: Funciones utilitarias
+    async refreshAllData() {
+        console.log('🔄 Refrescando todos los datos...');
+        
+        const dataTypes = ['products', 'sales', 'transactions', 'users'];
+        const promises = dataTypes.map(type => 
+            this.getData(type, true).catch(error => {
+                console.error(`❌ Error refrescando ${type}:`, error);
+                return null;
+            })
+        );
+        
+        const results = await Promise.all(promises);
+        console.log('✅ Todos los datos refrescados');
+        
+        return results;
+    },
+
+    getCacheStats() {
+        const stats = {};
+        this.cache.forEach((value, key) => {
+            if (!key.endsWith('_timestamp')) {
+                const timestamp = this.cache.get(`${key}_timestamp`);
+                stats[key] = {
+                    items: Array.isArray(value) ? value.length : 1,
+                    lastUpdate: timestamp ? new Date(timestamp).toISOString() : 'Never',
+                    age: timestamp ? `${Math.round((Date.now() - timestamp) / 1000)}s` : 'N/A'
+                };
+            }
+        });
+        return stats;
+    },
+
+    getSubscriberStats() {
+        const stats = {};
+        this.subscriptions.forEach((callback, key) => {
+            const [dataType, viewName] = key.split(':');
+            if (!stats[dataType]) stats[dataType] = [];
+            stats[dataType].push(viewName);
+        });
+        return stats;
+    },
+
+    destroy() {
+        console.log('🧹 Destruyendo dataSync...');
+        
+        // Limpiar timeouts
+        this.refreshTimeouts.forEach(timeout => clearTimeout(timeout));
+        this.refreshTimeouts.clear();
+        
+        // Limpiar cache y suscripciones
+        this.cache.clear();
+        this.subscriptions.clear();
+        
+        // Remover listeners de WebSocket
+        if (window.socket) {
+            window.socket.off('product:stock-updated');
+            window.socket.off('product:updated');
+        }
+        
+        this.isInitialized = false;
+        console.log('✅ dataSync destruido');
+    }
 };

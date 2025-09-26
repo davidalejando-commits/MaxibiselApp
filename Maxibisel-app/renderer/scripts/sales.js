@@ -1,7 +1,7 @@
 // Gestión de ventas - CON SINCRONIZACIÓN CORREGIDA
 import { dataSync } from './dataSync.js';
 import { eventManager } from './eventManager.js';
-import { syncHelper } from './sync-helper.js'; // ✅ AGREGAR IMPORT
+import { syncHelper } from './sync-helper.js';
 import { uiManager } from './ui.js';
 
 export const sales = {
@@ -11,9 +11,13 @@ export const sales = {
     init() {
         console.log('🔧 Inicializando salesManager...');
 
-        // Suscribirse a cambios
-        dataSync.subscribe(this.viewName, 'sales', this.handleDataChange.bind(this));
-        dataSync.subscribe(this.viewName, 'products', this.handleProductChange.bind(this));
+        // Suscribirse a cambios con validaciones
+        if (dataSync && typeof dataSync.subscribe === 'function') {
+            dataSync.subscribe(this.viewName, 'sales', this.handleDataChange.bind(this));
+            dataSync.subscribe(this.viewName, 'products', this.handleProductChange.bind(this));
+        } else {
+            console.warn('⚠️ dataSync.subscribe no disponible');
+        }
 
         // Configurar eventos...
         this.setupEventListeners();
@@ -26,12 +30,32 @@ export const sales = {
         console.log(`🔄 Vista ${this.viewName} recibió cambio de ${dataType}:`, action);
 
         if (dataType === 'sales') {
+            // VALIDACIÓN: Asegurar que sales sea un array
+            if (!Array.isArray(this.sales)) {
+                console.warn('⚠️ this.sales no es un array, inicializando...');
+                this.sales = [];
+            }
+
             switch (action) {
                 case 'created':
                     this.sales.push(data);
                     this.renderSalesTable();
                     break;
-                // ... más casos
+                case 'updated':
+                    const index = this.sales.findIndex(s => s._id === data._id);
+                    if (index !== -1) {
+                        this.sales[index] = data;
+                        this.renderSalesTable();
+                    }
+                    break;
+                case 'deleted':
+                    this.sales = this.sales.filter(s => s._id !== data);
+                    this.renderSalesTable();
+                    break;
+                case 'refreshed':
+                    this.sales = Array.isArray(data) ? data : [];
+                    this.renderSalesTable();
+                    break;
             }
         }
     },
@@ -43,10 +67,30 @@ export const sales = {
 
     async loadSales() {
         try {
-            this.sales = await dataSync.getData('sales');
+            // VALIDACIÓN: Verificar método dataSync antes de usar
+            let salesData;
+            if (dataSync && typeof dataSync.getData === 'function') {
+                salesData = await dataSync.getData('sales');
+            } else {
+                console.warn('⚠️ dataSync.getData no disponible, usando API directa');
+                salesData = await window.api.getSales();
+            }
+
+            // VALIDACIÓN: Verificar formato de respuesta
+            if (Array.isArray(salesData)) {
+                this.sales = salesData;
+            } else if (salesData && Array.isArray(salesData.sales)) {
+                this.sales = salesData.sales;
+            } else {
+                console.warn('⚠️ Datos de ventas no válidos:', salesData);
+                this.sales = [];
+            }
+
             this.renderSalesTable();
         } catch (error) {
             console.error('Error al cargar ventas:', error);
+            this.sales = [];
+            this.renderSalesTable();
         }
     },
 
@@ -54,18 +98,43 @@ export const sales = {
         try {
             const newSale = await window.api.createSale(saleData);
 
+            // VALIDACIÓN: Asegurar que sales sea un array
+            if (!Array.isArray(this.sales)) {
+                this.sales = [];
+            }
+
+            // Agregar al cache local
+            this.sales.push(newSale);
+
             // Emitir evento
-            eventManager.emit('data:sale:created', newSale);
+            if (eventManager && typeof eventManager.emit === 'function') {
+                eventManager.emit('data:sale:created', newSale);
+            }
 
             uiManager.showAlert('Venta creada correctamente', 'success');
         } catch (error) {
             console.error('Error al crear venta:', error);
+            uiManager.showAlert('Error al crear la venta', 'danger');
         }
     },
 
+    renderSalesTable() {
+        // Implementar renderizado de tabla de ventas
+        console.log('🔄 Renderizando tabla de ventas...');
+        // TODO: Implementar lógica de renderizado
+    },
+
+    setupEventListeners() {
+        // Implementar event listeners para sales
+        console.log('🔧 Configurando event listeners para sales...');
+        // TODO: Implementar event listeners
+    },
+
     destroy() {
-        dataSync.unsubscribe(this.viewName, 'sales');
-        dataSync.unsubscribe(this.viewName, 'products');
+        if (dataSync && typeof dataSync.unsubscribe === 'function') {
+            dataSync.unsubscribe(this.viewName, 'sales');
+            dataSync.unsubscribe(this.viewName, 'products');
+        }
     }
 };
 
@@ -99,6 +168,37 @@ export const salesManager = {
         isEditMode: false
     },
 
+    // ✅ FUNCIÓN CORREGIDA: Mover sortLensesById dentro del objeto
+    sortLensesById(lensesArray) {
+        if (!Array.isArray(lensesArray)) {
+            console.warn('⚠️ sortLensesById recibió un valor que no es array:', lensesArray);
+            return;
+        }
+        
+        if (typeof lensesArray.sort !== 'function') {
+            console.error('❌ Array no tiene método sort:', lensesArray);
+            return;
+        }
+
+        try {
+            lensesArray.sort((a, b) => {
+                if (!a || !a._id) {
+                    console.warn('⚠️ Elemento sin _id encontrado:', a);
+                    return 1;
+                }
+                if (!b || !b._id) {
+                    console.warn('⚠️ Elemento sin _id encontrado:', b);
+                    return -1;
+                }
+                if (a._id < b._id) return -1;
+                if (a._id > b._id) return 1;
+                return 0;
+            });
+        } catch (error) {
+            console.error('❌ Error ordenando lentes:', error);
+        }
+    },
+
     init() {
         this.renderView();
         this.attachEventListeners();
@@ -109,23 +209,34 @@ export const salesManager = {
     async loadInitialData() {
         try {
             // Cargar productos desde la API
-            this.state.availableLenses = await window.api.getProducts();
-            // Ordenar productos disponibles por _id
-            this.sortLensesById(this.state.availableLenses);
-            console.log('Productos cargados:', this.state.availableLenses.length);
+            const productsData = await window.api.getProducts();
+            
+            // ✅ VALIDACIÓN ESTRICTA: Verificar formato de respuesta
+            if (Array.isArray(productsData)) {
+                this.state.availableLenses = productsData;
+            } else if (productsData && Array.isArray(productsData.products)) {
+                this.state.availableLenses = productsData.products;
+            } else if (productsData && Array.isArray(productsData.data)) {
+                this.state.availableLenses = productsData.data;
+            } else {
+                console.error('❌ getProducts() no devolvió un formato válido:', productsData);
+                this.state.availableLenses = [];
+            }
+
+            // ✅ CORRECCIÓN: Usar this.sortLensesById en lugar de función global
+            if (Array.isArray(this.state.availableLenses)) {
+                this.sortLensesById(this.state.availableLenses);
+                console.log('Productos cargados:', this.state.availableLenses.length);
+            } else {
+                console.error('❌ availableLenses no es un array después de la validación');
+                this.state.availableLenses = [];
+            }
         } catch (error) {
             console.error('Error al cargar Productos:', error);
             uiManager.showAlert('Error al cargar el catálogo de productos', 'danger');
+            // ✅ FALLBACK: Asegurar que siempre sea un array
+            this.state.availableLenses = [];
         }
-    },
-
-    // Nueva función para ordenar lentes por _id
-    sortLensesById(lensesArray) {
-        lensesArray.sort((a, b) => {
-            if (a._id < b._id) return -1;
-            if (a._id > b._id) return 1;
-            return 0;
-        });
     },
 
     renderView() {
@@ -235,6 +346,11 @@ export const salesManager = {
     },
 
     handleNewSale() {
+        // ✅ VALIDACIÓN: Asegurar que selectedLenses sea un array
+        if (!Array.isArray(this.state.selectedLenses)) {
+            this.state.selectedLenses = [];
+        }
+
         if (this.state.selectedLenses.length > 0) {
             this.showModal('Tiene una lista en progreso. ¿Desea descartarla y comenzar una nueva?', 'newSale');
         } else {
@@ -277,7 +393,20 @@ export const salesManager = {
             return;
         }
 
+        // ✅ VALIDACIÓN: Asegurar que availableLenses sea un array
+        if (!Array.isArray(this.state.availableLenses)) {
+            console.error('❌ availableLenses no es un array:', this.state.availableLenses);
+            this.state.availableLenses = [];
+            document.getElementById('searchResults').innerHTML = `
+                <div class="lens-item">
+                    <p>Error: No se pueden buscar productos</p>
+                </div>
+            `;
+            return;
+        }
+
         const filteredLenses = this.state.availableLenses.filter(lens => {
+            if (!lens) return false;
             return (
                 (lens.name && lens.name.toLowerCase().includes(searchTerm)) ||
                 (lens.barcode && lens.barcode.toLowerCase().includes(searchTerm)) ||
@@ -286,6 +415,7 @@ export const salesManager = {
             );
         });
 
+        // ✅ CORRECCIÓN: Usar this.sortLensesById
         this.sortLensesById(filteredLenses);
         this.state.searchResults = filteredLenses;
         this.renderSearchResults();
@@ -293,6 +423,12 @@ export const salesManager = {
 
     renderSearchResults() {
         const resultsContainer = document.getElementById('searchResults');
+
+        // ✅ VALIDACIÓN: Verificar que searchResults sea un array
+        if (!Array.isArray(this.state.searchResults)) {
+            console.warn('⚠️ searchResults no es un array, inicializando...');
+            this.state.searchResults = [];
+        }
 
         if (this.state.searchResults.length === 0) {
             resultsContainer.innerHTML = `
@@ -325,8 +461,22 @@ export const salesManager = {
     },
 
     addLensToSelection(lensId) {
+        // ✅ VALIDACIÓN: Asegurar que availableLenses sea un array
+        if (!Array.isArray(this.state.availableLenses)) {
+            console.error('❌ availableLenses no es un array');
+            return;
+        }
+
         const selectedLens = this.state.availableLenses.find(lens => lens._id === lensId);
-        if (!selectedLens) return;
+        if (!selectedLens) {
+            console.warn('⚠️ Lente no encontrado:', lensId);
+            return;
+        }
+
+        // ✅ VALIDACIÓN: Asegurar que selectedLenses sea un array
+        if (!Array.isArray(this.state.selectedLenses)) {
+            this.state.selectedLenses = [];
+        }
 
         const existingIndex = this.state.selectedLenses.findIndex(lens => lens._id === lensId);
 
@@ -339,17 +489,29 @@ export const salesManager = {
             });
         }
 
+        // ✅ CORRECCIÓN: Usar this.sortLensesById
         this.sortLensesById(this.state.selectedLenses);
         this.renderSelectedLenses();
     },
 
     removeLensFromSelection(lensId) {
+        // ✅ VALIDACIÓN: Asegurar que selectedLenses sea un array
+        if (!Array.isArray(this.state.selectedLenses)) {
+            this.state.selectedLenses = [];
+            return;
+        }
+
         this.state.selectedLenses = this.state.selectedLenses.filter(lens => lens._id !== lensId);
         this.renderSelectedLenses();
     },
 
     renderSelectedLenses() {
         const selectedContainer = document.getElementById('selectedLenses');
+
+        // ✅ VALIDACIÓN: Asegurar que selectedLenses sea un array
+        if (!Array.isArray(this.state.selectedLenses)) {
+            this.state.selectedLenses = [];
+        }
 
         if (this.state.selectedLenses.length === 0) {
             selectedContainer.innerHTML = `
@@ -394,6 +556,12 @@ export const salesManager = {
     },
 
     increaseQuantity(lensId) {
+        // ✅ VALIDACIÓN: Asegurar que selectedLenses sea un array
+        if (!Array.isArray(this.state.selectedLenses)) {
+            this.state.selectedLenses = [];
+            return;
+        }
+
         const index = this.state.selectedLenses.findIndex(lens => lens._id === lensId);
         if (index < 0) return;
 
@@ -402,6 +570,12 @@ export const salesManager = {
     },
 
     decreaseQuantity(lensId) {
+        // ✅ VALIDACIÓN: Asegurar que selectedLenses sea un array
+        if (!Array.isArray(this.state.selectedLenses)) {
+            this.state.selectedLenses = [];
+            return;
+        }
+
         const index = this.state.selectedLenses.findIndex(lens => lens._id === lensId);
         if (index < 0) return;
 
@@ -414,6 +588,11 @@ export const salesManager = {
     },
 
     handleSave() {
+        // ✅ VALIDACIÓN: Asegurar que selectedLenses sea un array
+        if (!Array.isArray(this.state.selectedLenses)) {
+            this.state.selectedLenses = [];
+        }
+
         if (this.state.selectedLenses.length === 0) {
             uiManager.showAlert('No hay productos seleccionados para guardar', 'warning');
             return;
@@ -440,12 +619,22 @@ export const salesManager = {
         }
     },
 
-    // ✅ FUNCIÓN CORREGIDA CON SINCRONIZACIÓN
+    // ✅ FUNCIÓN CORREGIDA CON SINCRONIZACIÓN Y VALIDACIONES
     async updateInventoryIntelligently() {
         try {
             console.log('🔄 Iniciando actualización inteligente de inventario...');
 
+            // ✅ VALIDACIÓN: Asegurar que selectedLenses sea un array
+            if (!Array.isArray(this.state.selectedLenses)) {
+                throw new Error('No hay productos seleccionados para procesar');
+            }
+
             for (const selectedLens of this.state.selectedLenses) {
+                if (!selectedLens || !selectedLens._id) {
+                    console.warn('⚠️ Lente inválido encontrado:', selectedLens);
+                    continue;
+                }
+
                 // Obtener el producto actual
                 const product = await window.api.getProduct(selectedLens._id);
 
@@ -453,10 +642,9 @@ export const salesManager = {
                     throw new Error(`No se encontró el producto con ID: ${selectedLens._id}`);
                 }
 
-                const quantityToSubtract = selectedLens.quantity;
+                const quantityToSubtract = selectedLens.quantity || 0;
                 const currentStockSurtido = product.stock_surtido || 0;
                 const currentStock = product.stock || 0;
-                const oldStock = currentStock; // ✅ GUARDAR STOCK ANTERIOR
 
                 console.log(`📦 Procesando ${product.name}:`, {
                     cantidadSalida: quantityToSubtract,
@@ -489,7 +677,7 @@ export const salesManager = {
                     newStock = currentStock - quantityToSubtract;
                 }
 
-                // ✅ ACTUALIZAR EN BACKEND
+                // ACTUALIZAR EN BACKEND
                 const updateResult = await window.api.updateProductStock(selectedLens._id, {
                     stock: newStock,
                     stock_surtido: newStockSurtido
@@ -498,13 +686,25 @@ export const salesManager = {
                 const updatedProduct = updateResult.product || updateResult;
 
                 // ✅ SINCRONIZACIÓN INMEDIATA: Notificar a todas las vistas
-                syncHelper.notifyProductSold(
-                    selectedLens._id,
-                    quantityToSubtract,
-                    newStock,
-                    updatedProduct,
-                    'salesView' // ← Identificar que viene de la vista de ventas
-                );
+                if (syncHelper && typeof syncHelper.notifyProductSold === 'function') {
+                    syncHelper.notifyProductSold(
+                        selectedLens._id,
+                        quantityToSubtract,
+                        newStock,
+                        updatedProduct,
+                        'salesView' // Identificar que viene de la vista de ventas
+                    );
+                } else {
+                    console.warn('⚠️ syncHelper.notifyProductSold no disponible');
+                    // Fallback: emitir evento directo
+                    if (eventManager && typeof eventManager.emit === 'function') {
+                        eventManager.emit('data:product:stock-updated', {
+                            productId: selectedLens._id,
+                            newStock,
+                            product: updatedProduct
+                        });
+                    }
+                }
 
                 console.log(`✅ Inventario actualizado y sincronizado para ${product.name}`);
             }
@@ -539,6 +739,11 @@ export const salesManager = {
     },
 
     handleCancel() {
+        // ✅ VALIDACIÓN: Asegurar que selectedLenses sea un array
+        if (!Array.isArray(this.state.selectedLenses)) {
+            this.state.selectedLenses = [];
+        }
+
         if (this.state.selectedLenses.length > 0) {
             this.showModal('¿Está seguro que desea cancelar este registro?', 'cancelSale');
         } else {
@@ -548,14 +753,24 @@ export const salesManager = {
 
     showModal(message, action) {
         const modal = document.getElementById('confirmModal');
-        document.getElementById('modalMessage').textContent = message;
+        const messageElement = document.getElementById('modalMessage');
+        
+        if (messageElement) {
+            messageElement.textContent = message;
+        }
+        
         this.currentModalAction = action;
-        modal.style.display = 'flex';
+        
+        if (modal) {
+            modal.style.display = 'flex';
+        }
     },
 
     hideModal() {
         const modal = document.getElementById('confirmModal');
-        modal.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'none';
+        }
     },
 
     confirmAction() {
@@ -568,9 +783,54 @@ export const salesManager = {
                 this.resetSale();
                 break;
             default:
-                console.log('Acción no reconocida');
+                console.log('Acción no reconocida:', this.currentModalAction);
         }
 
         this.hideModal();
+    },
+
+    // ===== MÉTODOS DE UTILIDAD =====
+    
+    getStats() {
+        return {
+            availableLensesCount: Array.isArray(this.state.availableLenses) ? this.state.availableLenses.length : 0,
+            selectedLensesCount: Array.isArray(this.state.selectedLenses) ? this.state.selectedLenses.length : 0,
+            totalQuantitySelected: Array.isArray(this.state.selectedLenses) 
+                ? this.state.selectedLenses.reduce((sum, lens) => sum + (lens.quantity || 0), 0) 
+                : 0
+        };
+    },
+
+    validateState() {
+        const issues = [];
+        
+        if (!Array.isArray(this.state.availableLenses)) {
+            issues.push('availableLenses no es un array');
+        }
+        
+        if (!Array.isArray(this.state.selectedLenses)) {
+            issues.push('selectedLenses no es un array');
+        }
+        
+        if (!Array.isArray(this.state.searchResults)) {
+            issues.push('searchResults no es un array');
+        }
+        
+        return {
+            valid: issues.length === 0,
+            issues
+        };
+    },
+
+    reset() {
+        console.log('🔄 Reiniciando salesManager...');
+        this.state = {
+            availableLenses: [],
+            selectedLenses: [],
+            searchResults: [],
+            currentSale: null,
+            isEditMode: false
+        };
+        this.resetSale();
     }
 };
