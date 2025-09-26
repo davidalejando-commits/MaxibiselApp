@@ -1,4 +1,6 @@
-/*Estilos de la aplicación*/
+/* ========================================
+   ESTILOS GENERALES DE LA APLICACIÓN
+   ======================================== */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f5f5f5;
@@ -15,15 +17,6 @@ body {
 
 .card-header {
     border-radius: 8px 8px 0 0 !important;
-}
-
-.table {
-    font-size: 0.95rem;
-}
-
-.table thead th {
-    font-weight: 600;
-    border-bottom-width: 1px;
 }
 
 .btn-icon {
@@ -45,7 +38,233 @@ body {
     }
 }
 
-/* Custom styles for the barcode scanner */
+/* ========================================
+   ESTILOS BASE PARA TABLAS (COMPARTIDOS)
+   ======================================== */
+.table-base {
+    font-size: 0.95rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 0;
+}
+
+.table-base thead th {
+    font-weight: 600;
+    border-bottom-width: 1px;
+    text-align: center;
+    vertical-align: middle;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 2px solid #dee2e6;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.table-base tbody td {
+    text-align: center;
+    vertical-align: middle;
+    transition: background-color 0.2s ease;
+}
+
+/* Alineación a la izquierda para columnas de texto */
+.table-base tbody td:nth-child(1),
+/* Barcode */
+.table-base tbody td:nth-child(2) {
+    /* Name */
+    text-align: left;
+}
+
+.table-base thead th:nth-child(1),
+/* Barcode header */
+.table-base thead th:nth-child(2) {
+    /* Name header */
+    text-align: left;
+}
+
+/* Contenedor base para tablas con scroll */
+.table-container-base {
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Efectos hover en las filas (base) */
+.table-base tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table-base tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Alternar colores de filas (zebra striping) */
+.table-base tbody tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+.table-base tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* Personalizar la barra de scroll (base) */
+.table-container-base::-webkit-scrollbar {
+    width: 8px;
+}
+
+.table-container-base::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.table-container-base::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.table-container-base::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* ========================================
+   ESTILOS ESPECÍFICOS - TABLA DE PRODUCTOS
+   ======================================== */
+#products-view .table-container {
+    max-height: 480px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#products-view .table {
+    font-size: 0.95rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 0;
+}
+
+#products-view .table thead th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    border-bottom-width: 1px;
+    text-align: center;
+    vertical-align: middle;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 2px solid #dee2e6;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+#products-view .table tbody td {
+    text-align: center;
+    vertical-align: middle;
+    transition: background-color 0.2s ease;
+}
+
+/* ========================================
+   ESTILOS ESPECÍFICOS - TABLA DE SURTIDOS (CORREGIDOS)
+   ======================================== */
+#transactions-view .table-container {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    animation: fadeInTransaction 0.5s ease;
+    max-height: 75vh;
+    min-height: 600px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#transactions-view .table {
+    font-size: 0.95rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 0;
+    width: 100%;
+}
+
+#transactions-view .table thead th {
+    background: #eff3f8;
+    color: #2d3748;
+    padding: 15px;
+    text-align: center;
+    vertical-align: middle;
+    font-weight: 600;
+    border-bottom-width: 1px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 2px solid #dee2e6;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+#transactions-view .table tbody td {
+    padding: 15px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* CORRECCIÓN ESPECÍFICA: Alineación a la izquierda solo para código de barras y producto */
+#transactions-view .table thead th:nth-child(1),
+#transactions-view .table thead th:nth-child(2) {
+    text-align: left;
+}
+
+#transactions-view .table tbody td:nth-child(1),
+#transactions-view .table tbody td:nth-child(2) {
+    text-align: left;
+}
+
+/* NUEVO: Centrado específico para Estados y Acciones */
+#transactions-view .table thead th:nth-child(8),
+#transactions-view .table thead th:nth-child(9) {
+    text-align: center;
+}
+
+#transactions-view .table tbody td:nth-child(8),
+#transactions-view .table tbody td:nth-child(9) {
+    text-align: center;
+}
+
+#transactions-view .table tbody tr:hover td {
+    background: #f8fafcab;
+}
+
+/* ========================================
+   INDICADORES DE STOCK
+   ======================================== */
+.stock-high {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.stock-medium {
+    color: #ffc107;
+    font-weight: 600;
+}
+
+.stock-low {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.stock-warning {
+    color: #e74c3c;
+    font-weight: bold;
+    margin-left: 10px;
+    font-size: 0.9em;
+}
+
+/* ========================================
+   ESTILOS PARA ESCÁNER DE CÓDIGOS DE BARRAS
+   ======================================== */
 #scanner-video {
     max-height: 300px;
     object-fit: cover;
@@ -59,7 +278,9 @@ body {
     justify-content: center;
 }
 
-/* Estilos para las etiquetas de filtros */
+/* ========================================
+   ETIQUETAS DE FILTROS
+   ======================================== */
 .filter-badge {
     display: inline-block;
     padding: 0.25rem 0.5rem;
@@ -72,22 +293,9 @@ body {
     color: #0d6efd;
 }
 
-/* Indicadores de nivel de stock */
-.stock-high {
-    color: #28a745;
-}
-
-.stock-medium {
-    color: #ffc107;
-}
-
-.stock-low {
-    color: #dc3545;
-}
-
-/* Estilos para sales view */
-
-
+/* ========================================
+   ESTILOS PARA LA VISTA DE VENTAS - CORREGIDOS
+   ======================================== */
 body.sale {
     background-color: #f5f5f5;
     padding: 20px;
@@ -95,18 +303,16 @@ body.sale {
 }
 
 .container-sale {
-    /*display: flex;
-     gap: 20px;
-     height: calc(100vh - 40px);
-    display: flex;*/
     display: flex;
     justify-content: space-between;
     max-width: 1200px;
     margin: 0 auto;
     gap: 20px;
+    height: calc(100vh - 200px);
+    min-height: 500px;
 }
 
-/* Estilos para los paneles */
+/* Paneles de ventas */
 .panel {
     background-color: #fff;
     border-radius: 20px;
@@ -116,19 +322,45 @@ body.sale {
     display: flex;
     flex-direction: column;
     max-width: 50%;
+    background: rgb(248, 248, 248);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.panel-header {
+    flex-shrink: 0;
+    padding: 20px;
+    border-radius: 10px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #f8f9fa;
 }
 
 .panel-title {
+    border-radius: 0 0 10px 10px;
     font-size: 1.2em;
     margin-bottom: 20px;
     color: #2c3e50;
     border-bottom: 2px solid #3498db;
     padding-bottom: 10px;
+    margin: 0 0 15px 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
 }
 
-/* Estilos para el buscador */
+.panel-footer {
+    flex-shrink: 0;
+    padding: 20px;
+    border-radius: 5px 5px 10px 10px;
+    background: #f8f9fa00;
+}
+
+/* Contenedor de búsqueda */
 .search-container {
     margin-bottom: 20px;
+    margin: 0;
+   
 }
 
 .search-input {
@@ -138,6 +370,10 @@ body.sale {
     border-radius: 6px;
     font-size: 16px;
     transition: all 0.3s;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
 }
 
 .search-input:focus {
@@ -146,31 +382,68 @@ body.sale {
     box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
 }
 
-/* Estilos para los resultados de búsqueda */
+/* Contenedor de resultados - REDUCIDO Y CORREGIDO */
 .results-container {
     flex-grow: 1;
     overflow-y: auto;
     border: 1px solid #eee;
     border-radius: 6px;
     background-color: #fafafa;
+    min-height: 330px;
+   
 }
 
+.scrollable-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    /* REDUCIDO de 15px a 10px */
+    max-height: calc(100vh - 400px);
+    /* AJUSTADO */
+}
+
+.scrollable-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.scrollable-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.scrollable-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.scrollable-content::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Items de lentes - AJUSTADOS Y CON BORDES CORREGIDOS */
 .lens-item {
-    padding: 12px;
-    border-bottom: 1px solid #eee;
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 8px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
 }
 
 .lens-item:hover {
-    background-color: #f0f7fc;
+    background: #e9ecef;
+    border-color: #007bff;
 }
 
+/* CORRECCIÓN: Asegurar que el último item tenga borde */
 .lens-item:last-child {
-    border-bottom: none;
+    border-bottom: 1px solid #e0e0e0 !important;
+    margin-bottom: 8px;
+    /* Mantener margen */
 }
 
-/* Estilos para los lentes seleccionados */
+/* Lentes seleccionados - AJUSTADOS Y CON BORDES CORREGIDOS */
 .selected-container {
     flex-grow: 1;
     overflow-y: auto;
@@ -178,22 +451,66 @@ body.sale {
     border-radius: 6px;
     background-color: #fafafa;
     margin-bottom: 20px;
+    max-height: 350px;
+    /* REDUCIDO de altura anterior */
 }
 
 .selected-lens {
-    padding: 12px;
-    border-bottom: 1px solid #eee;
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 10px;
+    /* REDUCIDO de 12px a 10px */
+    margin-bottom: 6px;
+    /* REDUCIDO de 8px a 6px */
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    /* IMPORTANTE: Agregar borde inferior siempre visible */
+    border-bottom: 1px solid #e0e0e0 !important;
 }
 
+/* CORRECCIÓN: Asegurar que el último item seleccionado tenga borde */
 .selected-lens:last-child {
-    border-bottom: none;
+    border-bottom: 1px solid #e0e0e0 !important;
+    margin-bottom: 6px;
+    /* Mantener margen */
 }
 
 .lens-info {
     flex-grow: 1;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    min-width: 0;
+}
+
+.lens-details-compact {
+    flex: 1;
+    min-width: 0;
+}
+
+.lens-details-compact h4,
+.lens-details-compact h6 {
+    margin: 0 0 4px 0;
+    font-size: 0.9rem;
+    /* REDUCIDO de 0.95rem */
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lens-details-compact p {
+    margin: 0;
+    font-size: 0.8rem;
+    /* REDUCIDO de 0.85rem */
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .lens-actions {
@@ -202,12 +519,52 @@ body.sale {
     gap: 10px;
 }
 
+/* Controles de cantidad - AJUSTADOS */
+.quantity-control {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
 .quantity-input {
     width: 60px;
     padding: 6px;
     border: 1px solid #ddd;
     border-radius: 4px;
     text-align: center;
+}
+
+.qty-btn {
+    width: 28px;
+    /* REDUCIDO de 30px */
+    height: 28px;
+    /* REDUCIDO de 30px */
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.qty-btn:hover {
+    background: #f8f9fa;
+    border-color: #007bff;
+}
+
+.qty-value {
+    margin: 0 8px;
+    /* REDUCIDO de 10px */
+    font-size: 0.85rem;
+    /* REDUCIDO de 0.9rem */
+    min-width: 25px;
+    /* REDUCIDO de 30px */
+    text-align: center;
+    font-weight: 600;
 }
 
 .remove-btn {
@@ -225,11 +582,33 @@ body.sale {
     background-color: #c0392b;
 }
 
-/* Estilos para los botones de acción */
+.remove-lens {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 32px;
+    /* REDUCIDO de 35px */
+    height: 32px;
+    /* REDUCIDO de 35px */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.remove-lens:hover {
+    background: #c82333;
+}
+
+/* Botones de acción */
 .action-buttons {
     display: flex;
     justify-content: space-between;
     gap: 10px;
+    justify-content: flex-end;
 }
 
 .action-btn {
@@ -240,27 +619,44 @@ body.sale {
     cursor: pointer;
     transition: background-color 0.2s;
     flex-grow: 1;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
 .save-btn {
-    background-color: #0d6efd;
+    background: #3498db;
     color: white;
 }
 
 .save-btn:hover {
-    background-color: #1b5cbe;
+    background: #1b6ca1;
 }
 
 .cancel-btn {
-    background-color: #e74c3c;
+    background: #6c757d;
     color: white;
 }
 
 .cancel-btn:hover {
-    background-color: #c0392b;
+    background: #5a6268;
 }
 
-/* Estilos para el modal de confirmación */
+/* Totales */
+.total-section {
+    text-align: right;
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin: 10px 0;
+    color: #343a40;
+}
+
+/* ========================================
+   ESTILOS PARA MODALES
+   ======================================== */
 .modal {
     display: none;
     position: fixed;
@@ -325,302 +721,1031 @@ body.sale {
     background-color: #7f8c8d;
 }
 
-/* Clase auxiliar para mostrar el modal */
 .show {
     display: flex;
 }
 
-/* Para destacar elementos relevantes */
-.highlight {
-    background-color: #e8f4fc;
-    border-left: 3px solid #3498db;
+/* ========================================
+   ESTILOS ESPECÍFICOS PARA TRANSACCIONES
+   ======================================== */
+#transactions-view .header-section {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    padding: 30px;
+    color: rgb(199, 188, 188);
+    text-align: center;
+    border-radius: 16px 16px 0 0;
+    margin-bottom: 20px;
 }
 
-.stock-warning {
-    color: #e74c3c;
-    font-weight: bold;
-    margin-left: 10px;
-    font-size: 0.9em;
+#transactions-view .header-section h1 {
+    font-size: 2.5rem;
+    font-weight: 300;
+    margin-bottom: 10px;
 }
 
-.quantity-control {
-    display: flex;
-    align-items: center;
-    margin: 5px 0;
+#transactions-view .header-section p {
+    opacity: 0.9;
+    font-size: 1.1rem;
 }
 
-.qty-btn {
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    border: 1px solid #ced4da;
-    background-color: #f8f9fa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+#transactions-view .search-section {
+    padding: 30px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 20px;
+}
+
+#transactions-view .search-container {
+    position: relative;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+#transactions-view .search-label {
+    display: block;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+#transactions-view .search-select {
+    width: 100%;
+    padding: 15px 20px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 1rem;
+    background: white;
     cursor: pointer;
-    font-weight: bold;
-    user-select: none;
+    transition: all 0.3s ease;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 20px;
 }
 
-.qty-value {
-    margin: 0 10px;
-    font-size: 0.9rem;
+#transactions-view .search-select:focus {
+    outline: none;
+    border-color: #4facfe;
+    box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
 }
 
-.remove-lens {
-    background-color: #dc3545;
+#transactions-view .content-section {
+    padding: 30px;
+    min-height: 400px;
+}
+
+#transactions-view .no-selection {
+    text-align: center;
+    color: #64748b;
+    font-size: 1.2rem;
+    margin-top: 100px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#transactions-view .no-selection .icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+#transactions-view .table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+#transactions-view .table-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #000000;
+}
+
+#transactions-view .export-btn {
+    background: linear-gradient(135deg, #41e620 0%, #12ff12 100%);
     color: white;
     border: none;
-    border-radius: 50%;
-    width: 25px;
-    height: 25px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#transactions-view .export-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
+#transactions-view .table-wrapper {
+    height: calc(100% - 80px);
+    overflow-y: auto;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e0 #f7fafc;
+    padding-bottom: 30px;
+    min-height: 450px;
+    max-height: calc(100vh - 350px);
+}
+
+#transactions-view .table-wrapper::-webkit-scrollbar {
+    width: 8px;
+}
+
+#transactions-view .table-wrapper::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#transactions-view .table-wrapper::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+#transactions-view .table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+#transactions-view .table-wrapper table {
+    margin-bottom: 0;
+    width: 100%;
+}
+
+/* Estilos para la barra de búsqueda */
+#transactions-view .search-bar-container {
+    padding: 15px 20px 10px 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+#transactions-view .search-bar {
+    width: 100%;
+    max-width: 300px;
+    padding: 8px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+#transactions-view .search-bar:focus {
+    outline: none;
+    border-color: #4facfe;
+    box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+}
+
+#transactions-view .search-bar::placeholder {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+/* Controles de cantidad */
+#transactions-view .quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+}
+
+#transactions-view .quantity-btn {
+    width: 35px;
+    height: 35px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+#transactions-view .quantity-btn.minus {
+    background: #fed7d7;
+    color: #c53030;
+}
+
+#transactions-view .quantity-btn.minus:hover {
+    background: #feb2b2;
+}
+
+#transactions-view .quantity-btn.plus {
+    background: #c6f6d5;
+    color: #2f855a;
+}
+
+#transactions-view .quantity-btn.plus:hover {
+    background: #9ae6b4;
+}
+
+#transactions-view .quantity-input {
+    width: 80px;
+    padding: 8px;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 600;
+}
+
+#transactions-view .quantity-input:focus {
+    outline: none;
+    border-color: #4facfe;
+}
+
+#transactions-view .save-changes-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+#transactions-view .edit-icon {
+    color: #f6ad55;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: color 0.2s ease;
+}
+
+#transactions-view .edit-icon:hover {
+    color: #ed8936;
+}
+
+#transactions-view .reference-badge {
+    background: white;
+    color: rgb(0, 0, 0);
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 2rem;
+}
+
+#transactions-view .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+}
+
+#transactions-view .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+#transactions-view .status-dot.good {
+    background: #48bb78;
+}
+
+#transactions-view .status-dot.low {
+    background: #ed8936;
+}
+
+#transactions-view .status-dot.critical {
+    background: #f56565;
+}
+
+#transactions-view .d-flex.align-items-center {
+    justify-content: center;
+}
+
+#transactions-view td span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+@keyframes fadeInTransaction {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Media queries para responsive */
+@media (max-width: 768px) {
+    #transactions-view .header-section h1 {
+        font-size: 2rem;
+    }
+
+    #transactions-view .content-section {
+        padding: 15px;
+    }
+
+    #transactions-view .table-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+
+    #transactions-view .export-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    #transactions-view .quantity-controls {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    #transactions-view .quantity-btn {
+        width: 30px;
+        height: 30px;
+    }
+
+    #transactions-view .quantity-input {
+        width: 60px;
+    }
+
+    #transactions-view .table-container {
+        max-height: 85vh;
+        min-height: 400px;
+    }
+
+    #transactions-view .table-wrapper {
+        min-height: 350px;
+        padding-bottom: 25px;
+    }
+}
+
+@media (max-width: 480px) {
+    #transactions-view .search-section {
+        padding: 15px;
+    }
+
+    #transactions-view .header-section {
+        padding: 20px;
+    }
+
+    #transactions-view .header-section h1 {
+        font-size: 1.8rem;
+    }
+
+    #transactions-view .table-container {
+        max-height: 90vh;
+        min-height: 300px;
+    }
+
+    #transactions-view .table-wrapper {
+        min-height: 300px;
+        padding-bottom: 20px;
+    }
+
+    #transactions-view #products-table th,
+    #transactions-view #products-table td {
+        padding: 10px 8px;
+        font-size: 0.9rem;
+    }
+}
+/* ========================================
+   ESTILOS ESPECÍFICOS PARA MODAL DE CONFIRMACIÓN
+   ======================================== */
+
+/* Modal de confirmación - Tamaño ajustado */
+#confirmModal .modal-content {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    width: 500px;
+    max-width: 90vw;
+    min-width: 350px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+#confirmModal.show .modal-content {
+    transform: scale(1);
+}
+
+#confirmModal .modal-title {
+    font-size: 1.6em;
+    margin-bottom: 20px;
+    color: #2c3e50;
+    text-align: center;
+    font-weight: 600;
+}
+
+#confirmModal .modal-message {
+    margin-bottom: 30px;
+    line-height: 1.6;
+    font-size: 1.1em;
+    color: #555;
+    text-align: center;
+}
+
+#confirmModal .modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+#confirmModal .modal-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
-    font-weight: bold;
+    font-weight: 600;
+    min-width: 120px;
+    transition: all 0.3s ease;
 }
 
-/* Estilos de totales y acciones */
-.total-section {
-    text-align: right;
+#confirmModal .confirm-btn {
+    background-color: #3498db;
+    color: white;
+}
+
+#confirmModal .confirm-btn:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+#confirmModal .cancel-modal-btn {
+    background-color: #95a5a6;
+    color: white;
+}
+
+#confirmModal .cancel-modal-btn:hover {
+    background-color: #7f8c8d;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(127, 140, 141, 0.3);
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+    #confirmModal .modal-content {
+        width: 400px;
+        padding: 25px;
+    }
+
+    #confirmModal .modal-title {
+        font-size: 1.4em;
+    }
+
+    #confirmModal .modal-message {
+        font-size: 1em;
+    }
+
+    #confirmModal .modal-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #confirmModal .modal-btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    #confirmModal .modal-content {
+        width: 320px;
+        padding: 20px;
+    }
+
+    #confirmModal .modal-title {
+        font-size: 1.3em;
+        margin-bottom: 15px;
+    }
+
+    #confirmModal .modal-message {
+        font-size: 0.95em;
+        margin-bottom: 25px;
+    }
+}
+/* ========================================
+   EFECTOS GLOBALES PARA TODOS LOS BOTONES
+   ======================================== */
+
+/* Efecto base para todos los botones */
+button,
+.btn,
+.action-btn,
+.modal-btn,
+.qty-btn,
+.remove-btn,
+.remove-lens,
+.export-btn,
+input[type="button"],
+input[type="submit"],
+.quantity-btn {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+/* Efecto hover con elevación para botones principales */
+button:hover:not(:disabled),
+.btn:hover:not(:disabled),
+.action-btn:hover,
+.modal-btn:hover,
+.export-btn:hover,
+input[type="button"]:hover:not(:disabled),
+input[type="submit"]:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Efectos específicos por tipo de botón */
+
+/* Botones primarios (azul) */
+.btn-primary:hover,
+.save-btn:hover,
+.confirm-btn:hover,
+.action-btn.save-btn:hover {
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+/* Botones de éxito (verde) */
+.btn-success:hover,
+.export-btn:hover {
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+/* Botones de peligro (rojo) */
+.btn-danger:hover,
+.remove-btn:hover,
+.remove-lens:hover {
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+/* Botones secundarios (gris) */
+.btn-secondary:hover,
+.cancel-btn:hover,
+.cancel-modal-btn:hover {
+    box-shadow: 0 4px 12px rgba(127, 140, 141, 0.3);
+}
+
+/* Botones de advertencia (amarillo/naranja) */
+.btn-warning:hover {
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+/* Botones de información (cian) */
+.btn-info:hover {
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+}
+
+/* Efectos especiales para botones pequeños */
+.btn-sm:hover,
+.btn-icon:hover,
+.qty-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Efectos para controles de cantidad */
+#transactions-view .quantity-btn:hover {
+    transform: translateY(-2px);
+}
+
+#transactions-view .quantity-btn.minus:hover {
+    box-shadow: 0 4px 12px rgba(197, 48, 48, 0.3);
+}
+
+#transactions-view .quantity-btn.plus:hover {
+    box-shadow: 0 4px 12px rgba(47, 133, 90, 0.3);
+}
+
+/* Efecto para botones deshabilitados (sin movimiento) */
+button:disabled,
+.btn:disabled,
+.action-btn:disabled,
+.modal-btn:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Efecto activo (cuando se presiona) */
+button:active:not(:disabled),
+.btn:active:not(:disabled),
+.action-btn:active,
+.modal-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Efectos especiales para botones de Bootstrap */
+.btn-outline-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+}
+
+.btn-outline-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+}
+
+.btn-outline-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+}
+
+.btn-outline-warning:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+}
+
+.btn-outline-info:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.2);
+}
+
+.btn-outline-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(127, 140, 141, 0.2);
+}
+
+/* Efectos para links que actúan como botones */
+.btn-link:hover {
+    transform: translateY(-1px);
+    text-decoration: none;
+}
+
+/* Animaciones más suaves para botones de navegación */
+.navbar .btn:hover,
+.navbar .navbar-toggler:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Efecto especial para botones con iconos */
+.btn i,
+.action-btn i,
+.modal-btn i {
+    transition: transform 0.3s ease;
+}
+
+.btn:hover i,
+.action-btn:hover i,
+.modal-btn:hover i {
+    transform: scale(1.1);
+}
+
+/* Efecto para botones flotantes o FAB */
+.btn-floating:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive: Reducir efectos en móviles para mejor rendimiento */
+@media (max-width: 768px) {
+
+    button:hover:not(:disabled),
+    .btn:hover:not(:disabled),
+    .action-btn:hover,
+    .modal-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-sm:hover,
+    .btn-icon:hover,
+    .qty-btn:hover {
+        transform: translateY(-0.5px);
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
+    }
+}
+
+/* Efecto especial para botones de acción rápida */
+.quick-action-btn:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Pulso sutil para botones importantes */
+@keyframes subtle-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(52, 152, 219, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(52, 152, 219, 0);
+    }
+}
+
+.btn-primary.pulse {
+    animation: subtle-pulse 2s infinite;
+}
+
+/* Efecto especial para botones de llamada a la acción */
+.cta-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(52, 152, 219, 0.4);
+}
+
+/* Transición suave para todos los elementos interactivos */
+*[role="button"]:hover,
+.clickable:hover {
+    transform: translateY(-1px);
+    transition: all 0.3s ease;
+}
+/* ========================================
+   ESTILOS PARA CENTRAR FORMULARIO DE LOGIN
+   ======================================== */
+
+/* Contenedor principal del login - Centrado perfecto */
+#auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+/* Ajustar el body cuando está en login */
+body.login-page {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Contenedor de fila - Asegurar centrado */
+#auth-container .row {
+    width: 100%;
+    margin: 0;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Columna del formulario */
+#auth-container .col-md-6 {
+    max-width: 450px;
+    width: 100%;
+    padding: 0 15px;
+}
+
+/* Estilo de la tarjeta de login */
+#auth-container .card {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    animation: slideInLogin 0.6s ease-out;
+}
+
+/* Header de la tarjeta */
+#auth-container .card-header {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%) !important;
+    border-radius: 15px 15px 0 0 !important;
+    padding: 25px;
+    border: none;
+}
+
+#auth-container .card-header h3 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Cuerpo de la tarjeta */
+#auth-container .card-body {
+    padding: 40px;
+    background: white;
+}
+
+/* Estilos de los campos del formulario */
+#auth-container .form-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+#auth-container .form-control {
+    border-radius: 8px;
+    padding: 12px 15px;
+    border: 2px solid #e0e6ed;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+#auth-container .form-control:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    background-color: white;
+    transform: translateY(-1px);
+}
+
+/* Botón de login mejorado */
+#auth-container .btn-primary {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-weight: 600;
     font-size: 1.1rem;
-    font-weight: bold;
-    margin: 10px 0;
-    color: #343a40;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
- .container-sale {
-     display: flex;
-     gap: 20px;
-     height: calc(100vh - 200px);
-     min-height: 600px;
- }
 
- .panel {
-     flex: 1;
-     display: flex;
-     flex-direction: column;
-     background: white;
-     border-radius: 8px;
-     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-     overflow: hidden;
- }
+#auth-container .btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
 
- .panel-header {
-     flex-shrink: 0;
-     padding: 20px;
-     border-bottom: 1px solid #e0e0e0;
-     background: #f8f9fa;
- }
+#auth-container .btn-primary:hover::before {
+    left: 100%;
+}
 
- .panel-title {
-     margin: 0 0 15px 0;
-     font-size: 1.2rem;
-     font-weight: 600;
-     color: #333;
- }
+#auth-container .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+}
 
- .search-container {
-     margin: 0;
- }
+#auth-container .btn-primary:active {
+    transform: translateY(0);
+}
 
- .search-input {
-     width: 100%;
-     padding: 10px 15px;
-     border: 1px solid #ddd;
-     border-radius: 5px;
-     font-size: 14px;
- }
+/* Alert de error */
+#auth-container .alert-danger {
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    font-weight: 500;
+    animation: shakeError 0.5s ease-in-out;
+}
 
- .scrollable-content {
-     flex: 1;
-     overflow-y: auto;
-     padding: 15px;
-     max-height: calc(100vh - 350px);
- }
+/* Animaciones */
+@keyframes slideInLogin {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+    }
 
- .scrollable-content::-webkit-scrollbar {
-     width: 8px;
- }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
 
- .scrollable-content::-webkit-scrollbar-track {
-     background: #f1f1f1;
-     border-radius: 4px;
- }
+@keyframes shakeError {
 
- .scrollable-content::-webkit-scrollbar-thumb {
-     background: #c1c1c1;
-     border-radius: 4px;
- }
+    0%,
+    20%,
+    40%,
+    60%,
+    80%,
+    100% {
+        transform: translateX(0);
+    }
 
- .scrollable-content::-webkit-scrollbar-thumb:hover {
-     background: #a8a8a8;
- }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+    }
+}
 
- .panel-footer {
-     flex-shrink: 0;
-     padding: 20px;
-     border-top: 1px solid #e0e0e0;
-     background: #f8f9fa;
- }
+/* Responsive para móviles */
+@media (max-width: 768px) {
+    #auth-container {
+        padding: 15px;
+    }
 
- .action-buttons {
-     display: flex;
-     gap: 10px;
-     justify-content: flex-end;
- }
+    #auth-container .col-md-6 {
+        max-width: 100%;
+        padding: 0 10px;
+    }
 
- .action-btn {
-     padding: 12px 24px;
-     border: none;
-     border-radius: 5px;
-     font-weight: 600;
-     cursor: pointer;
-     transition: all 0.3s ease;
- }
+    #auth-container .card-body {
+        padding: 30px 25px;
+    }
 
- .save-btn {
-     background: #3498db;
-     color: white;
- }
+    #auth-container .card-header {
+        padding: 20px;
+    }
 
- .save-btn:hover {
-     background: #1b6ca1;
- }
+    #auth-container .card-header h3 {
+        font-size: 1.7rem;
+        letter-spacing: 1px;
+    }
+}
 
- .cancel-btn {
-     background: #6c757d;
-     color: white;
- }
+@media (max-width: 480px) {
+    #auth-container {
+        padding: 10px;
+    }
 
- .cancel-btn:hover {
-     background: #5a6268;
- }
+    #auth-container .card-body {
+        padding: 25px 20px;
+    }
 
- .lens-item {
-     background: #f8f9fa;
-     border: 1px solid #e0e0e0;
-     border-radius: 5px;
-     padding: 15px;
-     margin-bottom: 10px;
-     cursor: pointer;
-     transition: all 0.2s ease;
- }
+    #auth-container .card-header h3 {
+        font-size: 1.5rem;
+    }
 
- .lens-item:hover {
-     background: #e9ecef;
-     border-color: #007bff;
- }
+    #auth-container .form-control {
+        padding: 10px 12px;
+        font-size: 0.95rem;
+    }
 
- .selected-lens {
-     background: #f8f9fa;
-     border: 1px solid #e0e0e0;
-     border-radius: 5px;
-     padding: 12px;
-     margin-bottom: 8px;
-     display: flex;
-     align-items: center;
-     justify-content: space-between;
-     gap: 15px;
- }
+    #auth-container .btn-primary {
+        padding: 10px 20px;
+        font-size: 1rem;
+    }
+}
 
- .lens-info {
-     flex: 1;
-     display: flex;
-     align-items: center;
-     gap: 15px;
-     min-width: 0;
- }
+/* Variante alternativa: Centrado simple (si prefieres algo más minimalista) */
+.auth-container-simple {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    padding: 20px;
+}
 
- .lens-details-compact {
-     flex: 1;
-     min-width: 0;
- }
+.auth-container-simple .card {
+    width: 100%;
+    max-width: 400px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
 
- .lens-details-compact h4 {
-     margin: 0 0 4px 0;
-     font-size: 0.95rem;
-     font-weight: 600;
-     color: #333;
-     white-space: nowrap;
-     overflow: hidden;
-     text-overflow: ellipsis;
- }
+/* Efecto glass morphism alternativo */
+.glass-login {
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+}
 
- .lens-details-compact p {
-     margin: 0;
-     font-size: 0.85rem;
-     color: #666;
-     white-space: nowrap;
-     overflow: hidden;
-     text-overflow: ellipsis;
- }
+/* Efecto de partículas deshabilitado para fondo blanco */
+#auth-container::before {
+    display: none;
+}
 
- .quantity-control {
-     display: flex;
-     align-items: center;
-     gap: 8px;
-     flex-shrink: 0;
- }
+@keyframes float {
 
- .qty-btn {
-     width: 30px;
-     height: 30px;
-     border: 1px solid #ddd;
-     background: white;
-     border-radius: 4px;
-     display: flex;
-     align-items: center;
-     justify-content: center;
-     cursor: pointer;
-     transition: all 0.2s ease;
- }
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
 
- .qty-btn:hover {
-     background: #f8f9fa;
-     border-color: #007bff;
- }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+/* Forzar fondo blanco con mayor especificidad */
+html,
+body {
+    background: white !important;
+}
 
- .qty-value {
-     min-width: 30px;
-     text-align: center;
-     font-weight: 600;
-     font-size: 0.9rem;
- }
+body.login-page {
+    background: white !important;
+}
 
- .remove-lens {
-     background: #dc3545;
-     color: white;
-     border: none;
-     border-radius: 4px;
-     width: 35px;
-     height: 35px;
-     display: flex;
-     align-items: center;
-     justify-content: center;
-     cursor: pointer;
-     transition: all 0.2s ease;
-     flex-shrink: 0;
- }
-
- .remove-lens:hover {
-     background: #c82333;
- }
-
- /* Responsive */
- @media (max-width: 768px) {
-     .container-sale {
-         flex-direction: column;
-         height: auto;
-     }
-
-     .panel {
-         min-height: 300px;
-     }
-
-     .scrollable-content {
-         max-height: 250px;
-     }
- }
+#auth-container {
+    background: white !important;
+}

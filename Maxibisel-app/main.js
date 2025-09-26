@@ -1,4 +1,4 @@
-// Archivo principal - Versión con logo personalizado y loading mejorado
+// Archivo principal 
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const axios = require('axios');
