@@ -1,4 +1,4 @@
-//Configuración del servidor Express
+// Configuración del servidor Express
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -36,21 +36,51 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+// NUEVA RUTA: Health check (SIN autenticación - debe ir antes de las rutas autenticadas)
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'OK',
+        message: 'Backend funcionando correctamente',
+        timestamp: new Date().toISOString(),
+        port: PORT,
+        mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+        uptime: process.uptime()
+    });
+});
+
 // Importar rutas
 const productRoutes = require('./routes/products');
 const userRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 
-// Usar rutas
+// Usar rutas (CON autenticación)
 app.use('/api/products', authenticateToken, productRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRoutes); // Auth no necesita token
 app.use('/api/transactions', authenticateToken, transactionRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {
     res.send('API del Sistema de Inventario Óptico funcionando correctamente');
+});
+
+// Manejo de errores 404
+app.use((req, res) => {
+    res.status(404).json({ 
+        error: 'Ruta no encontrada',
+        path: req.path,
+        method: req.method
+    });
+});
+
+// Manejo de errores globales
+app.use((err, req, res, next) => {
+    console.error('Error del servidor:', err);
+    res.status(500).json({ 
+        error: 'Error interno del servidor',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong!'
+    });
 });
 
 // Iniciar el servidor

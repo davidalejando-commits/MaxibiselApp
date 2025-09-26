@@ -1,112 +1,515 @@
-//Gestión de productos - VERSIÓN SINCRONIZADA
-import { dataSync } from './dataSync.js'; // 🆕 NUEVO
-import { eventManager } from './eventManager.js'; // 🆕 NUEVO
+// Gestión de productos - Versión corregida completa con sincronización inmediata
+import { dataSync } from './dataSync.js';
+import { eventManager } from './eventManager.js';
 import { uiManager } from './ui.js';
 
 export const productManager = {
     products: [],
     productModal: null,
     stockModal: null,
-    viewName: 'productManager', // 🆕 Identificador único de vista
+    viewName: 'productManager',
+    isInitialized: false,
+    initializationPromise: null,
 
-    init() {
-        console.log('🔧 Inicializando ProductManager...');
-        
-        // Inicializar referencias
-        this.productModal = new bootstrap.Modal(document.getElementById('product-modal'));
-        this.stockModal = new bootstrap.Modal(document.getElementById('stock-modal'));
+    // Inicialización corregida
+    async init() {
+        if (this.initializationPromise) {
+            console.log('⏳ Esperando inicialización en progreso...');
+            return await this.initializationPromise;
+        }
 
-        // 🆕 NUEVO: Suscribirse a cambios de datos
-        dataSync.subscribe(this.viewName, 'products', this.handleDataChange.bind(this));
+        if (this.isInitialized) {
+            console.log('✅ ProductManager ya está inicializado');
+            return;
+        }
 
-        // Configurar eventos existentes
-        this.setupEventListeners();
-
-        // Cargar productos al iniciar
-        this.loadProducts();
+        this.initializationPromise = this._performInit();
+        return await this.initializationPromise;
     },
 
-    // 🆕 NUEVO: Manejar cambios de datos desde otras vistas
-    handleDataChange({ action, data, dataType, timestamp }) {
-        console.log(`🔄 ProductManager recibió cambio: ${action} en ${dataType} a las ${new Date(timestamp).toLocaleTimeString()}`);
-        
-        if (dataType === 'products') {
-            switch (action) {
-                case 'created':
-                    // Verificar que no exista ya en el array local
-                    if (!this.products.find(p => p._id === data._id)) {
-                        this.products.push(data);
-                        this.sortProductsById();
-                        this.renderProductsTable();
-                        console.log(`➕ Producto añadido: ${data.name}`);
-                    }
-                    break;
-                    
-                case 'updated':
-                    const updateIndex = this.products.findIndex(p => p._id === data._id);
-                    if (updateIndex > -1) {
-                        this.products[updateIndex] = data;
-                        this.sortProductsById();
-                        this.renderProductsTable();
-                        console.log(`🔄 Producto actualizado: ${data.name}`);
-                    }
-                    break;
-                    
-                case 'deleted':
-                    const originalLength = this.products.length;
-                    this.products = this.products.filter(p => p._id !== data);
-                    if (this.products.length < originalLength) {
-                        this.renderProductsTable();
-                        console.log(`➖ Producto eliminado (ID: ${data})`);
-                    }
-                    break;
-                    
-                case 'refreshed':
-                    this.products = data;
-                    this.sortProductsById();
-                    this.renderProductsTable();
-                    console.log(`🔄 Lista de productos refrescada (${data.length} elementos)`);
-                    break;
+    async _performInit() {
+        try {
+            console.log('🚀 Inicializando ProductManager...');
+
+            if (!eventManager.isInitialized) {
+                console.log('🔧 Inicializando eventManager...');
+                eventManager.init();
+            }
+
+            if (!dataSync.isInitialized) {
+                console.log('🔧 Inicializando dataSync...');
+                dataSync.init();
+            }
+
+            this.setupAuthEventListeners();
+            await this._waitForDOMElements(10000);
+            this._initializeModals();
+            this.setupEventListeners();
+            dataSync.subscribe(this.viewName, 'products', this.handleDataChange.bind(this));
+            await this.loadProducts();
+            await this._validateInitialization();
+
+            this.isInitialized = true;
+            console.log('✅ ProductManager inicializado completamente');
+
+            setTimeout(() => {
+                if (window.uiManager && window.uiManager.forceStyleUpdate) {
+                    window.uiManager.forceStyleUpdate();
+                }
+            }, 100);
+
+            window.productManager = this;
+            console.log('🌍 ProductManager expuesto globalmente');
+
+        } catch (error) {
+            console.error('❌ Error en inicialización de ProductManager:', error);
+            this.isInitialized = false;
+            throw error;
+        } finally {
+            this.initializationPromise = null;
+        }
+    },
+
+    setupAuthEventListeners() {
+        console.log('🔧 Configurando listeners para eventos de auth...');
+
+        eventManager.on('auth:login-success', this.handleLoginSuccess.bind(this));
+        eventManager.on('view:activated', this.handleViewActivated.bind(this));
+        eventManager.on('auth:products-initialized', this.handleProductsInitialized.bind(this));
+
+        console.log('✅ Listeners de auth configurados');
+    },
+
+    async handleLoginSuccess(user) {
+        console.log('👤 Login exitoso recibido en ProductManager:', user.fullName);
+
+        try {
+            if (!this.isInitialized) {
+                console.log('⚠️ ProductManager no inicializado, inicializando...');
+                await this.init();
+            }
+
+            console.log('📦 Cargando productos después del login...');
+            await this.loadProducts();
+
+        } catch (error) {
+            console.error('❌ Error manejando login en ProductManager:', error);
+        }
+    },
+
+    async handleViewActivated(viewData) {
+        if (viewData.viewName === 'products') {
+            console.log('👁️ Vista de productos activada');
+
+            if (this.isInitialized && (!this.products || this.products.length === 0)) {
+                console.log('📦 Vista de productos activada sin datos, cargando...');
+                await this.loadProducts();
             }
         }
     },
 
-    setupEventListeners() {
-        document.getElementById('add-product-btn').addEventListener('click', this.showAddProductModal.bind(this));
-        document.getElementById('save-product-btn').addEventListener('click', this.saveProduct.bind(this));
-        document.getElementById('save-stock-btn').addEventListener('click', this.updateStock.bind(this));
-        document.getElementById('products-table-body').addEventListener('click', this.handleProductAction.bind(this));
-        document.getElementById('generate-barcode-btn').addEventListener('click', this.generateBarcode.bind(this));
-        document.getElementById('barcode-scan-btn').addEventListener('click', this.showBarcodeScannerModal.bind(this));
-        document.getElementById('manual-barcode-btn').addEventListener('click', this.searchByManualBarcode.bind(this));
-        document.getElementById('product-search').addEventListener('input', this.filterProducts.bind(this));
+    handleProductsInitialized(data) {
+        console.log('✅ Productos inicializados después del login:', data);
 
-        // Eventos para manejar Enter en el stock
-        document.getElementById('stock-new-value').addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                console.log('Enter presionado - ejecutando updateStock()');
-                this.updateStock();
+        if (this.isInitialized && this.products.length > 0) {
+            setTimeout(() => {
+                this._renderTableImmediate();
+            }, 100);
+        }
+    },
+
+    async _waitForDOMElements(maxWait = 10000) {
+        const requiredElements = ['products-table-body', 'product-modal', 'stock-modal'];
+        const startTime = Date.now();
+        console.log('⏳ Esperando elementos DOM...', requiredElements);
+
+        return new Promise((resolve, reject) => {
+            const checkElements = () => {
+                const missingElements = requiredElements.filter(id => !document.getElementById(id));
+
+                if (missingElements.length === 0) {
+                    console.log('✅ Todos los elementos DOM requeridos están disponibles');
+                    resolve();
+                    return;
+                }
+
+                const elapsed = Date.now() - startTime;
+                if (elapsed > maxWait) {
+                    console.error(`❌ Elementos DOM faltantes después de ${maxWait}ms:`, missingElements);
+                    reject(new Error(`Elementos DOM faltantes: ${missingElements.join(', ')}`));
+                    return;
+                }
+
+                if (elapsed % 2000 === 0) {
+                    console.log(`⏳ Aún esperando elementos DOM (${Math.round(elapsed / 1000)}s): ${missingElements.join(', ')}`);
+                }
+
+                setTimeout(checkElements, 100);
+            };
+
+            checkElements();
+        });
+    },
+
+    async _validateInitialization() {
+        console.log('🔍 Validando inicialización...');
+
+        const validations = [
+            { name: 'Tabla de productos', check: () => document.getElementById('products-table-body') !== null },
+            { name: 'Datos cargados', check: () => Array.isArray(this.products) },
+            { name: 'Suscripción a dataSync', check: () => dataSync.isSubscribed(this.viewName, 'products') },
+            { name: 'Event listeners configurados', check: () => document.getElementById('add-product-btn') !== null }
+        ];
+
+        const failedValidations = validations.filter(v => !v.check());
+
+        if (failedValidations.length > 0) {
+            const failedNames = failedValidations.map(v => v.name).join(', ');
+            throw new Error(`Validaciones fallidas: ${failedNames}`);
+        }
+
+        console.log('✅ Todas las validaciones pasaron');
+    },
+
+    _initializeModals() {
+        try {
+            const productModalEl = document.getElementById('product-modal');
+            const stockModalEl = document.getElementById('stock-modal');
+
+            if (productModalEl && typeof bootstrap !== 'undefined') {
+                this.productModal = new bootstrap.Modal(productModalEl);
+                console.log('✅ Modal de producto inicializado');
+            } else {
+                console.warn('⚠️ No se pudo inicializar modal de producto');
+            }
+
+            if (stockModalEl && typeof bootstrap !== 'undefined') {
+                this.stockModal = new bootstrap.Modal(stockModalEl);
+                console.log('✅ Modal de stock inicializado');
+            } else {
+                console.warn('⚠️ No se pudo inicializar modal de stock');
+            }
+        } catch (error) {
+            console.error('❌ Error inicializando modales:', error);
+        }
+    },
+
+    setupEventListeners() {
+        console.log('🔧 Configurando event listeners...');
+
+        const eventBindings = [
+            { id: 'add-product-btn', event: 'click', handler: this.showAddProductModal.bind(this) },
+            { id: 'save-product-btn', event: 'click', handler: this.saveProduct.bind(this) },
+            { id: 'save-stock-btn', event: 'click', handler: this.updateStock.bind(this) },
+            { id: 'products-table-body', event: 'click', handler: this.handleProductAction.bind(this) },
+            { id: 'generate-barcode-btn', event: 'click', handler: this.generateBarcode.bind(this) },
+            { id: 'barcode-scan-btn', event: 'click', handler: this.showBarcodeScannerModal.bind(this) },
+            { id: 'manual-barcode-btn', event: 'click', handler: this.searchByManualBarcode.bind(this) },
+            { id: 'product-search', event: 'input', handler: this.filterProducts.bind(this) }
+        ];
+
+        eventBindings.forEach(({ id, event, handler }) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener(event, handler);
+                console.log(`✅ Event listener agregado: ${id} -> ${event}`);
+            } else {
+                console.warn(`⚠️ Elemento no encontrado: ${id}`);
             }
         });
 
-        document.getElementById('stock-form').addEventListener('submit', (event) => {
-            event.preventDefault();
-            console.log('Form submit interceptado - ejecutando updateStock()');
-            this.updateStock();
-        });
+        this._setupStockEvents();
+    },
+
+    _setupStockEvents() {
+        const stockInput = document.getElementById('stock-new-value');
+        const stockForm = document.getElementById('stock-form');
+
+        if (stockInput) {
+            stockInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    this.updateStock();
+                }
+            });
+        }
+
+        if (stockForm) {
+            stockForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                this.updateStock();
+            });
+        }
+    },
+
+    handleDataChange({ action, data, dataType }) {
+        console.log(`🔄 ProductManager recibió: ${action} en ${dataType}`, data);
+
+        if (!this.isInitialized) {
+            console.log('⏳ Ignorando cambio - no inicializado');
+            return;
+        }
+
+        try {
+            switch (action) {
+                case 'created':
+                    this._handleProductCreatedImmediate(data);
+                    break;
+                case 'updated':
+                    this._handleProductUpdatedImmediate(data);
+                    break;
+                case 'deleted':
+                    this._handleProductDeletedImmediate(data);
+                    break;
+                case 'refreshed':
+                    this._handleProductsRefreshedImmediate(data);
+                    break;
+                case 'stock-updated':
+                    this._handleStockUpdatedImmediate(data);
+                    break;
+                default:
+                    console.warn(`⚠️ Acción no reconocida: ${action}`);
+            }
+        } catch (error) {
+            console.error('❌ Error manejando cambio de datos:', error);
+        }
+    },
+
+    _handleProductCreatedImmediate(product) {
+        console.log('🆕 Manejando producto creado inmediatamente:', product._id);
+
+        const exists = this.products.some(p => p._id === product._id);
+        if (!exists) {
+            this.products.push(product);
+            this.sortProductsById();
+            this._renderTableImmediate();
+            console.log('✅ Producto agregado a la tabla inmediatamente');
+        } else {
+            console.log('⚠️ Producto ya existe, actualizando inmediatamente');
+            this._handleProductUpdatedImmediate(product);
+        }
+    },
+
+    _handleProductUpdatedImmediate(product) {
+        console.log('✏️ Manejando producto actualizado inmediatamente:', product._id);
+
+        const index = this.products.findIndex(p => p._id === product._id);
+        if (index !== -1) {
+            const existingProduct = this.products[index];
+            this.products[index] = {
+                ...existingProduct,
+                ...product,
+                _id: product._id
+            };
+            this.sortProductsById();
+            this._renderTableImmediate();
+            console.log('✅ Producto actualizado en la tabla inmediatamente');
+            this._highlightUpdatedProduct(product._id);
+        } else {
+            console.log('⚠️ Producto no encontrado, agregándolo inmediatamente');
+            this._handleProductCreatedImmediate(product);
+        }
+    },
+
+    _handleProductDeletedImmediate(productId) {
+        console.log('🗑️ Manejando producto eliminado inmediatamente:', productId);
+
+        const initialLength = this.products.length;
+        this.products = this.products.filter(p => p._id !== productId);
+
+        if (this.products.length < initialLength) {
+            this._renderTableImmediate();
+            console.log('✅ Producto eliminado de la tabla inmediatamente');
+        } else {
+            console.log('⚠️ Producto no estaba en la lista');
+        }
+    },
+
+    _handleProductsRefreshedImmediate(products) {
+        console.log('🔄 Manejando refrescado de productos inmediatamente:', products.length);
+
+        this.products = Array.isArray(products) ? products : [];
+        this.sortProductsById();
+        this._renderTableImmediate();
+        console.log('✅ Lista de productos refrescada inmediatamente');
+    },
+
+    _handleStockUpdatedImmediate(data) {
+        console.log('📦 Manejando actualización de stock inmediatamente:', data);
+
+        const { productId, newStock, product } = data;
+
+        if (product) {
+            this._handleProductUpdatedImmediate(product);
+        } else if (productId && newStock !== undefined) {
+            const index = this.products.findIndex(p => p._id === productId);
+            if (index !== -1) {
+                this.products[index].stock = newStock;
+                this._renderTableImmediate();
+                this._highlightUpdatedProduct(productId);
+                console.log('✅ Stock actualizado en la tabla inmediatamente');
+            }
+        }
+    },
+
+    _renderTableImmediate() {
+        console.log('⚡ Renderizando tabla inmediatamente...');
+
+        try {
+            this.renderProductsTable();
+
+            const table = document.getElementById('products-table');
+            if (table) {
+                table.classList.add('table', 'table-base');
+
+                const container = table.closest('.table-container');
+                if (container) {
+                    container.classList.add('table-container-base');
+                }
+            }
+
+            setTimeout(() => {
+                if (window.uiManager && window.uiManager.forceStyleUpdate) {
+                    window.uiManager.forceStyleUpdate();
+                }
+            }, 10);
+
+            console.log('✅ Tabla renderizada con estilos aplicados');
+
+        } catch (error) {
+            console.error('❌ Error en renderizado inmediato:', error);
+        }
+    },
+
+    _highlightUpdatedProduct(productId) {
+        setTimeout(() => {
+            try {
+                const tableBody = document.getElementById('products-table-body');
+                if (!tableBody) return;
+
+                const targetRow = Array.from(tableBody.querySelectorAll('tr')).find(row => {
+                    const editBtn = row.querySelector(`[data-id="${productId}"]`);
+                    return editBtn !== null;
+                });
+
+                if (targetRow) {
+                    targetRow.style.backgroundColor = '#e8f5e8';
+                    targetRow.style.transition = 'background-color 0.5s ease';
+
+                    targetRow.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest'
+                    });
+
+                    setTimeout(() => {
+                        targetRow.style.backgroundColor = '';
+                    }, 3000);
+
+                    console.log('✅ Producto destacado:', productId);
+                } else {
+                    console.warn('⚠️ No se encontró la fila para destacar:', productId);
+                }
+            } catch (error) {
+                console.error('❌ Error destacando producto:', error);
+            }
+        }, 100);
     },
 
     async loadProducts() {
         try {
-            // 🔄 CAMBIO: Usar dataSync en lugar de API directa
-            this.products = await dataSync.getData('products');
+            console.log('📥 Cargando productos...');
+            this.showLoadingState();
+
+            let products;
+            let retryCount = 0;
+            const maxRetries = 3;
+
+            while (retryCount < maxRetries) {
+                try {
+                    products = await dataSync.getData('products');
+                    break;
+                } catch (error) {
+                    retryCount++;
+                    console.warn(`⚠️ Intento ${retryCount}/${maxRetries} falló:`, error.message);
+
+                    if (retryCount < maxRetries) {
+                        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+
+                        try {
+                            products = await window.api.getProducts();
+                            break;
+                        } catch (apiError) {
+                            console.warn(`⚠️ API directa también falló en intento ${retryCount}`);
+                        }
+                    } else {
+                        throw error;
+                    }
+                }
+            }
+
+            if (Array.isArray(products)) {
+                this.products = products;
+                console.log(`✅ ${this.products.length} productos cargados exitosamente`);
+            } else {
+                console.warn('⚠️ Datos no válidos recibidos:', products);
+                this.products = [];
+            }
+
             this.sortProductsById();
             this.renderProductsTable();
-            console.log('📦 Productos cargados desde dataSync');
+
+            if (window.eventManager) {
+                window.eventManager.emit('products:loaded', {
+                    count: this.products.length,
+                    timestamp: Date.now()
+                });
+            }
+
         } catch (error) {
-            console.error('Error al cargar productos:', error);
-            uiManager.showAlert('Error al cargar los productos', 'danger');
+            console.error('❌ Error cargando productos después de todos los reintentos:', error);
+            this.products = [];
+            this.renderProductsTable();
+
+            let errorMessage = 'Error al cargar productos';
+            if (error.message.includes('network') || error.message.includes('fetch')) {
+                errorMessage = 'Error de conexión al cargar productos';
+            } else if (error.message.includes('timeout')) {
+                errorMessage = 'Tiempo de espera agotado al cargar productos';
+            }
+
+            if (window.uiManager && window.uiManager.showAlert) {
+                window.uiManager.showAlert(errorMessage, 'danger');
+            }
+
+            if (window.eventManager) {
+                window.eventManager.emit('products:load-error', {
+                    error: error.message,
+                    timestamp: Date.now()
+                });
+            }
+        }
+    },
+
+    showLoadingState() {
+        const tableBody = document.getElementById('products-table-body');
+        if (!tableBody) return;
+
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <span class="text-muted">Cargando productos...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        const table = document.getElementById('products-table');
+        if (table) {
+            table.classList.add('table', 'table-base');
         }
     },
 
@@ -120,84 +523,145 @@ export const productManager = {
 
     renderProductsTable() {
         const tableBody = document.getElementById('products-table-body');
+        if (!tableBody) {
+            console.error('❌ Elemento products-table-body no encontrado');
+            return;
+        }
+
+        console.log(`🔄 Renderizando ${this.products.length} productos`);
+
         tableBody.innerHTML = '';
 
         if (this.products.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = `<td colspan="8" class="text-center">No hay productos registrados</td>`;
-            tableBody.appendChild(row);
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center py-3 text-muted">
+                        <i class="bi bi-inbox me-2"></i>
+                        No hay productos registrados
+                    </td>
+                </tr>
+            `;
             return;
         }
 
         const table = document.getElementById('products-table');
-        if (table && !table.classList.contains('table-base')) {
-            table.classList.add('table-base');
-        }
+        if (table) {
+            table.classList.add('table', 'table-base');
 
-        const container = table.closest('.table-container');
-        if (container && !container.classList.contains('table-container-base')) {
-            container.classList.add('table-container-base');
-        }
-
-        this.products.forEach(product => {
-            const row = document.createElement('tr');
-
-            let stockClass = '';
-            if (product.stock <= 0) {
-                stockClass = 'stock-low';
-            } else if (product.stock < 5) {
-                stockClass = 'stock-medium';
-            } else {
-                stockClass = 'stock-high';
+            const tableContainer = table.closest('.table-container');
+            if (tableContainer) {
+                tableContainer.classList.add('table-container-base');
             }
 
-            row.innerHTML = `
-                <td>${product.barcode}</td>
-                <td>${product.name}</td>      
-                <td>${product.sphere}</td>
-                <td>${product.cylinder}</td>
-                <td>${product.addition}</td>
-                <td class="${stockClass}">${product.stock}</td>
-                <td>
-                  <button class="btn btn-sm btn-outline-primary me-1 edit-product" data-id="${product._id}">
-                    <i class="bi bi-pencil"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-info me-1 update-stock" data-id="${product._id}">
-                    <i class="bi bi-box"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger delete-product" data-id="${product._id}">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </td>
-            `;
+            console.log('✅ Clases de estilo aplicadas a la tabla');
+        }
 
-            tableBody.appendChild(row);
+        const fragment = document.createDocumentFragment();
+
+        this.products.forEach(product => {
+            const row = this._createProductRow(product);
+            fragment.appendChild(row);
         });
+
+        tableBody.appendChild(fragment);
+
+        setTimeout(() => {
+            if (window.uiManager && window.uiManager.forceStyleUpdate) {
+                window.uiManager.forceStyleUpdate();
+            }
+        }, 50);
+
+        console.log('✅ Tabla renderizada exitosamente con estilos aplicados');
     },
 
+    _createProductRow(product) {
+        const row = document.createElement('tr');
+
+        let stockClass = '';
+        const stock = product.stock || 0;
+        if (stock <= 0) {
+            stockClass = 'stock-low';
+        } else if (stock < 5) {
+            stockClass = 'stock-medium';
+        } else {
+            stockClass = 'stock-high';
+        }
+
+        row.innerHTML = `
+            <td>${product.barcode || ''}</td>
+            <td>${product.name || ''}</td>      
+            <td>${product.sphere || ''}</td>
+            <td>${product.cylinder || ''}</td>
+            <td>${product.addition || ''}</td>
+            <td class="${stockClass}">${stock}</td>
+            <td>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-primary edit-product" 
+                            data-id="${product._id}" 
+                            title="Editar producto">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-outline-info update-stock" 
+                            data-id="${product._id}"
+                            title="Actualizar stock">
+                        <i class="bi bi-box"></i>
+                    </button>
+                    <button class="btn btn-outline-danger delete-product" 
+                            data-id="${product._id}"
+                            title="Eliminar producto">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+
+        return row;
+    },
+
+    // ===== FUNCIONES DE MODAL Y CRUD =====
+
     showAddProductModal() {
-        document.getElementById('product-form').reset();
-        document.getElementById('product-id').value = '';
-        document.getElementById('product-modal-title').textContent = 'Nuevo Lente';
-        this.productModal.show();
+        const form = document.getElementById('product-form');
+        if (form) form.reset();
+
+        const productId = document.getElementById('product-id');
+        if (productId) productId.value = '';
+
+        const modalTitle = document.getElementById('product-modal-title');
+        if (modalTitle) modalTitle.textContent = 'Nuevo Lente';
+
+        if (this.productModal) {
+            this.productModal.show();
+        }
     },
 
     async showEditProductModal(productId) {
         try {
             const product = await window.api.getProduct(productId);
 
-            document.getElementById('product-id').value = product._id;
-            document.getElementById('product-barcode').value = product.barcode;
-            document.getElementById('product-name').value = product.name;
-            document.getElementById('product-sphere').value = product.sphere;
-            document.getElementById('product-cylinder').value = product.cylinder;
-            document.getElementById('product-addition').value = product.addition;
-            document.getElementById('product-stock').value = product.stock;
+            const fields = [
+                ['product-id', product._id],
+                ['product-barcode', product.barcode],
+                ['product-name', product.name],
+                ['product-sphere', product.sphere],
+                ['product-cylinder', product.cylinder],
+                ['product-addition', product.addition],
+                ['product-stock', product.stock]
+            ];
 
-            document.getElementById('product-modal-title').textContent = 'Editar Producto';
-            this.productModal.show();
+            fields.forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.value = value || '';
+            });
+
+            const modalTitle = document.getElementById('product-modal-title');
+            if (modalTitle) modalTitle.textContent = 'Editar Producto';
+
+            if (this.productModal) {
+                this.productModal.show();
+            }
         } catch (error) {
-            console.error('Error al cargar el producto:', error);
+            console.error('Error al cargar producto para edición:', error);
             uiManager.showAlert('Error al cargar los datos del producto', 'danger');
         }
     },
@@ -206,39 +670,236 @@ export const productManager = {
         try {
             const product = await window.api.getProduct(productId);
 
-            document.getElementById('stock-product-id').value = product._id;
-            document.getElementById('stock-product-name').textContent = product.name;
-            document.getElementById('stock-product-barcode').textContent = product.barcode;
-            document.getElementById('stock-product-sphere').textContent = product.sphere;
-            document.getElementById('stock-product-cylinder').textContent = product.cylinder;
-            document.getElementById('stock-product-addition').textContent = product.addition;
-            document.getElementById('stock-current-stock').textContent = product.stock;
-            document.getElementById('stock-new-value').value = product.stock;
+            const stockFields = [
+                ['stock-product-id', product._id, 'value'],
+                ['stock-product-name', product.name, 'textContent'],
+                ['stock-product-barcode', product.barcode, 'textContent'],
+                ['stock-product-sphere', product.sphere, 'textContent'],
+                ['stock-product-cylinder', product.cylinder, 'textContent'],
+                ['stock-product-addition', product.addition, 'textContent'],
+                ['stock-current-stock', product.stock, 'textContent'],
+                ['stock-new-value', product.stock, 'value']
+            ];
 
-            this.stockModal.show();
+            stockFields.forEach(([id, value, prop]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element[prop] = value || '';
+                }
+            });
+
+            if (this.stockModal) {
+                this.stockModal.show();
+            }
 
             setTimeout(() => {
                 const stockInput = document.getElementById('stock-new-value');
                 if (stockInput) {
                     stockInput.focus();
                     stockInput.select();
-                    console.log('Input enfocado y texto seleccionado');
                 }
             }, 300);
 
         } catch (error) {
-            console.error('Error al cargar el producto:', error);
+            console.error('Error al cargar producto para stock:', error);
             uiManager.showAlert('Error al cargar los datos del producto', 'danger');
         }
     },
 
-    // 🔄 MODIFICADO: Emitir eventos después de actualizar
+    // ✅ FUNCIÓN COMPLETAMENTE CORREGIDA: saveProduct con manejo correcto de respuestas
+    async saveProduct() {
+        try {
+            const productId = document.getElementById('product-id')?.value;
+            const productData = {
+                name: document.getElementById('product-name')?.value || '',
+                barcode: document.getElementById('product-barcode')?.value || '',
+                sphere: document.getElementById('product-sphere')?.value || '',
+                cylinder: document.getElementById('product-cylinder')?.value || '',
+                addition: document.getElementById('product-addition')?.value || '',
+                stock: parseInt(document.getElementById('product-stock')?.value) || 0,
+            };
+
+            console.log('💾 Guardando producto:', { productId, productData });
+
+            const saveBtn = document.getElementById('save-product-btn');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Guardando...';
+            }
+
+            let response;
+            let finalProduct; // Variable para el producto final válido
+
+            if (productId) {
+                // EDICIÓN - Manejar stock por separado si cambió
+                const currentProduct = await window.api.getProduct(productId);
+
+                if (currentProduct.stock !== productData.stock) {
+                    // Actualizar datos sin stock primero
+                    const { stock, ...dataWithoutStock } = productData;
+                    await window.api.updateProduct(productId, dataWithoutStock);
+
+                    // Luego actualizar stock por separado
+                    const stockData = {
+                        stock: productData.stock,
+                        stock_surtido: currentProduct.stock_surtido || 0
+                    };
+                    response = await window.api.updateProductStock(productId, stockData);
+
+                    // ✅ CORRECCIÓN: Extraer producto de la respuesta de stock
+                    finalProduct = response.product;
+
+                    console.log('✅ Producto y stock actualizados por separado');
+                } else {
+                    // Solo actualizar datos del producto
+                    response = await window.api.updateProduct(productId, productData);
+
+                    // ✅ CORRECCIÓN: La respuesta puede ser el producto directamente o un wrapper
+                    finalProduct = response.product || response;
+                }
+
+                // ✅ VALIDACIÓN: Verificar que tenemos un producto válido
+                if (!finalProduct || !finalProduct._id) {
+                    console.error('❌ Respuesta de actualización inválida:', response);
+                    throw new Error('Respuesta del servidor inválida');
+                }
+
+                // ✅ SINCRONIZACIÓN INMEDIATA MEJORADA
+                await this._syncProductUpdateImmediate(finalProduct, productId);
+
+                uiManager.showAlert('Producto actualizado correctamente', 'success');
+            } else {
+                // CREACIÓN
+                response = await window.api.createProduct(productData);
+
+                // ✅ CORRECCIÓN: Extraer producto de la respuesta
+                finalProduct = response.product || response;
+
+                // ✅ VALIDACIÓN: Verificar que tenemos un producto válido
+                if (!finalProduct || !finalProduct._id) {
+                    console.error('❌ Respuesta de creación inválida:', response);
+                    throw new Error('Respuesta del servidor inválida');
+                }
+
+                // ✅ SINCRONIZACIÓN INMEDIATA PARA CREACIÓN
+                await this._syncProductCreateImmediate(finalProduct);
+
+                uiManager.showAlert('Producto creado correctamente', 'success');
+            }
+
+            // Cerrar modal y enfocar en el producto actualizado
+            if (this.productModal) {
+                this.productModal.hide();
+            }
+
+            // Destacar producto después de un breve delay
+            setTimeout(() => {
+                this._highlightUpdatedProduct(finalProduct._id);
+            }, 300);
+
+        } catch (error) {
+            console.error('❌ Error al guardar producto:', error);
+            uiManager.showAlert(`Error al guardar el producto: ${error.message}`, 'danger');
+        } finally {
+            const saveBtn = document.getElementById('save-product-btn');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Guardar Producto';
+            }
+        }
+    },
+
+    // ✅ FUNCIÓN CORREGIDA: Sincronización inmediata para actualizaciones
+    async _syncProductUpdateImmediate(updatedProduct, productId) {
+        console.log('🔄 Sincronizando actualización inmediatamente...', updatedProduct);
+
+        try {
+            // ✅ VALIDACIÓN: Asegurar que tenemos un producto válido
+            if (!updatedProduct || !updatedProduct._id) {
+                console.error('❌ Producto inválido para sincronización:', updatedProduct);
+                throw new Error('Producto inválido recibido para sincronización');
+            }
+
+            // Actualizar en cache local
+            const index = this.products.findIndex(p => p._id === productId);
+            if (index !== -1) {
+                // Mantener propiedades importantes del producto existente
+                this.products[index] = {
+                    ...this.products[index],
+                    ...updatedProduct,
+                    _id: productId // Asegurar que el ID no cambie
+                };
+                console.log('✅ Cache local actualizado');
+            } else {
+                console.warn('⚠️ Producto no encontrado en cache, agregándolo...');
+                this.products.push(updatedProduct);
+                this.sortProductsById();
+            }
+
+            // Re-renderizar tabla inmediatamente
+            this._renderTableImmediate();
+
+            // ✅ CORRECCIÓN: Notificar con el producto válido
+            eventManager.emit('data:product:updated', updatedProduct);
+
+            // Forzar actualización de estilos
+            await this._forceStyleRefresh();
+
+            console.log('✅ Sincronización de actualización completada');
+
+        } catch (error) {
+            console.error('❌ Error en sincronización inmediata de actualización:', error);
+            // Fallback: recargar todos los productos
+            await this.loadProducts();
+        }
+    },
+
+    // ✅ FUNCIÓN CORREGIDA: Sincronización inmediata para creaciones
+    async _syncProductCreateImmediate(newProduct) {
+        console.log('🆕 Sincronizando creación inmediatamente...', newProduct);
+
+        try {
+            // ✅ VALIDACIÓN: Asegurar que tenemos un producto válido
+            if (!newProduct || !newProduct._id) {
+                console.error('❌ Producto inválido para sincronización de creación:', newProduct);
+                throw new Error('Producto inválido recibido para sincronización de creación');
+            }
+
+            // Verificar si ya existe (evitar duplicados)
+            const exists = this.products.some(p => p._id === newProduct._id);
+            if (!exists) {
+                this.products.push(newProduct);
+                this.sortProductsById();
+                console.log('✅ Nuevo producto agregado al cache');
+            } else {
+                console.warn('⚠️ Producto ya existe, actualizando...');
+                const index = this.products.findIndex(p => p._id === newProduct._id);
+                this.products[index] = newProduct;
+            }
+
+            // Re-renderizar tabla inmediatamente
+            this._renderTableImmediate();
+
+            // ✅ CORRECCIÓN: Notificar con el producto válido
+            eventManager.emit('data:product:created', newProduct);
+
+            // Forzar actualización de estilos
+            await this._forceStyleRefresh();
+
+            console.log('✅ Sincronización de creación completada');
+
+        } catch (error) {
+            console.error('❌ Error en sincronización inmediata de creación:', error);
+            // Fallback: recargar todos los productos
+            await this.loadProducts();
+        }
+    },
+
+    // ✅ FUNCIÓN CORREGIDA: updateStock con emisión de eventos corregida
     async updateStock() {
         try {
-            console.log('🔄 updateStock() iniciado');
-
-            const productId = document.getElementById('stock-product-id').value;
-            const newStockValue = document.getElementById('stock-new-value').value;
+            const productId = document.getElementById('stock-product-id')?.value;
+            const newStockValue = document.getElementById('stock-new-value')?.value;
 
             if (!productId) {
                 uiManager.showAlert('Error: ID del producto no encontrado', 'danger');
@@ -248,31 +909,55 @@ export const productManager = {
             const newStock = parseInt(newStockValue);
             if (isNaN(newStock) || newStock < 0) {
                 uiManager.showAlert('Por favor, ingrese un valor de stock válido', 'warning');
-                setTimeout(() => document.getElementById('stock-new-value').focus(), 100);
                 return;
             }
 
             const saveBtn = document.getElementById('save-stock-btn');
-            const originalText = saveBtn.innerHTML;
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Actualizando...';
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualizando...';
+            }
 
-            const updatedProduct = await window.api.updateProductStock(productId, { stock: newStock });
+            // Obtener producto actual para mantener stock_surtido
+            const currentProduct = await window.api.getProduct(productId);
+            const stockData = {
+                stock: newStock,
+                stock_surtido: currentProduct.stock_surtido || 0
+            };
 
-            // 🚀 EMITIR EVENTO DE ACTUALIZACIÓN
-            eventManager.emit('data:product:updated', updatedProduct);
+            console.log('📦 Actualizando stock:', { productId, stockData });
 
-            console.log('✅ Stock actualizado exitosamente:', updatedProduct);
+            // Actualizar en backend
+            const response = await window.api.updateProductStock(productId, stockData);
+
+            // ✅ CORRECCIÓN: Extraer el producto de la respuesta antes de sincronizar
+            const updatedProduct = response.product; // Extraer el producto real de la respuesta
+
+            if (!updatedProduct || !updatedProduct._id) {
+                console.error('❌ Respuesta de API inválida:', response);
+                throw new Error('Respuesta del servidor inválida');
+            }
+
+            // ✅ SINCRONIZACIÓN INMEDIATA CORREGIDA
+            await this._syncStockUpdateImmediate(updatedProduct, productId);
+
             uiManager.showAlert('Stock actualizado correctamente', 'success');
-            this.stockModal.hide();
 
-            return updatedProduct;
+            // Cerrar modal
+            if (this.stockModal) {
+                this.stockModal.hide();
+            }
+
+            // Destacar producto actualizado
+            setTimeout(() => {
+                this._highlightUpdatedProduct(productId);
+            }, 300);
+
+            console.log('✅ Stock actualizado y sincronizado:', updatedProduct);
 
         } catch (error) {
             console.error('❌ Error al actualizar stock:', error);
             uiManager.showAlert(`Error al actualizar el stock: ${error.message}`, 'danger');
-            setTimeout(() => document.getElementById('stock-new-value').focus(), 100);
-            throw error;
         } finally {
             const saveBtn = document.getElementById('save-stock-btn');
             if (saveBtn) {
@@ -282,72 +967,84 @@ export const productManager = {
         }
     },
 
-    // 🔄 MODIFICADO: Emitir eventos después de guardar
-    async saveProduct() {
+    // ✅ FUNCIÓN CORREGIDA: Sincronización inmediata para stock
+    async _syncStockUpdateImmediate(updatedProduct, productId) {
+        console.log('📦 Sincronizando actualización de stock inmediatamente...', updatedProduct);
+
         try {
-            const productId = document.getElementById('product-id').value;
-            const productData = {
-                name: document.getElementById('product-name').value,
-                barcode: document.getElementById('product-barcode').value,
-                sphere: document.getElementById('product-sphere').value,
-                cylinder: document.getElementById('product-cylinder').value,
-                addition: document.getElementById('product-addition').value,
-                stock: parseInt(document.getElementById('product-stock').value) || 0,
-            };
-
-            let response;
-            if (productId) {
-                // Actualizar producto existente
-                const currentProduct = await window.api.getProduct(productId);
-
-                if (currentProduct.stock !== productData.stock) {
-                    const productDataWithoutStock = {
-                        name: productData.name,
-                        barcode: productData.barcode,
-                        sphere: productData.sphere,
-                        cylinder: productData.cylinder,
-                        addition: productData.addition,
-                        stock: currentProduct.stock
-                    };
-
-                    await window.api.updateProduct(productId, productDataWithoutStock);
-                    response = await window.api.updateProductStock(productId, { stock: productData.stock });
-                } else {
-                    response = await window.api.updateProduct(productId, productData);
-                }
-
-                // 🚀 EMITIR EVENTO DE ACTUALIZACIÓN
-                eventManager.emit('data:product:updated', response);
-                uiManager.showAlert('Producto actualizado correctamente', 'success');
-            } else {
-                // Crear nuevo producto
-                response = await window.api.createProduct(productData);
-                
-                // 🚀 EMITIR EVENTO DE CREACIÓN
-                eventManager.emit('data:product:created', response);
-                uiManager.showAlert('Producto creado correctamente', 'success');
+            // ✅ VALIDACIÓN: Asegurar que tenemos un producto válido
+            if (!updatedProduct || !updatedProduct._id) {
+                console.error('❌ Producto inválido para sincronización:', updatedProduct);
+                throw new Error('Producto inválido recibido para sincronización');
             }
 
-            this.productModal.hide();
+            // Actualizar en cache local
+            const index = this.products.findIndex(p => p._id === productId);
+            if (index !== -1) {
+                // Actualizar específicamente los campos de stock
+                this.products[index] = {
+                    ...this.products[index],
+                    stock: updatedProduct.stock,
+                    stock_surtido: updatedProduct.stock_surtido,
+                    stock_almacenado: updatedProduct.stock_almacenado,
+                    lastUpdated: updatedProduct.lastUpdated
+                };
+                console.log('✅ Stock actualizado en cache local');
+            } else {
+                console.warn('⚠️ Producto no encontrado para actualizar stock');
+                // Fallback: agregar el producto completo
+                this.products.push(updatedProduct);
+                this.sortProductsById();
+            }
+
+            // Re-renderizar tabla inmediatamente
+            this._renderTableImmediate();
+
+            // ✅ CORRECCIÓN: Emitir evento con datos correctos
+            eventManager.emit('data:product:stock-updated', {
+                productId,
+                newStock: updatedProduct.stock, // ✅ Usar el stock del producto real
+                product: updatedProduct // ✅ Pasar el producto real, no la respuesta completa
+            });
+
+            // Forzar actualización de estilos
+            await this._forceStyleRefresh();
+
+            console.log('✅ Sincronización de stock completada');
+
         } catch (error) {
-            console.error('Error al guardar el producto:', error);
-            uiManager.showAlert('Error al guardar el producto', 'danger');
+            console.error('❌ Error en sincronización de stock:', error);
+            // Fallback: recargar productos
+            await this.loadProducts();
         }
     },
 
-    // 🔄 MODIFICADO: Emitir eventos después de eliminar
+    // ✅ FUNCIÓN MEJORADA: deleteProduct con sincronización inmediata
     async deleteProduct(productId) {
-        if (confirm('¿Está seguro de eliminar este producto? Esta acción no se puede deshacer.')) {
+        const productToDelete = this.products.find(p => p._id === productId);
+        const productName = productToDelete ? productToDelete.name : 'el producto';
+
+        if (confirm(`¿Está seguro de eliminar ${productName}? Esta acción no se puede deshacer.`)) {
             try {
                 await window.api.deleteProduct(productId);
-                
-                // 🚀 EMITIR EVENTO DE ELIMINACIÓN
+
+                // ✅ SINCRONIZACIÓN INMEDIATA: Eliminar del cache local
+                const initialLength = this.products.length;
+                this.products = this.products.filter(p => p._id !== productId);
+
+                if (this.products.length < initialLength) {
+                    console.log('✅ Producto eliminado del cache local inmediatamente');
+                    this._renderTableImmediate();
+                }
+
                 eventManager.emit('data:product:deleted', productId);
-                
-                uiManager.showAlert('Producto eliminado correctamente', 'success');
+                uiManager.showAlert(`${productName} eliminado correctamente`, 'success');
+
+                console.log('✅ Producto eliminado y sincronizado:', productId);
+
             } catch (error) {
-                console.error('Error al eliminar el producto:', error);
-                uiManager.showAlert('Error al eliminar el producto', 'danger');
+                console.error('❌ Error al eliminar producto:', error);
+                uiManager.showAlert(`Error al eliminar el producto: ${error.message}`, 'danger');
             }
         }
     },
@@ -357,6 +1054,7 @@ export const productManager = {
         if (!target) return;
 
         const productId = target.dataset.id;
+        if (!productId) return;
 
         if (target.classList.contains('edit-product')) {
             this.showEditProductModal(productId);
@@ -366,6 +1064,8 @@ export const productManager = {
             this.deleteProduct(productId);
         }
     },
+
+    // ===== FUNCIONES AUXILIARES =====
 
     generateBarcode() {
         const prefix = '200';
@@ -379,23 +1079,23 @@ export const productManager = {
         const checkDigit = (10 - (sum % 10)) % 10;
 
         const barcode = barcodeWithoutChecksum + checkDigit;
-        document.getElementById('product-barcode').value = barcode;
+        const barcodeInput = document.getElementById('product-barcode');
+        if (barcodeInput) barcodeInput.value = barcode;
     },
 
     showBarcodeScannerModal() {
         const scannerModal = new bootstrap.Modal(document.getElementById('barcode-scanner-modal'));
         scannerModal.show();
 
-        document.getElementById('scanner-placeholder').classList.remove('d-none');
-        document.getElementById('scanner-container').classList.add('d-none');
-
         setTimeout(() => {
-            document.getElementById('manual-barcode-input').focus();
+            const manualInput = document.getElementById('manual-barcode-input');
+            if (manualInput) manualInput.focus();
         }, 500);
     },
 
     async searchByManualBarcode() {
-        const barcode = document.getElementById('manual-barcode-input').value.trim();
+        const barcodeInput = document.getElementById('manual-barcode-input');
+        const barcode = barcodeInput?.value.trim();
 
         if (!barcode) {
             uiManager.showAlert('Ingrese un código de barras', 'warning');
@@ -404,10 +1104,8 @@ export const productManager = {
 
         try {
             const product = await window.api.getProductByBarcode(barcode);
-
             const scannerModal = bootstrap.Modal.getInstance(document.getElementById('barcode-scanner-modal'));
-            scannerModal.hide();
-
+            if (scannerModal) scannerModal.hide();
             this.showEditProductModal(product._id);
         } catch (error) {
             uiManager.showAlert('Producto no encontrado', 'warning');
@@ -415,7 +1113,8 @@ export const productManager = {
     },
 
     filterProducts() {
-        const searchTerm = document.getElementById('product-search').value.toLowerCase();
+        const searchInput = document.getElementById('product-search');
+        const searchTerm = searchInput?.value.toLowerCase() || '';
 
         if (!searchTerm) {
             this.renderProductsTable();
@@ -423,9 +1122,9 @@ export const productManager = {
         }
 
         const filteredProducts = this.products.filter(product =>
-            product.name.toLowerCase().includes(searchTerm) ||
-            product.barcode.toLowerCase().includes(searchTerm) ||
-            product.sphere.includes(searchTerm)
+            (product.name || '').toLowerCase().includes(searchTerm) ||
+            (product.barcode || '').toLowerCase().includes(searchTerm) ||
+            (product.sphere || '').includes(searchTerm)
         );
 
         const originalProducts = [...this.products];
@@ -434,9 +1133,262 @@ export const productManager = {
         this.products = originalProducts;
     },
 
-    // 🆕 NUEVO: Limpiar suscripciones al destruir la vista
+    async refreshProductsManually() {
+        console.log('🔄 Refrescando productos manualmente...');
+        try {
+            const freshProducts = await window.api.getProducts();
+            this.products = freshProducts || [];
+            this.sortProductsById();
+            this._renderTableImmediate();
+            console.log('✅ Productos refrescados manualmente');
+
+            if (window.uiManager) {
+                window.uiManager.showAlert('Productos actualizados', 'success');
+            }
+        } catch (error) {
+            console.error('❌ Error en refresh manual:', error);
+            if (window.uiManager) {
+                window.uiManager.showAlert('Error al actualizar productos', 'danger');
+            }
+        }
+    },
+
+    // ✅ NUEVA FUNCIÓN: Verificar y corregir sincronización
+    async checkAndFixSync() {
+        console.log('🔍 Verificando sincronización...');
+
+        try {
+            const freshProducts = await window.api.getProducts();
+
+            // Comparar con cache local
+            if (freshProducts.length !== this.products.length) {
+                console.log('⚠️ Diferencia en cantidad detectada, sincronizando...');
+                this.products = freshProducts;
+                this.sortProductsById();
+                this._renderTableImmediate();
+                return true;
+            }
+
+            // Verificar actualizaciones
+            let hasChanges = false;
+            freshProducts.forEach(freshProduct => {
+                const localProduct = this.products.find(p => p._id === freshProduct._id);
+                if (localProduct && localProduct.lastUpdated !== freshProduct.lastUpdated) {
+                    console.log('⚠️ Producto desincronizado detectado:', freshProduct.name);
+                    hasChanges = true;
+                }
+            });
+
+            if (hasChanges) {
+                console.log('🔄 Sincronizando cambios detectados...');
+                this.products = freshProducts;
+                this.sortProductsById();
+                this._renderTableImmediate();
+                return true;
+            }
+
+            console.log('✅ Sincronización verificada - todo en orden');
+            return false;
+
+        } catch (error) {
+            console.error('❌ Error verificando sincronización:', error);
+            return false;
+        }
+    },
+
+    // ✅ NUEVA FUNCIÓN: Forzar actualización de estilos
+    async _forceStyleRefresh() {
+        return new Promise(resolve => {
+            setTimeout(() => {
+                // Forzar re-aplicación de estilos de tabla
+                const table = document.getElementById('products-table');
+                if (table) {
+                    table.classList.remove('table', 'table-base');
+                    // Forzar reflow
+                    table.offsetHeight;
+                    table.classList.add('table', 'table-base');
+                }
+
+                // Actualizar estilos del contenedor
+                const container = table?.closest('.table-container');
+                if (container) {
+                    container.classList.remove('table-container-base');
+                    container.offsetHeight;
+                    container.classList.add('table-container-base');
+                }
+
+                // Llamar a uiManager si está disponible
+                if (window.uiManager && window.uiManager.forceStyleUpdate) {
+                    window.uiManager.forceStyleUpdate();
+                }
+
+                resolve();
+            }, 50);
+        });
+    },
+
+    // ===== MÉTODOS DE UTILIDAD Y DEBUG =====
+
+    async refresh() {
+        console.log('🔄 Refrescando ProductManager...');
+        if (this.isInitialized) {
+            await this.loadProducts();
+        } else {
+            console.warn('⚠️ ProductManager no inicializado');
+        }
+    },
+
+    getStatus() {
+        return {
+            isInitialized: this.isInitialized,
+            productsCount: this.products.length,
+            hasModals: !!(this.productModal && this.stockModal),
+            isSubscribed: dataSync.isSubscribed(this.viewName, 'products'),
+            initializationInProgress: !!this.initializationPromise
+        };
+    },
+
+    forceRerender() {
+        console.log('🔄 Forzando re-renderizado...');
+        if (this.isInitialized) {
+            this.renderProductsTable();
+        }
+    },
+
+    validateDataIntegrity() {
+        console.log('🔍 Validando integridad de datos...');
+
+        const issues = [];
+
+        const ids = this.products.map(p => p._id);
+        const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
+        if (duplicateIds.length > 0) {
+            issues.push(`IDs duplicados: ${duplicateIds.join(', ')}`);
+        }
+
+        const productsWithoutName = this.products.filter(p => !p.name);
+        if (productsWithoutName.length > 0) {
+            issues.push(`${productsWithoutName.length} productos sin nombre`);
+        }
+
+        const negativeStock = this.products.filter(p => (p.stock || 0) < 0);
+        if (negativeStock.length > 0) {
+            issues.push(`${negativeStock.length} productos con stock negativo`);
+        }
+
+        if (issues.length > 0) {
+            console.warn('⚠️ Problemas de integridad encontrados:', issues);
+            return { valid: false, issues };
+        } else {
+            console.log('✅ Integridad de datos válida');
+            return { valid: true, issues: [] };
+        }
+    },
+
+    getStats() {
+        const totalProducts = this.products.length;
+        const totalStock = this.products.reduce((sum, p) => sum + (p.stock || 0), 0);
+        const lowStock = this.products.filter(p => (p.stock || 0) <= 0).length;
+        const mediumStock = this.products.filter(p => {
+            const stock = p.stock || 0;
+            return stock > 0 && stock < 5;
+        }).length;
+        const highStock = this.products.filter(p => (p.stock || 0) >= 5).length;
+
+        return {
+            totalProducts,
+            totalStock,
+            stockLevels: {
+                low: lowStock,
+                medium: mediumStock,
+                high: highStock
+            },
+            avgStock: totalProducts > 0 ? (totalStock / totalProducts).toFixed(2) : 0
+        };
+    },
+
+    exportData() {
+        const data = {
+            products: this.products,
+            metadata: {
+                exportDate: new Date().toISOString(),
+                totalCount: this.products.length,
+                version: '2.0',
+                status: this.getStatus()
+            }
+        };
+
+        console.log('📤 Datos exportados:', data);
+        return data;
+    },
+
+    async forceReinit() {
+        console.log('🔄 Forzando reinicialización...');
+
+        try {
+            this.destroy();
+            await new Promise(resolve => setTimeout(resolve, 100));
+            await this.init();
+            console.log('✅ Reinicialización forzada completada');
+        } catch (error) {
+            console.error('❌ Error en reinicialización forzada:', error);
+            throw error;
+        }
+    },
+
     destroy() {
         console.log('🧹 Destruyendo ProductManager...');
-        dataSync.unsubscribe(this.viewName, 'products');
+
+        try {
+            if (dataSync && dataSync.isSubscribed && dataSync.isSubscribed(this.viewName, 'products')) {
+                dataSync.unsubscribe(this.viewName, 'products');
+                console.log('✅ Desuscrito de dataSync');
+            }
+
+            if (this.productModal) {
+                try {
+                    this.productModal.dispose();
+                } catch (e) {
+                    console.warn('⚠️ Error disposing productModal:', e.message);
+                }
+                this.productModal = null;
+            }
+
+            if (this.stockModal) {
+                try {
+                    this.stockModal.dispose();
+                } catch (e) {
+                    console.warn('⚠️ Error disposing stockModal:', e.message);
+                }
+                this.stockModal = null;
+            }
+
+            const elementIds = [
+                'add-product-btn', 'save-product-btn', 'save-stock-btn',
+                'products-table-body', 'generate-barcode-btn', 'barcode-scan-btn',
+                'manual-barcode-btn', 'product-search'
+            ];
+
+            elementIds.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    const newElement = element.cloneNode(true);
+                    element.parentNode.replaceChild(newElement, element);
+                }
+            });
+
+            this.products = [];
+            this.isInitialized = false;
+            this.initializationPromise = null;
+
+            if (window.productManager === this) {
+                delete window.productManager;
+            }
+
+            console.log('✅ ProductManager destruido completamente');
+
+        } catch (error) {
+            console.error('❌ Error durante la destrucción:', error);
+        }
     }
-};
+}; 

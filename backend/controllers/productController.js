@@ -1,98 +1,227 @@
 const Product = require('../models/product');
 const Transaction = require('../models/transaction');
-const { generateBarcode } = require('../utils/barcodeGenerator');
 
 // Obtener todos los productos
 exports.getAllProducts = async (req, res) => {
     try {
-        const products = await Product.find();
-        res.status(200).json(products);
+        console.log('📋 [CONTROLLER] Obteniendo todos los productos');
+        
+        const products = await Product.find({})
+            .sort({ createdAt: -1 })
+            .lean();
+        
+        res.status(200).json({
+            success: true,
+            message: 'Productos obtenidos correctamente',
+            products: products,
+            count: products.length
+        });
+        
     } catch (error) {
-        res.status(500).json({ message: 'Error al obtener productos', error: error.message });
+        console.error('💥 [CONTROLLER] Error al obtener productos:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
     }
 };
 
-// Obtener un producto por ID
+// Obtener producto por ID
 exports.getProductById = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id);
+        const productId = req.params.id;
+        console.log(`🔍 [CONTROLLER] Buscando producto con ID: ${productId}`);
+        
+        const product = await Product.findById(productId);
+        
         if (!product) {
-            return res.status(404).json({ message: 'Producto no encontrado' });
+            return res.status(404).json({
+                success: false,
+                message: 'Producto no encontrado'
+            });
         }
-        res.status(200).json(product);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Producto encontrado',
+            product: product
+        });
+        
     } catch (error) {
-        res.status(500).json({ message: 'Error al obtener el producto', error: error.message });
+        console.error('💥 [CONTROLLER] Error al obtener producto por ID:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
     }
 };
 
-// Crear un nuevo producto
+// Crear nuevo producto
 exports.createProduct = async (req, res) => {
     try {
-        // Generar código de barras único si no se proporciona
-        if (!req.body.barcode) {
-            req.body.barcode = await generateBarcode();
+        console.log('➕ [CONTROLLER] Creando nuevo producto');
+        console.log('📝 [CONTROLLER] Datos recibidos:', req.body);
+        
+        const productData = req.body;
+        
+        // Verificar si ya existe un producto con el mismo código de barras
+        if (productData.barcode) {
+            const existingProduct = await Product.findOne({ barcode: productData.barcode });
+            if (existingProduct) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'Ya existe un producto con ese código de barras'
+                });
+            }
         }
-
-        const product = new Product(req.body);
-        const savedProduct = await product.save();
-
-        // Registrar transacción de inventario inicial
-        if (req.body.stock > 0) {
-            const transaction = new Transaction({
-                productId: savedProduct._id,
-                type: 'purchase',
-                quantity: req.body.stock,
-                previousStock: 0,
-                newStock: req.body.stock,
-                userId: req.user ? req.user.id : null,
-                notes: 'Inventario inicial'
-            });
-            await transaction.save();
+        
+        const newProduct = new Product(productData);
+        const savedProduct = await newProduct.save();
+        
+        // Emitir evento al frontend
+        if (req.app.get('io')) {
+            const io = req.app.get('io');
+            io.emit('product:created', savedProduct);
+            console.log('📡 [CONTROLLER] Evento de producto creado emitido');
         }
-
-        res.status(201).json(savedProduct);
+        
+        res.status(201).json({
+            success: true,
+            message: 'Producto creado correctamente',
+            product: savedProduct
+        });
+        
     } catch (error) {
-        res.status(400).json({ message: 'Error al crear el producto', error: error.message });
+        console.error('💥 [CONTROLLER] Error al crear producto:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
     }
 };
 
-// Actualizar un producto
+// Actualizar producto
 exports.updateProduct = async (req, res) => {
     try {
         const productId = req.params.id;
-        const oldProduct = await Product.findById(productId);
-
-        if (!oldProduct) {
-            return res.status(404).json({ message: 'Producto no encontrado' });
-        }
-
-        // Si el stock cambia, registrar transacción
-        if (req.body.stock !== undefined && req.body.stock !== oldProduct.stock) {
-            const transaction = new Transaction({
-                productId: productId,
-                type: 'adjustment',
-                quantity: req.body.stock - oldProduct.stock,
-                previousStock: oldProduct.stock,
-                newStock: req.body.stock,
-                userId: req.user ? req.user.id : null,
-                notes: 'Ajuste manual de inventario'
-            });
-            await transaction.save();
-        }
-
+        console.log(`🔄 [CONTROLLER] Actualizando producto ${productId}`);
+        console.log('📝 [CONTROLLER] Datos recibidos:', req.body);
+        
+        const updateData = req.body;
+        updateData.lastUpdated = new Date();
+        
         const updatedProduct = await Product.findByIdAndUpdate(
             productId,
-            { ...req.body, lastUpdated: Date.now() },
-            { new: true, runValidators: true }
+            { $set: updateData },
+            {
+                new: true,
+                runValidators: true
+            }
         );
-
-        res.status(200).json(updatedProduct);
+        
+        if (!updatedProduct) {
+            return res.status(404).json({
+                success: false,
+                message: 'Producto no encontrado'
+            });
+        }
+        
+        // Emitir evento al frontend
+        if (req.app.get('io')) {
+            const io = req.app.get('io');
+            io.emit('product:updated', updatedProduct);
+            console.log('📡 [CONTROLLER] Evento de producto actualizado emitido');
+        }
+        
+        res.status(200).json({
+            success: true,
+            message: 'Producto actualizado correctamente',
+            product: updatedProduct
+        });
+        
     } catch (error) {
-        res.status(400).json({ message: 'Error al actualizar el producto', error: error.message });
+        console.error('💥 [CONTROLLER] Error al actualizar producto:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
     }
 };
 
-// ✅ FUNCIÓN PRINCIPAL CORREGIDA: Actualizar stock de un producto
+// Eliminar producto
+exports.deleteProduct = async (req, res) => {
+    try {
+        const productId = req.params.id;
+        console.log(`🗑️ [CONTROLLER] Eliminando producto ${productId}`);
+        
+        const deletedProduct = await Product.findByIdAndDelete(productId);
+        
+        if (!deletedProduct) {
+            return res.status(404).json({
+                success: false,
+                message: 'Producto no encontrado'
+            });
+        }
+        
+        // Emitir evento al frontend
+        if (req.app.get('io')) {
+            const io = req.app.get('io');
+            io.emit('product:deleted', { productId, product: deletedProduct });
+            console.log('📡 [CONTROLLER] Evento de producto eliminado emitido');
+        }
+        
+        res.status(200).json({
+            success: true,
+            message: 'Producto eliminado correctamente',
+            product: deletedProduct
+        });
+        
+    } catch (error) {
+        console.error('💥 [CONTROLLER] Error al eliminar producto:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    }
+};
+
+// Obtener producto por código de barras
+exports.getProductByBarcode = async (req, res) => {
+    try {
+        const barcode = req.params.barcode;
+        console.log(`🔍 [CONTROLLER] Buscando producto con código de barras: ${barcode}`);
+        
+        const product = await Product.findOne({ barcode: barcode });
+        
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Producto no encontrado con ese código de barras'
+            });
+        }
+        
+        res.status(200).json({
+            success: true,
+            message: 'Producto encontrado',
+            product: product
+        });
+        
+    } catch (error) {
+        console.error('💥 [CONTROLLER] Error al obtener producto por código de barras:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    }
+};
+
+// Función updateProductStock (la que ya tienes, corregida)
 exports.updateProductStock = async (req, res) => {
     try {
         const productId = req.params.id;
@@ -101,48 +230,14 @@ exports.updateProductStock = async (req, res) => {
         console.log(`🔄 [CONTROLLER] Actualizando stock del producto ${productId}`);
         console.log(`📦 [CONTROLLER] Datos recibidos:`, { stock, stock_surtido });
 
-        // Validaciones básicas
-        if (!productId) {
+        // Validaciones
+        if (stock === undefined && stock_surtido === undefined) {
             return res.status(400).json({
                 success: false,
-                message: 'ID de producto requerido'
+                message: 'Se requiere al menos un valor de stock para actualizar'
             });
         }
 
-        if (stock === undefined || stock_surtido === undefined) {
-            return res.status(400).json({
-                success: false,
-                message: 'Se requieren ambos campos: stock y stock_surtido',
-                received: { stock, stock_surtido }
-            });
-        }
-
-        // Convertir a números
-        const stockNumber = Number(stock);
-        const stockSurtidoNumber = Number(stock_surtido);
-
-        if (isNaN(stockNumber) || isNaN(stockSurtidoNumber)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Stock y stock_surtido deben ser números válidos'
-            });
-        }
-
-        if (stockNumber < 0 || stockSurtidoNumber < 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Los valores de stock no pueden ser negativos'
-            });
-        }
-
-        if (stockSurtidoNumber > stockNumber) {
-            return res.status(400).json({
-                success: false,
-                message: 'Stock surtido no puede ser mayor que stock total'
-            });
-        }
-
-        // Buscar el producto actual
         const oldProduct = await Product.findById(productId);
         if (!oldProduct) {
             return res.status(404).json({
@@ -151,79 +246,79 @@ exports.updateProductStock = async (req, res) => {
             });
         }
 
-        console.log(`📋 [CONTROLLER] Producto encontrado: ${oldProduct.name}`);
-        console.log(`📊 [CONTROLLER] Stock anterior:`, {
-            stock: oldProduct.stock,
-            stock_surtido: oldProduct.stock_surtido,
-            stock_almacenado: oldProduct.stock_almacenado
-        });
+        // Preparar datos de actualización
+        const updateData = {
+            lastUpdated: new Date()
+        };
 
-        // Calcular stock_almacenado automáticamente
-        const stockAlmacenado = stockNumber - stockSurtidoNumber;
+        if (stock !== undefined) {
+            const stockNumber = parseInt(stock);
+            if (isNaN(stockNumber) || stockNumber < 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El stock debe ser un número válido mayor o igual a 0'
+                });
+            }
+            updateData.stock = stockNumber;
+        }
 
-        console.log(`📊 [CONTROLLER] Nuevos valores calculados:`, {
-            stock: stockNumber,
-            stock_surtido: stockSurtidoNumber,
-            stock_almacenado: stockAlmacenado
-        });
+        if (stock_surtido !== undefined) {
+            const stockSurtidoNumber = parseInt(stock_surtido);
+            if (isNaN(stockSurtidoNumber) || stockSurtidoNumber < 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El stock surtido debe ser un número válido mayor o igual a 0'
+                });
+            }
+            updateData.stock_surtido = stockSurtidoNumber;
+        }
 
-        // ✅ ACTUALIZACIÓN USANDO MONGOOSE (MÁS CONFIABLE)
+        // Calcular stock almacenado
+        const finalStock = updateData.stock !== undefined ? updateData.stock : oldProduct.stock;
+        const finalStockSurtido = updateData.stock_surtido !== undefined ? updateData.stock_surtido : oldProduct.stock_surtido;
+        updateData.stock_almacenado = finalStock - finalStockSurtido;
+
+        // Actualizar producto
         const updatedProduct = await Product.findByIdAndUpdate(
             productId,
+            { $set: updateData },
             {
-                $set: {
-                    stock: stockNumber,
-                    stock_surtido: stockSurtidoNumber,
-                    stock_almacenado: stockAlmacenado,
-                    lastUpdated: new Date()
-                }
-            },
-            {
-                new: true,           // Retornar el documento actualizado
-                runValidators: true  // Ejecutar validaciones del schema
+                new: true,
+                runValidators: true,
+                lean: false
             }
         );
 
-        if (!updatedProduct) {
-            return res.status(500).json({
-                success: false,
-                message: 'Error al actualizar el producto'
+        // Emitir eventos al frontend
+        if (req.app.get('io')) {
+            const io = req.app.get('io');
+            
+            io.emit('product:stock-updated', {
+                productId,
+                oldStock: oldProduct.stock,
+                newStock: updatedProduct.stock,
+                product: updatedProduct
             });
+            
+            io.emit('product:updated', updatedProduct);
+            
+            console.log('📡 [CONTROLLER] Eventos emitidos al frontend');
         }
 
-        // Registrar transacción si el stock total cambió
-        if (stockNumber !== oldProduct.stock) {
+        // Registrar transacción si el stock cambió
+        if (updateData.stock !== undefined && updateData.stock !== oldProduct.stock) {
             const transaction = new Transaction({
                 productId: productId,
                 type: 'sale',
-                quantity: oldProduct.stock - stockNumber,
+                quantity: oldProduct.stock - updateData.stock,
                 previousStock: oldProduct.stock,
-                newStock: stockNumber,
+                newStock: updateData.stock,
                 userId: req.user ? req.user.id : null,
                 notes: 'Salida de productos - Actualización de inventario'
             });
 
-            try {
-                await transaction.save();
-                console.log(`📝 [CONTROLLER] Transacción registrada: ${oldProduct.stock} → ${stockNumber}`);
-            } catch (transactionError) {
-                console.error('⚠️ Error al registrar transacción:', transactionError);
-                // No fallar la actualización por error en transacción
-            }
+            await transaction.save();
         }
-
-        console.log(`✅ [CONTROLLER] Stock actualizado correctamente:`, {
-            anterior: {
-                stock: oldProduct.stock,
-                stock_surtido: oldProduct.stock_surtido,
-                stock_almacenado: oldProduct.stock_almacenado
-            },
-            nuevo: {
-                stock: updatedProduct.stock,
-                stock_surtido: updatedProduct.stock_surtido,
-                stock_almacenado: updatedProduct.stock_almacenado
-            }
-        });
 
         res.status(200).json({
             success: true,
@@ -238,43 +333,10 @@ exports.updateProductStock = async (req, res) => {
 
     } catch (error) {
         console.error('💥 [CONTROLLER] Error completo al actualizar stock:', error);
-
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor',
-            error: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            error: error.message
         });
-    }
-};
-
-// Eliminar un producto
-exports.deleteProduct = async (req, res) => {
-    try {
-        const product = await Product.findByIdAndDelete(req.params.id);
-
-        if (!product) {
-            return res.status(404).json({ message: 'Producto no encontrado' });
-        }
-
-        res.status(200).json({ message: 'Producto eliminado correctamente' });
-    } catch (error) {
-        res.status(500).json({ message: 'Error al eliminar el producto', error: error.message });
-    }
-};
-
-// Buscar producto por código de barras
-exports.getProductByBarcode = async (req, res) => {
-    try {
-        const barcode = req.params.barcode;
-        const product = await Product.findOne({ barcode });
-
-        if (!product) {
-            return res.status(404).json({ message: 'Producto no encontrado' });
-        }
-
-        res.status(200).json(product);
-    } catch (error) {
-        res.status(500).json({ message: 'Error al buscar el producto', error: error.message });
     }
 };

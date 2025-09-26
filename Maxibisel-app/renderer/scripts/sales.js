@@ -1,6 +1,7 @@
-//Gestión de ventas
+// Gestión de ventas - CON SINCRONIZACIÓN CORREGIDA
 import { dataSync } from './dataSync.js';
 import { eventManager } from './eventManager.js';
+import { syncHelper } from './sync-helper.js'; // ✅ AGREGAR IMPORT
 import { uiManager } from './ui.js';
 
 export const sales = {
@@ -37,7 +38,6 @@ export const sales = {
 
     handleProductChange({ action, data, dataType }) {
         // Reaccionar a cambios de productos si es necesario
-        // Por ejemplo, actualizar precios en las ventas
         console.log('📦 Producto cambió, revisando impacto en ventas...');
     },
 
@@ -54,7 +54,7 @@ export const sales = {
         try {
             const newSale = await window.api.createSale(saleData);
 
-            // 🔥 IMPORTANTE: Emitir evento
+            // Emitir evento
             eventManager.emit('data:sale:created', newSale);
 
             uiManager.showAlert('Venta creada correctamente', 'success');
@@ -71,20 +71,17 @@ export const sales = {
 
 // Funciones helper para formatear campos de lentes - SIMPLIFICADAS
 function formatLensField(label, value) {
-    // Verificar si el valor existe y no está vacío
     if (!value || value === 'N/A' || value === '' || value === null || value === undefined) {
         return '';
     }
     return `${label}: ${value}`;
 }
 
-// Función helper para crear líneas de información
 function createInfoLine(fields) {
     const validFields = fields.filter(field => field !== '');
     return validFields.length > 0 ? `<p>${validFields.join(' | ')}</p>` : '';
 }
 
-// Función helper para obtener nombre o ocultar el h4 completo
 function getLensTitle(name) {
     if (!name || name.trim() === '' || name === 'Sin nombre') {
         return '';
@@ -125,7 +122,6 @@ export const salesManager = {
     // Nueva función para ordenar lentes por _id
     sortLensesById(lensesArray) {
         lensesArray.sort((a, b) => {
-            // Comparar los _id como strings (MongoDB ObjectId son strings)
             if (a._id < b._id) return -1;
             if (a._id > b._id) return 1;
             return 0;
@@ -219,10 +215,9 @@ export const salesManager = {
                     const lensId = lensItem.dataset.id;
                     if (lensId) this.removeLensFromSelection(lensId);
                 }
-                return; // Evitar que se ejecuten otros handlers
+                return;
             }
 
-            // Para el botón de decrementar
             const decreaseBtn = e.target.closest('.qty-decrease');
             if (decreaseBtn) {
                 const lensId = decreaseBtn.dataset.id;
@@ -230,7 +225,6 @@ export const salesManager = {
                 return;
             }
 
-            // Para el botón de incrementar
             const increaseBtn = e.target.closest('.qty-increase');
             if (increaseBtn) {
                 const lensId = increaseBtn.dataset.id;
@@ -241,7 +235,6 @@ export const salesManager = {
     },
 
     handleNewSale() {
-        // Verificar si hay una venta en progreso
         if (this.state.selectedLenses.length > 0) {
             this.showModal('Tiene una lista en progreso. ¿Desea descartarla y comenzar una nueva?', 'newSale');
         } else {
@@ -250,7 +243,6 @@ export const salesManager = {
     },
 
     resetSale() {
-        // Limpiar el estado actual
         this.state.selectedLenses = [];
         this.state.currentSale = {
             id: 'sale-' + Date.now(),
@@ -260,7 +252,6 @@ export const salesManager = {
         };
         this.state.isEditMode = false;
 
-        // Limpiar UI
         document.getElementById('selectedLenses').innerHTML = `
             <div class="selected-lens" id="empty-selection">
                 <p>No hay Productos seleccionados</p>
@@ -278,7 +269,6 @@ export const salesManager = {
     handleSearch(event) {
         const searchTerm = event.target.value.toLowerCase().trim();
         if (!searchTerm) {
-            // Si no hay término de búsqueda, mostrar mensaje de placeholder
             document.getElementById('searchResults').innerHTML = `
                 <div class="lens-item" data-id="ejemplo-placeholder">
                     <p>Busque productos para mostrar resultados...</p>
@@ -287,7 +277,6 @@ export const salesManager = {
             return;
         }
 
-        // Filtrar lentes disponibles basados en el término de búsqueda
         const filteredLenses = this.state.availableLenses.filter(lens => {
             return (
                 (lens.name && lens.name.toLowerCase().includes(searchTerm)) ||
@@ -297,14 +286,11 @@ export const salesManager = {
             );
         });
 
-        // Ordenar los resultados filtrados por _id
         this.sortLensesById(filteredLenses);
-
         this.state.searchResults = filteredLenses;
         this.renderSearchResults();
     },
 
-    // 🔄 VERSIÓN SIMPLIFICADA: Sin mostrar stock ni código
     renderSearchResults() {
         const resultsContainer = document.getElementById('searchResults');
 
@@ -318,15 +304,11 @@ export const salesManager = {
         }
 
         const resultsHTML = this.state.searchResults.map(lens => {
-            // Formatear solo campos de especificaciones
             const sphereField = formatLensField('Esfera', lens.sphere);
             const cylinderField = formatLensField('Cilindro', lens.cylinder);
             const additionField = formatLensField('Adición', lens.addition);
 
-            // Crear línea de especificaciones
             const specsLine = createInfoLine([sphereField, cylinderField, additionField]);
-
-            // Título (solo si hay nombre válido)
             const titleHTML = getLensTitle(lens.name);
 
             return `
@@ -342,42 +324,30 @@ export const salesManager = {
         resultsContainer.innerHTML = resultsHTML;
     },
 
-    // 🔄 NUEVA LÓGICA: Sin restricciones de stock_surtido
     addLensToSelection(lensId) {
-        // Buscar el lente seleccionado
         const selectedLens = this.state.availableLenses.find(lens => lens._id === lensId);
         if (!selectedLens) return;
 
-        // Comprobar si ya está seleccionado
         const existingIndex = this.state.selectedLenses.findIndex(lens => lens._id === lensId);
 
         if (existingIndex >= 0) {
-            // Si ya existe, incrementar cantidad
             this.state.selectedLenses[existingIndex].quantity += 1;
         } else {
-            // Si no existe, agregarlo al array
             this.state.selectedLenses.push({
                 ...selectedLens,
                 quantity: 1
             });
         }
 
-        // Ordenar los lentes seleccionados por _id antes de renderizar
         this.sortLensesById(this.state.selectedLenses);
-
-        // Actualizar UI
         this.renderSelectedLenses();
     },
 
     removeLensFromSelection(lensId) {
-        // Eliminar lente de la selección
         this.state.selectedLenses = this.state.selectedLenses.filter(lens => lens._id !== lensId);
-
-        // Actualizar UI
         this.renderSelectedLenses();
     },
 
-    // 🔄 VERSIÓN SIMPLIFICADA: Sin mostrar detalles de stock
     renderSelectedLenses() {
         const selectedContainer = document.getElementById('selectedLenses');
 
@@ -391,15 +361,11 @@ export const salesManager = {
         }
 
         const selectedHTML = this.state.selectedLenses.map(lens => {
-            // Formatear solo campos de especificaciones
             const sphereField = formatLensField('Esfera', lens.sphere);
             const cylinderField = formatLensField('Cilindro', lens.cylinder);
             const additionField = formatLensField('Adición', lens.addition);
 
-            // Crear línea de especificaciones
             const specsLine = createInfoLine([sphereField, cylinderField, additionField]);
-
-            // Título
             const titleHTML = getLensTitle(lens.name);
 
             return `
@@ -427,15 +393,11 @@ export const salesManager = {
         selectedContainer.innerHTML = selectedHTML;
     },
 
-    // 🔄 SIN RESTRICCIONES: Permitir incrementar libremente
     increaseQuantity(lensId) {
         const index = this.state.selectedLenses.findIndex(lens => lens._id === lensId);
         if (index < 0) return;
 
-        // Incrementar cantidad sin restricciones
         this.state.selectedLenses[index].quantity += 1;
-
-        // Actualizar UI
         this.renderSelectedLenses();
     },
 
@@ -444,40 +406,29 @@ export const salesManager = {
         if (index < 0) return;
 
         if (this.state.selectedLenses[index].quantity <= 1) {
-            // Si solo queda 1, eliminar el lente
             this.removeLensFromSelection(lensId);
         } else {
-            // Decrementar cantidad
             this.state.selectedLenses[index].quantity -= 1;
-
-            // Actualizar UI
             this.renderSelectedLenses();
         }
     },
 
     handleSave() {
-        // Verificar si hay lentes seleccionados
         if (this.state.selectedLenses.length === 0) {
             uiManager.showAlert('No hay productos seleccionados para guardar', 'warning');
             return;
         }
 
-        // Confirmar la acción
         this.showModal('¿Está seguro que desea realizar los cambios?', 'saveSale');
     },
 
     async finalizeSale() {
         try {
-            // 🔄 NUEVA LÓGICA: Actualizar usando la lógica inteligente
             const updateResult = await this.updateInventoryIntelligently();
 
             if (updateResult) {
-                // Mostrar confirmación
                 uiManager.showAlert('Registro exitoso', 'success');
-
-                // Resetear para una nueva venta
                 this.resetSale();
-
                 return true;
             } else {
                 throw new Error('No se pudo actualizar el inventario');
@@ -489,13 +440,13 @@ export const salesManager = {
         }
     },
 
-    // ✅ FUNCIÓN CORREGIDA: Lógica inteligente de actualización de inventario
+    // ✅ FUNCIÓN CORREGIDA CON SINCRONIZACIÓN
     async updateInventoryIntelligently() {
         try {
             console.log('🔄 Iniciando actualización inteligente de inventario...');
 
             for (const selectedLens of this.state.selectedLenses) {
-                // Obtener el producto actual para tener la información más reciente
+                // Obtener el producto actual
                 const product = await window.api.getProduct(selectedLens._id);
 
                 if (!product) {
@@ -504,62 +455,61 @@ export const salesManager = {
 
                 const quantityToSubtract = selectedLens.quantity;
                 const currentStockSurtido = product.stock_surtido || 0;
-                const currentStockAlmacenado = product.stock_almacenado || 0;
                 const currentStock = product.stock || 0;
+                const oldStock = currentStock; // ✅ GUARDAR STOCK ANTERIOR
 
                 console.log(`📦 Procesando ${product.name}:`, {
                     cantidadSalida: quantityToSubtract,
                     stockActual: currentStock,
-                    stockSurtidoActual: currentStockSurtido,
-                    stockAlmacenadoActual: currentStockAlmacenado
+                    stockSurtidoActual: currentStockSurtido
                 });
 
-                // ✅ VALIDACIÓN: Verificar que hay suficiente stock total
+                // Validación de stock
                 if (currentStock < quantityToSubtract) {
                     throw new Error(`Stock insuficiente para ${product.name}. Disponible: ${currentStock}, Solicitado: ${quantityToSubtract}`);
                 }
 
-                // ✅ LÓGICA CORREGIDA: Calcular nuevos valores correctamente
+                // Calcular nuevos valores
                 let newStockSurtido, newStock;
 
                 if (currentStockSurtido >= quantityToSubtract) {
-                    // Caso 1: Hay suficiente en stock_surtido
+                    // Hay suficiente en stock_surtido
                     newStockSurtido = currentStockSurtido - quantityToSubtract;
-                    newStock = currentStock - quantityToSubtract; // ⭐ CORRECCIÓN: También reducir stock total
-
-                    console.log(`✅ Suficiente stock surtido. Descontando ${quantityToSubtract} unidades.`);
+                    newStock = currentStock - quantityToSubtract;
                 } else {
-                    // Caso 2: No hay suficiente en stock_surtido, usar también del almacenado
+                    // No hay suficiente en stock_surtido
                     const remainingToSubtract = quantityToSubtract - currentStockSurtido;
+                    const currentStockAlmacenado = product.stock_almacenado || 0;
 
-                    // Verificar que hay suficiente en almacenado
                     if (currentStockAlmacenado < remainingToSubtract) {
                         throw new Error(`Stock insuficiente para ${product.name}. Total disponible: ${currentStock}, Solicitado: ${quantityToSubtract}`);
                     }
 
-                    newStockSurtido = 0; // Se agota el stock surtido
-                    newStock = currentStock - quantityToSubtract; // ⭐ CORRECCIÓN: Reducir stock total por la cantidad completa
-
-                    console.log(`⚠️ Stock surtido insuficiente. Usando ${currentStockSurtido} de surtido y ${remainingToSubtract} de almacenado.`);
+                    newStockSurtido = 0;
+                    newStock = currentStock - quantityToSubtract;
                 }
 
-                console.log(`📊 Nuevos valores calculados:`, {
-                    nuevoStock: newStock,
-                    nuevoStockSurtido: newStockSurtido,
-                    nuevoStockAlmacenado: newStock - newStockSurtido // Se calcula automáticamente
-                });
-
-                // ⭐ CORRECCIÓN PRINCIPAL: Enviar ambos valores necesarios al backend
+                // ✅ ACTUALIZAR EN BACKEND
                 const updateResult = await window.api.updateProductStock(selectedLens._id, {
-                    stock: newStock,                    // ← Stock total nuevo
-                    stock_surtido: newStockSurtido     // ← Stock surtido nuevo
-                    // stock_almacenado se calcula automáticamente en el backend
+                    stock: newStock,
+                    stock_surtido: newStockSurtido
                 });
 
-                console.log(`✅ Inventario actualizado para ${product.name}:`, updateResult);
+                const updatedProduct = updateResult.product || updateResult;
+
+                // ✅ SINCRONIZACIÓN INMEDIATA: Notificar a todas las vistas
+                syncHelper.notifyProductSold(
+                    selectedLens._id,
+                    quantityToSubtract,
+                    newStock,
+                    updatedProduct,
+                    'salesView' // ← Identificar que viene de la vista de ventas
+                );
+
+                console.log(`✅ Inventario actualizado y sincronizado para ${product.name}`);
             }
 
-            // Recargar todos los productos para tener datos actualizados
+            // Recargar datos locales
             await this.loadInitialData();
 
             console.log('✅ Actualización inteligente de inventario completada');
@@ -568,11 +518,10 @@ export const salesManager = {
         } catch (error) {
             console.error('💥 Error en actualización inteligente:', error);
 
-            // Mensaje de error más específico
             let errorMessage = 'Error al actualizar el inventario';
             if (error.message) {
                 if (error.message.includes('Stock insuficiente')) {
-                    errorMessage = error.message; // Mostrar mensaje específico de stock
+                    errorMessage = error.message;
                 } else if (error.message.includes('400') || error.message.includes('inválido')) {
                     errorMessage = 'Error de validación: ' + error.message;
                 } else if (error.message.includes('404') || error.message.includes('no encontrado')) {
@@ -600,11 +549,7 @@ export const salesManager = {
     showModal(message, action) {
         const modal = document.getElementById('confirmModal');
         document.getElementById('modalMessage').textContent = message;
-
-        // Guardar la acción actual para el botón confirmar
         this.currentModalAction = action;
-
-        // Mostrar el modal
         modal.style.display = 'flex';
     },
 
@@ -614,7 +559,6 @@ export const salesManager = {
     },
 
     confirmAction() {
-        // Ejecutar la acción correspondiente
         switch (this.currentModalAction) {
             case 'saveSale':
                 this.finalizeSale();
@@ -627,7 +571,6 @@ export const salesManager = {
                 console.log('Acción no reconocida');
         }
 
-        // Ocultar el modal
         this.hideModal();
     }
 };
