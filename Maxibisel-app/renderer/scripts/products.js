@@ -1,4 +1,4 @@
-// Gestión de productos - Versión corregida completa con sincronización inmediata
+// Gestión de productos - Versión corregida completa sin precio
 import { dataSync } from './dataSync.js';
 import { eventManager } from './eventManager.js';
 import { uiManager } from './ui.js';
@@ -10,16 +10,16 @@ export const productManager = {
     viewName: 'productManager',
     isInitialized: false,
     initializationPromise: null,
+    currentEditingProduct: null,
 
-    // Inicialización corregida
     async init() {
         if (this.initializationPromise) {
-            console.log('⏳ Esperando inicialización en progreso...');
+            console.log('Esperando inicialización en progreso...');
             return await this.initializationPromise;
         }
 
         if (this.isInitialized) {
-            console.log('✅ ProductManager ya está inicializado');
+            console.log('ProductManager ya está inicializado');
             return;
         }
 
@@ -29,15 +29,15 @@ export const productManager = {
 
     async _performInit() {
         try {
-            console.log('🚀 Inicializando ProductManager...');
+            console.log('Inicializando ProductManager...');
 
             if (!eventManager.isInitialized) {
-                console.log('🔧 Inicializando eventManager...');
+                console.log('Inicializando eventManager...');
                 eventManager.init();
             }
 
             if (!dataSync.isInitialized) {
-                console.log('🔧 Inicializando dataSync...');
+                console.log('Inicializando dataSync...');
                 dataSync.init();
             }
 
@@ -45,19 +45,17 @@ export const productManager = {
             await this._waitForDOMElements(10000);
             this._initializeModals();
             this.setupEventListeners();
-            
-            // ✅ VALIDACIÓN: Verificar métodos de dataSync antes de usar
+            this._setupTableScrolling();
+
             if (dataSync && typeof dataSync.subscribe === 'function') {
                 dataSync.subscribe(this.viewName, 'products', this.handleDataChange.bind(this));
-            } else {
-                console.warn('⚠️ dataSync.subscribe no disponible');
             }
-            
+
             await this.loadProducts();
             await this._validateInitialization();
 
             this.isInitialized = true;
-            console.log('✅ ProductManager inicializado completamente');
+            console.log('ProductManager inicializado completamente');
 
             setTimeout(() => {
                 if (window.uiManager && window.uiManager.forceStyleUpdate) {
@@ -66,10 +64,10 @@ export const productManager = {
             }, 100);
 
             window.productManager = this;
-            console.log('🌍 ProductManager expuesto globalmente');
+            console.log('ProductManager expuesto globalmente');
 
         } catch (error) {
-            console.error('❌ Error en inicialización de ProductManager:', error);
+            console.error('Error en inicialización de ProductManager:', error);
             this.isInitialized = false;
             throw error;
         } finally {
@@ -77,47 +75,72 @@ export const productManager = {
         }
     },
 
-    setupAuthEventListeners() {
-        console.log('🔧 Configurando listeners para eventos de auth...');
+    _setupTableScrolling() {
+        const tableContainer = document.querySelector('.table-responsive, .table-container');
+        if (tableContainer) {
+            const headerHeight = document.querySelector('nav')?.offsetHeight || 60;
+            const availableHeight = window.innerHeight - headerHeight - 100;
 
+            tableContainer.style.maxHeight = `${availableHeight}px`;
+            tableContainer.style.overflowY = 'auto';
+            tableContainer.style.border = '1px solid #dee2e6';
+            tableContainer.style.borderRadius = '0.375rem';
+
+            const table = tableContainer.querySelector('table');
+            if (table) {
+                table.style.marginBottom = '0';
+                const thead = table.querySelector('thead');
+                if (thead) {
+                    thead.style.position = 'sticky';
+                    thead.style.top = '0';
+                    thead.style.backgroundColor = '#f8f9fa';
+                    thead.style.zIndex = '10';
+                    thead.style.boxShadow = '0 2px 2px -1px rgba(0, 0, 0, 0.1)';
+                }
+            }
+
+            console.log('Scroll de tabla configurado');
+        }
+
+        window.addEventListener('resize', () => {
+            this._setupTableScrolling();
+        });
+    },
+
+    setupAuthEventListeners() {
+        console.log('Configurando listeners para eventos de auth...');
         eventManager.on('auth:login-success', this.handleLoginSuccess.bind(this));
         eventManager.on('view:activated', this.handleViewActivated.bind(this));
         eventManager.on('auth:products-initialized', this.handleProductsInitialized.bind(this));
-
-        console.log('✅ Listeners de auth configurados');
+        console.log('Listeners de auth configurados');
     },
 
     async handleLoginSuccess(user) {
-        console.log('👤 Login exitoso recibido en ProductManager:', user.fullName);
-
+        console.log('Login exitoso recibido en ProductManager:', user.fullName);
         try {
             if (!this.isInitialized) {
-                console.log('⚠️ ProductManager no inicializado, inicializando...');
+                console.log('ProductManager no inicializado, inicializando...');
                 await this.init();
             }
-
-            console.log('📦 Cargando productos después del login...');
+            console.log('Cargando productos después del login...');
             await this.loadProducts();
-
         } catch (error) {
-            console.error('❌ Error manejando login en ProductManager:', error);
+            console.error('Error manejando login en ProductManager:', error);
         }
     },
 
     async handleViewActivated(viewData) {
         if (viewData.viewName === 'products') {
-            console.log('👁️ Vista de productos activada');
-
+            console.log('Vista de productos activada');
             if (this.isInitialized && (!this.products || this.products.length === 0)) {
-                console.log('📦 Vista de productos activada sin datos, cargando...');
+                console.log('Vista de productos activada sin datos, cargando...');
                 await this.loadProducts();
             }
         }
     },
 
     handleProductsInitialized(data) {
-        console.log('✅ Productos inicializados después del login:', data);
-
+        console.log('Productos inicializados después del login:', data);
         if (this.isInitialized && this.products.length > 0) {
             setTimeout(() => {
                 this._renderTableImmediate();
@@ -128,51 +151,46 @@ export const productManager = {
     async _waitForDOMElements(maxWait = 10000) {
         const requiredElements = ['products-table-body', 'product-modal', 'stock-modal'];
         const startTime = Date.now();
-        console.log('⏳ Esperando elementos DOM...', requiredElements);
+        console.log('Esperando elementos DOM...', requiredElements);
 
         return new Promise((resolve, reject) => {
             const checkElements = () => {
                 const missingElements = requiredElements.filter(id => !document.getElementById(id));
 
                 if (missingElements.length === 0) {
-                    console.log('✅ Todos los elementos DOM requeridos están disponibles');
+                    console.log('Todos los elementos DOM requeridos están disponibles');
                     resolve();
                     return;
                 }
 
                 const elapsed = Date.now() - startTime;
                 if (elapsed > maxWait) {
-                    console.error(`❌ Elementos DOM faltantes después de ${maxWait}ms:`, missingElements);
+                    console.error(`Elementos DOM faltantes después de ${maxWait}ms:`, missingElements);
                     reject(new Error(`Elementos DOM faltantes: ${missingElements.join(', ')}`));
                     return;
                 }
 
-                if (elapsed % 2000 === 0) {
-                    console.log(`⏳ Aún esperando elementos DOM (${Math.round(elapsed / 1000)}s): ${missingElements.join(', ')}`);
-                }
-
                 setTimeout(checkElements, 100);
             };
-
             checkElements();
         });
     },
 
-    // ✅ FUNCIÓN CORREGIDA: Validación con verificaciones de métodos
     async _validateInitialization() {
-        console.log('🔍 Validando inicialización...');
+        console.log('Validando inicialización...');
 
         const validations = [
             { name: 'Tabla de productos', check: () => document.getElementById('products-table-body') !== null },
             { name: 'Datos cargados', check: () => Array.isArray(this.products) },
-            { name: 'Suscripción a dataSync', check: () => {
-                // ✅ CORRECCIÓN: Verificar métodos antes de usar
-                if (!dataSync || typeof dataSync.isSubscribed !== 'function') {
-                    console.warn('⚠️ dataSync.isSubscribed no disponible');
-                    return true; // Asumir válido si no está disponible
+            {
+                name: 'Suscripción a dataSync', check: () => {
+                    if (!dataSync || typeof dataSync.isSubscribed !== 'function') {
+                        console.warn('dataSync.isSubscribed no disponible');
+                        return true;
+                    }
+                    return dataSync.isSubscribed(this.viewName, 'products');
                 }
-                return dataSync.isSubscribed(this.viewName, 'products');
-            }},
+            },
             { name: 'Event listeners configurados', check: () => document.getElementById('add-product-btn') !== null }
         ];
 
@@ -183,7 +201,7 @@ export const productManager = {
             throw new Error(`Validaciones fallidas: ${failedNames}`);
         }
 
-        console.log('✅ Todas las validaciones pasaron');
+        console.log('Todas las validaciones pasaron');
     },
 
     _initializeModals() {
@@ -193,24 +211,20 @@ export const productManager = {
 
             if (productModalEl && typeof bootstrap !== 'undefined') {
                 this.productModal = new bootstrap.Modal(productModalEl);
-                console.log('✅ Modal de producto inicializado');
-            } else {
-                console.warn('⚠️ No se pudo inicializar modal de producto');
+                console.log('Modal de producto inicializado');
             }
 
             if (stockModalEl && typeof bootstrap !== 'undefined') {
                 this.stockModal = new bootstrap.Modal(stockModalEl);
-                console.log('✅ Modal de stock inicializado');
-            } else {
-                console.warn('⚠️ No se pudo inicializar modal de stock');
+                console.log('Modal de stock inicializado');
             }
         } catch (error) {
-            console.error('❌ Error inicializando modales:', error);
+            console.error('Error inicializando modales:', error);
         }
     },
 
     setupEventListeners() {
-        console.log('🔧 Configurando event listeners...');
+        console.log('Configurando event listeners...');
 
         const eventBindings = [
             { id: 'add-product-btn', event: 'click', handler: this.showAddProductModal.bind(this) },
@@ -227,9 +241,9 @@ export const productManager = {
             const element = document.getElementById(id);
             if (element) {
                 element.addEventListener(event, handler);
-                console.log(`✅ Event listener agregado: ${id} -> ${event}`);
+                console.log(`Event listener agregado: ${id} -> ${event}`);
             } else {
-                console.warn(`⚠️ Elemento no encontrado: ${id}`);
+                console.warn(`Elemento no encontrado: ${id}`);
             }
         });
 
@@ -258,10 +272,10 @@ export const productManager = {
     },
 
     handleDataChange({ action, data, dataType }) {
-        console.log(`🔄 ProductManager recibió: ${action} en ${dataType}`, data);
+        console.log(`ProductManager recibió: ${action} en ${dataType}`, data);
 
         if (!this.isInitialized) {
-            console.log('⏳ Ignorando cambio - no inicializado');
+            console.log('Ignorando cambio - no inicializado');
             return;
         }
 
@@ -283,19 +297,18 @@ export const productManager = {
                     this._handleStockUpdatedImmediate(data);
                     break;
                 default:
-                    console.warn(`⚠️ Acción no reconocida: ${action}`);
+                    console.warn(`Acción no reconocida: ${action}`);
             }
         } catch (error) {
-            console.error('❌ Error manejando cambio de datos:', error);
+            console.error('Error manejando cambio de datos:', error);
         }
     },
 
     _handleProductCreatedImmediate(product) {
-        console.log('🆕 Manejando producto creado inmediatamente:', product._id);
+        console.log('Manejando producto creado inmediatamente:', product._id);
 
-        // ✅ VALIDACIÓN: Asegurar que products sea un array
         if (!Array.isArray(this.products)) {
-            console.warn('⚠️ this.products no es un array, inicializando...');
+            console.warn('this.products no es un array, inicializando...');
             this.products = [];
         }
 
@@ -304,19 +317,18 @@ export const productManager = {
             this.products.push(product);
             this.sortProductsById();
             this._renderTableImmediate();
-            console.log('✅ Producto agregado a la tabla inmediatamente');
+            console.log('Producto agregado a la tabla inmediatamente');
         } else {
-            console.log('⚠️ Producto ya existe, actualizando inmediatamente');
+            console.log('Producto ya existe, actualizando inmediatamente');
             this._handleProductUpdatedImmediate(product);
         }
     },
 
     _handleProductUpdatedImmediate(product) {
-        console.log('✏️ Manejando producto actualizado inmediatamente:', product._id);
+        console.log('Manejando producto actualizado inmediatamente:', product._id);
 
-        // ✅ VALIDACIÓN: Asegurar que products sea un array
         if (!Array.isArray(this.products)) {
-            console.warn('⚠️ this.products no es un array, inicializando...');
+            console.warn('this.products no es un array, inicializando...');
             this.products = [];
         }
 
@@ -330,20 +342,19 @@ export const productManager = {
             };
             this.sortProductsById();
             this._renderTableImmediate();
-            console.log('✅ Producto actualizado en la tabla inmediatamente');
+            console.log('Producto actualizado en la tabla inmediatamente');
             this._highlightUpdatedProduct(product._id);
         } else {
-            console.log('⚠️ Producto no encontrado, agregándolo inmediatamente');
+            console.log('Producto no encontrado, agregándolo inmediatamente');
             this._handleProductCreatedImmediate(product);
         }
     },
 
     _handleProductDeletedImmediate(productId) {
-        console.log('🗑️ Manejando producto eliminado inmediatamente:', productId);
+        console.log('Manejando producto eliminado inmediatamente:', productId);
 
-        // ✅ VALIDACIÓN: Asegurar que products sea un array
         if (!Array.isArray(this.products)) {
-            console.warn('⚠️ this.products no es un array, inicializando...');
+            console.warn('this.products no es un array, inicializando...');
             this.products = [];
             return;
         }
@@ -353,27 +364,26 @@ export const productManager = {
 
         if (this.products.length < initialLength) {
             this._renderTableImmediate();
-            console.log('✅ Producto eliminado de la tabla inmediatamente');
+            console.log('Producto eliminado de la tabla inmediatamente');
         } else {
-            console.log('⚠️ Producto no estaba en la lista');
+            console.log('Producto no estaba en la lista');
         }
     },
 
     _handleProductsRefreshedImmediate(products) {
-        console.log('🔄 Manejando refrescado de productos inmediatamente:', Array.isArray(products) ? products.length : 'no-array');
+        console.log('Manejando refrescado de productos inmediatamente:', Array.isArray(products) ? products.length : 'no-array');
 
         this.products = Array.isArray(products) ? products : [];
         this.sortProductsById();
         this._renderTableImmediate();
-        console.log('✅ Lista de productos refrescada inmediatamente');
+        console.log('Lista de productos refrescada inmediatamente');
     },
 
     _handleStockUpdatedImmediate(data) {
-        console.log('📦 Manejando actualización de stock inmediatamente:', data);
+        console.log('Manejando actualización de stock inmediatamente:', data);
 
-        // ✅ VALIDACIÓN: Asegurar que products sea un array
         if (!Array.isArray(this.products)) {
-            console.warn('⚠️ this.products no es un array, inicializando...');
+            console.warn('this.products no es un array, inicializando...');
             this.products = [];
         }
 
@@ -387,13 +397,13 @@ export const productManager = {
                 this.products[index].stock = newStock;
                 this._renderTableImmediate();
                 this._highlightUpdatedProduct(productId);
-                console.log('✅ Stock actualizado en la tabla inmediatamente');
+                console.log('Stock actualizado en la tabla inmediatamente');
             }
         }
     },
 
     _renderTableImmediate() {
-        console.log('⚡ Renderizando tabla inmediatamente...');
+        console.log('Renderizando tabla inmediatamente...');
 
         try {
             this.renderProductsTable();
@@ -402,9 +412,10 @@ export const productManager = {
             if (table) {
                 table.classList.add('table', 'table-base');
 
-                const container = table.closest('.table-container');
+                const container = table.closest('.table-container, .table-responsive');
                 if (container) {
                     container.classList.add('table-container-base');
+                    this._setupTableScrolling();
                 }
             }
 
@@ -414,10 +425,10 @@ export const productManager = {
                 }
             }, 10);
 
-            console.log('✅ Tabla renderizada con estilos aplicados');
+            console.log('Tabla renderizada con estilos aplicados');
 
         } catch (error) {
-            console.error('❌ Error en renderizado inmediato:', error);
+            console.error('Error en renderizado inmediato:', error);
         }
     },
 
@@ -445,19 +456,19 @@ export const productManager = {
                         targetRow.style.backgroundColor = '';
                     }, 3000);
 
-                    console.log('✅ Producto destacado:', productId);
+                    console.log('Producto destacado:', productId);
                 } else {
-                    console.warn('⚠️ No se encontró la fila para destacar:', productId);
+                    console.warn('No se encontró la fila para destacar:', productId);
                 }
             } catch (error) {
-                console.error('❌ Error destacando producto:', error);
+                console.error('Error destacando producto:', error);
             }
         }, 100);
     },
 
     async loadProducts() {
         try {
-            console.log('📥 Cargando productos...');
+            console.log('Cargando productos...');
             this.showLoadingState();
 
             let products;
@@ -466,26 +477,24 @@ export const productManager = {
 
             while (retryCount < maxRetries) {
                 try {
-                    // ✅ VALIDACIÓN: Verificar método dataSync antes de usar
                     if (dataSync && typeof dataSync.getData === 'function') {
                         products = await dataSync.getData('products');
                     } else {
-                        console.warn('⚠️ dataSync.getData no disponible, usando API directa');
+                        console.warn('dataSync.getData no disponible, usando API directa');
                         products = await window.api.getProducts();
                     }
                     break;
                 } catch (error) {
                     retryCount++;
-                    console.warn(`⚠️ Intento ${retryCount}/${maxRetries} falló:`, error.message);
+                    console.warn(`Intento ${retryCount}/${maxRetries} falló:`, error.message);
 
                     if (retryCount < maxRetries) {
                         await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-
                         try {
                             products = await window.api.getProducts();
                             break;
                         } catch (apiError) {
-                            console.warn(`⚠️ API directa también falló en intento ${retryCount}`);
+                            console.warn(`API directa también falló en intento ${retryCount}`);
                         }
                     } else {
                         throw error;
@@ -493,7 +502,6 @@ export const productManager = {
                 }
             }
 
-            // ✅ VALIDACIÓN ESTRICTA: Múltiples formatos de respuesta
             if (Array.isArray(products)) {
                 this.products = products;
             } else if (products && Array.isArray(products.products)) {
@@ -501,11 +509,11 @@ export const productManager = {
             } else if (products && Array.isArray(products.data)) {
                 this.products = products.data;
             } else {
-                console.warn('⚠️ Datos no válidos recibidos:', products);
+                console.warn('Datos no válidos recibidos:', products);
                 this.products = [];
             }
 
-            console.log(`✅ ${this.products.length} productos cargados exitosamente`);
+            console.log(`${this.products.length} productos cargados exitosamente`);
 
             this.sortProductsById();
             this.renderProductsTable();
@@ -518,7 +526,7 @@ export const productManager = {
             }
 
         } catch (error) {
-            console.error('❌ Error cargando productos después de todos los reintentos:', error);
+            console.error('Error cargando productos después de todos los reintentos:', error);
             this.products = [];
             this.renderProductsTable();
 
@@ -565,40 +573,36 @@ export const productManager = {
         }
     },
 
-    // ✅ FUNCIÓN CORREGIDA: sortProductsById con validaciones
     sortProductsById() {
-        // ✅ VALIDACIÓN: Verificar que products sea un array
         if (!Array.isArray(this.products)) {
-            console.warn('⚠️ this.products no es un array, no se puede ordenar:', typeof this.products);
+            console.warn('this.products no es un array, no se puede ordenar:', typeof this.products);
             this.products = [];
             return;
         }
 
-        // ✅ VALIDACIÓN: Verificar que tenga método sort
         if (typeof this.products.sort !== 'function') {
-            console.error('❌ this.products no tiene método sort:', this.products);
+            console.error('this.products no tiene método sort:', this.products);
             this.products = [];
             return;
         }
 
         try {
             this.products.sort((a, b) => {
-                // ✅ VALIDACIÓN: Verificar que ambos elementos tengan _id
                 if (!a || !a._id) {
-                    console.warn('⚠️ Elemento sin _id encontrado:', a);
+                    console.warn('Elemento sin _id encontrado:', a);
                     return 1;
                 }
                 if (!b || !b._id) {
-                    console.warn('⚠️ Elemento sin _id encontrado:', b);
+                    console.warn('Elemento sin _id encontrado:', b);
                     return -1;
                 }
-                
+
                 if (a._id < b._id) return -1;
                 if (a._id > b._id) return 1;
                 return 0;
             });
         } catch (error) {
-            console.error('❌ Error ordenando productos:', error);
+            console.error('Error ordenando productos:', error);
             this.products = Array.isArray(this.products) ? this.products : [];
         }
     },
@@ -606,17 +610,16 @@ export const productManager = {
     renderProductsTable() {
         const tableBody = document.getElementById('products-table-body');
         if (!tableBody) {
-            console.error('❌ Elemento products-table-body no encontrado');
+            console.error('Elemento products-table-body no encontrado');
             return;
         }
 
-        // ✅ VALIDACIÓN: Asegurar que products sea un array
         if (!Array.isArray(this.products)) {
-            console.warn('⚠️ this.products no es un array, inicializando como array vacío');
+            console.warn('this.products no es un array, inicializando como array vacío');
             this.products = [];
         }
 
-        console.log(`🔄 Renderizando ${this.products.length} productos`);
+        console.log(`Renderizando ${this.products.length} productos`);
 
         tableBody.innerHTML = '';
 
@@ -636,12 +639,12 @@ export const productManager = {
         if (table) {
             table.classList.add('table', 'table-base');
 
-            const tableContainer = table.closest('.table-container');
+            const tableContainer = table.closest('.table-container, .table-responsive');
             if (tableContainer) {
                 tableContainer.classList.add('table-container-base');
             }
 
-            console.log('✅ Clases de estilo aplicadas a la tabla');
+            console.log('Clases de estilo aplicadas a la tabla');
         }
 
         const fragment = document.createDocumentFragment();
@@ -653,13 +656,15 @@ export const productManager = {
 
         tableBody.appendChild(fragment);
 
+        this._setupTableScrolling();
+
         setTimeout(() => {
             if (window.uiManager && window.uiManager.forceStyleUpdate) {
                 window.uiManager.forceStyleUpdate();
             }
         }, 50);
 
-        console.log('✅ Tabla renderizada exitosamente con estilos aplicados');
+        console.log('Tabla renderizada exitosamente con estilos aplicados');
     },
 
     _createProductRow(product) {
@@ -706,11 +711,13 @@ export const productManager = {
         return row;
     },
 
-    // ===== FUNCIONES DE MODAL Y CRUD =====
-
     showAddProductModal() {
+        console.log('Mostrando modal para nuevo producto');
+
         const form = document.getElementById('product-form');
         if (form) form.reset();
+
+        this.currentEditingProduct = null;
 
         const productId = document.getElementById('product-id');
         if (productId) productId.value = '';
@@ -721,11 +728,32 @@ export const productManager = {
         if (this.productModal) {
             this.productModal.show();
         }
+
+        setTimeout(() => {
+            const nameField = document.getElementById('product-name');
+            if (nameField) nameField.focus();
+        }, 300);
     },
 
     async showEditProductModal(productId) {
+        console.log('Mostrando modal para editar producto:', productId);
+
         try {
-            const product = await window.api.getProduct(productId);
+            let product = this.products.find(p => p._id === productId);
+
+            if (!product) {
+                console.log('Producto no en cache, obteniendo del servidor...');
+                const response = await window.api.getProduct(productId);
+                product = response.product || response;
+            }
+
+            if (!product) {
+                throw new Error('Producto no encontrado');
+            }
+
+            console.log('Cargando datos del producto:', product);
+
+            this.currentEditingProduct = product;
 
             const fields = [
                 ['product-id', product._id],
@@ -739,24 +767,56 @@ export const productManager = {
 
             fields.forEach(([id, value]) => {
                 const element = document.getElementById(id);
-                if (element) element.value = value || '';
+                if (element) {
+                    element.value = value || '';
+                    console.log(`Campo ${id} llenado con: ${value}`);
+                } else {
+                    console.warn(`Campo no encontrado: ${id}`);
+                }
             });
 
             const modalTitle = document.getElementById('product-modal-title');
-            if (modalTitle) modalTitle.textContent = 'Editar Producto';
+            if (modalTitle) modalTitle.textContent = `Editar: ${product.name}`;
 
             if (this.productModal) {
                 this.productModal.show();
             }
+
+            setTimeout(() => {
+                const nameField = document.getElementById('product-name');
+                if (nameField) {
+                    nameField.focus();
+                    nameField.select();
+                }
+            }, 300);
+
         } catch (error) {
             console.error('Error al cargar producto para edición:', error);
-            uiManager.showAlert('Error al cargar los datos del producto', 'danger');
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert('Error al cargar los datos del producto: ' + error.message, 'danger');
+            } else {
+                alert('Error al cargar los datos del producto: ' + error.message);
+            }
         }
     },
 
     async showUpdateStockModal(productId) {
+        console.log('Mostrando modal para actualizar stock:', productId);
+
         try {
-            const product = await window.api.getProduct(productId);
+            let product = this.products.find(p => p._id === productId);
+
+            if (!product) {
+                console.log('Producto no en cache, obteniendo del servidor...');
+                const response = await window.api.getProduct(productId);
+                product = response.product || response;
+            }
+
+            if (!product) {
+                throw new Error('Producto no encontrado');
+            }
+
+            console.log('Cargando datos para actualizar stock:', product);
 
             const stockFields = [
                 ['stock-product-id', product._id, 'value'],
@@ -765,16 +825,32 @@ export const productManager = {
                 ['stock-product-sphere', product.sphere, 'textContent'],
                 ['stock-product-cylinder', product.cylinder, 'textContent'],
                 ['stock-product-addition', product.addition, 'textContent'],
-                ['stock-current-stock', product.stock, 'textContent'],
-                ['stock-new-value', product.stock, 'value']
+                ['stock-current-stock', product.stock || 0, 'textContent'],
+                ['stock-new-value', product.stock || 0, 'value']
             ];
 
             stockFields.forEach(([id, value, prop]) => {
                 const element = document.getElementById(id);
                 if (element) {
-                    element[prop] = value || '';
+                    if (prop === 'textContent') {
+                        element.textContent = value || 'N/A';
+                    } else {
+                        element.value = value || '';
+                    }
+                    console.log(`Campo stock ${id} llenado con: ${value}`);
+                } else {
+                    console.warn(`Campo stock no encontrado: ${id}`);
                 }
             });
+
+            const currentStockDisplay = document.getElementById('current-stock-display');
+            if (currentStockDisplay) {
+                currentStockDisplay.innerHTML = `
+                    <div class="alert alert-info">
+                        <strong>Stock Actual:</strong> ${product.stock || 0} unidades
+                    </div>
+                `;
+            }
 
             if (this.stockModal) {
                 this.stockModal.show();
@@ -790,104 +866,144 @@ export const productManager = {
 
         } catch (error) {
             console.error('Error al cargar producto para stock:', error);
-            uiManager.showAlert('Error al cargar los datos del producto', 'danger');
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert('Error al cargar los datos del producto: ' + error.message, 'danger');
+            } else {
+                alert('Error al cargar los datos del producto: ' + error.message);
+            }
         }
     },
 
-    // FUNCIÓN COMPLETAMENTE CORREGIDA: saveProduct con manejo correcto de respuestas
     async saveProduct() {
         try {
+            console.log('Iniciando guardado de producto...');
+
             const productId = document.getElementById('product-id')?.value;
             const productData = {
-                name: document.getElementById('product-name')?.value || '',
-                barcode: document.getElementById('product-barcode')?.value || '',
-                sphere: document.getElementById('product-sphere')?.value || '',
-                cylinder: document.getElementById('product-cylinder')?.value || '',
-                addition: document.getElementById('product-addition')?.value || '',
-                stock: parseInt(document.getElementById('product-stock')?.value) || 0,
+                name: document.getElementById('product-name')?.value?.trim() || '',
+                barcode: document.getElementById('product-barcode')?.value?.trim() || '',
+                sphere: document.getElementById('product-sphere')?.value?.trim() || '',
+                cylinder: document.getElementById('product-cylinder')?.value?.trim() || '',
+                addition: document.getElementById('product-addition')?.value?.trim() || '',
+                stock: parseInt(document.getElementById('product-stock')?.value) || 0
             };
 
-            console.log('💾 Guardando producto:', { productId, productData });
+            // Validaciones básicas
+            if (!productData.name) {
+                if (uiManager && uiManager.showAlert) {
+                    uiManager.showAlert('El nombre del producto es obligatorio', 'warning');
+                } else {
+                    alert('El nombre del producto es obligatorio');
+                }
+                return;
+            }
+
+            if (!productData.barcode) {
+                if (uiManager && uiManager.showAlert) {
+                    uiManager.showAlert('El código de barras es obligatorio', 'warning');
+                } else {
+                    alert('El código de barras es obligatorio');
+                }
+                return;
+            }
+
+            console.log('Datos a guardar:', { productId, productData });
 
             const saveBtn = document.getElementById('save-product-btn');
             if (saveBtn) {
                 saveBtn.disabled = true;
-                saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Guardando...';
+                saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Guardando...';
             }
 
             let response;
             let finalProduct;
 
             if (productId) {
-                // EDICIÓN - Manejar stock por separado si cambió
-                const currentProduct = await window.api.getProduct(productId);
+                // EDICIÓN
+                console.log('Editando producto existente:', productId);
 
-                if (currentProduct.stock !== productData.stock) {
+                // Si el stock cambió, manejar por separado
+                if (this.currentEditingProduct && this.currentEditingProduct.stock !== productData.stock) {
+                    console.log('Stock cambió, actualizando por separado...');
+
                     // Actualizar datos sin stock primero
                     const { stock, ...dataWithoutStock } = productData;
-                    await window.api.updateProduct(productId, dataWithoutStock);
+                    const updateResponse = await window.api.updateProduct(productId, dataWithoutStock);
 
-                    // Luego actualizar stock por separado
+                    // Luego actualizar stock
                     const stockData = {
                         stock: productData.stock,
-                        stock_surtido: currentProduct.stock_surtido || 0
+                        stock_surtido: this.currentEditingProduct.stock_surtido || 0
                     };
-                    response = await window.api.updateProductStock(productId, stockData);
-
-                    // Extraer producto de la respuesta de stock
-                    finalProduct = response.product;
-
-                    console.log('✅ Producto y stock actualizados por separado');
+                    const stockResponse = await window.api.updateProductStock(productId, stockData);
+                    finalProduct = stockResponse.product || stockResponse;
                 } else {
                     // Solo actualizar datos del producto
                     response = await window.api.updateProduct(productId, productData);
-
-                    // La respuesta puede ser el producto directamente o un wrapper
                     finalProduct = response.product || response;
                 }
 
-                // VALIDACIÓN: Verificar que tenemos un producto válido
-                if (!finalProduct || !finalProduct._id) {
-                    console.error('❌ Respuesta de actualización inválida:', response);
-                    throw new Error('Respuesta del servidor inválida');
-                }
+                console.log('Producto actualizado:', finalProduct);
 
-                // SINCRONIZACIÓN INMEDIATA MEJORADA
-                await this._syncProductUpdateImmediate(finalProduct, productId);
-
-                uiManager.showAlert('Producto actualizado correctamente', 'success');
             } else {
                 // CREACIÓN
+                console.log('Creando nuevo producto...');
                 response = await window.api.createProduct(productData);
-
-                // Extraer producto de la respuesta
                 finalProduct = response.product || response;
-
-                // VALIDACIÓN: Verificar que tenemos un producto válido
-                if (!finalProduct || !finalProduct._id) {
-                    console.error('❌ Respuesta de creación inválida:', response);
-                    throw new Error('Respuesta del servidor inválida');
-                }
-
-                // SINCRONIZACIÓN INMEDIATA PARA CREACIÓN
-                await this._syncProductCreateImmediate(finalProduct);
-
-                uiManager.showAlert('Producto creado correctamente', 'success');
+                console.log('Producto creado:', finalProduct);
             }
 
-            // Cerrar modal y enfocar en el producto actualizado
+            // VALIDACIÓN: Verificar respuesta válida
+            if (!finalProduct || !finalProduct._id) {
+                console.error('Respuesta inválida del servidor:', response);
+                throw new Error('Respuesta del servidor inválida');
+            }
+
+            // SINCRONIZACIÓN INMEDIATA
+            if (productId) {
+                await this._syncProductUpdateImmediate(finalProduct, productId);
+                if (uiManager && uiManager.showAlert) {
+                    uiManager.showAlert('Producto actualizado correctamente', 'success');
+                }
+            } else {
+                await this._syncProductCreateImmediate(finalProduct);
+                if (uiManager && uiManager.showAlert) {
+                    uiManager.showAlert('Producto creado correctamente', 'success');
+                }
+            }
+
+            // Cerrar modal
             if (this.productModal) {
                 this.productModal.hide();
             }
 
-            // Destacar producto después de un breve delay
+            // Limpiar datos de edición
+            this.currentEditingProduct = null;
+
+            // Destacar producto después de cerrar modal
             setTimeout(() => {
                 this._highlightUpdatedProduct(finalProduct._id);
             }, 300);
 
         } catch (error) {
-            console.error('❌ Error al guardar producto:', error);
-            uiManager.showAlert(`Error al guardar el producto: ${error.message}`, 'danger');
+            console.error('Error al guardar producto:', error);
+
+            let errorMessage = 'Error al guardar el producto';
+            if (error.message.includes('duplicate') || error.message.includes('unique')) {
+                errorMessage = 'Ya existe un producto con ese código de barras';
+            } else if (error.message.includes('validation')) {
+                errorMessage = 'Datos del producto no válidos';
+            } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                errorMessage = 'Error de conexión. Verifique su conexión a internet';
+            } else {
+                errorMessage = `Error: ${error.message}`;
+            }
+
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert(errorMessage, 'danger');
+            } else {
+                alert(errorMessage);
+            }
         } finally {
             const saveBtn = document.getElementById('save-product-btn');
             if (saveBtn) {
@@ -897,155 +1013,74 @@ export const productManager = {
         }
     },
 
-    // FUNCIÓN CORREGIDA: Sincronización inmediata para actualizaciones
-    async _syncProductUpdateImmediate(updatedProduct, productId) {
-        console.log('🔄 Sincronizando actualización inmediatamente...', updatedProduct);
-
-        try {
-            // VALIDACIÓN: Asegurar que tenemos un producto válido
-            if (!updatedProduct || !updatedProduct._id) {
-                console.error('❌ Producto inválido para sincronización:', updatedProduct);
-                throw new Error('Producto inválido recibido para sincronización');
-            }
-
-            // VALIDACIÓN: Asegurar que products sea un array
-            if (!Array.isArray(this.products)) {
-                console.warn('⚠️ this.products no es un array, inicializando...');
-                this.products = [];
-            }
-
-            // Actualizar en cache local
-            const index = this.products.findIndex(p => p._id === productId);
-            if (index !== -1) {
-                // Mantener propiedades importantes del producto existente
-                this.products[index] = {
-                    ...this.products[index],
-                    ...updatedProduct,
-                    _id: productId // Asegurar que el ID no cambie
-                };
-                console.log('✅ Cache local actualizado');
-            } else {
-                console.warn('⚠️ Producto no encontrado en cache, agregándolo...');
-                this.products.push(updatedProduct);
-                this.sortProductsById();
-            }
-
-            // Re-renderizar tabla inmediatamente
-            this._renderTableImmediate();
-
-            // Notificar con el producto válido
-            if (eventManager && typeof eventManager.emit === 'function') {
-                eventManager.emit('data:product:updated', updatedProduct);
-            }
-
-            // Forzar actualización de estilos
-            await this._forceStyleRefresh();
-
-            console.log('✅ Sincronización de actualización completada');
-
-        } catch (error) {
-            console.error('❌ Error en sincronización inmediata de actualización:', error);
-            // Fallback: recargar todos los productos
-            await this.loadProducts();
-        }
-    },
-
-    // FUNCIÓN CORREGIDA: Sincronización inmediata para creaciones
-    async _syncProductCreateImmediate(newProduct) {
-        console.log('🆕 Sincronizando creación inmediatamente...', newProduct);
-
-        try {
-            // VALIDACIÓN: Asegurar que tenemos un producto válido
-            if (!newProduct || !newProduct._id) {
-                console.error('❌ Producto inválido para sincronización de creación:', newProduct);
-                throw new Error('Producto inválido recibido para sincronización de creación');
-            }
-
-            // VALIDACIÓN: Asegurar que products sea un array
-            if (!Array.isArray(this.products)) {
-                console.warn('⚠️ this.products no es un array, inicializando...');
-                this.products = [];
-            }
-
-            // Verificar si ya existe (evitar duplicados)
-            const exists = this.products.some(p => p._id === newProduct._id);
-            if (!exists) {
-                this.products.push(newProduct);
-                this.sortProductsById();
-                console.log('✅ Nuevo producto agregado al cache');
-            } else {
-                console.warn('⚠️ Producto ya existe, actualizando...');
-                const index = this.products.findIndex(p => p._id === newProduct._id);
-                this.products[index] = newProduct;
-            }
-
-            // Re-renderizar tabla inmediatamente
-            this._renderTableImmediate();
-
-            // Notificar con el producto válido
-            if (eventManager && typeof eventManager.emit === 'function') {
-                eventManager.emit('data:product:created', newProduct);
-            }
-
-            // Forzar actualización de estilos
-            await this._forceStyleRefresh();
-
-            console.log('✅ Sincronización de creación completada');
-
-        } catch (error) {
-            console.error('❌ Error en sincronización inmediata de creación:', error);
-            // Fallback: recargar todos los productos
-            await this.loadProducts();
-        }
-    },
-
-    // FUNCIÓN CORREGIDA: updateStock con emisión de eventos corregida
     async updateStock() {
         try {
+            console.log('Iniciando actualización de stock...');
+
             const productId = document.getElementById('stock-product-id')?.value;
             const newStockValue = document.getElementById('stock-new-value')?.value;
 
             if (!productId) {
-                uiManager.showAlert('Error: ID del producto no encontrado', 'danger');
+                if (uiManager && uiManager.showAlert) {
+                    uiManager.showAlert('Error: ID del producto no encontrado', 'danger');
+                } else {
+                    alert('Error: ID del producto no encontrado');
+                }
                 return;
             }
 
             const newStock = parseInt(newStockValue);
             if (isNaN(newStock) || newStock < 0) {
-                uiManager.showAlert('Por favor, ingrese un valor de stock válido', 'warning');
+                if (uiManager && uiManager.showAlert) {
+                    uiManager.showAlert('Por favor, ingrese un valor de stock válido (0 o mayor)', 'warning');
+                } else {
+                    alert('Por favor, ingrese un valor de stock válido (0 o mayor)');
+                }
                 return;
             }
 
             const saveBtn = document.getElementById('save-stock-btn');
             if (saveBtn) {
                 saveBtn.disabled = true;
-                saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Actualizando...';
+                saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Actualizando...';
             }
 
             // Obtener producto actual para mantener stock_surtido
-            const currentProduct = await window.api.getProduct(productId);
+            let currentProduct = this.products.find(p => p._id === productId);
+            if (!currentProduct) {
+                console.log('Producto no en cache, obteniendo del servidor...');
+                const response = await window.api.getProduct(productId);
+                currentProduct = response.product || response;
+            }
+
+            if (!currentProduct) {
+                throw new Error('Producto no encontrado');
+            }
+
             const stockData = {
                 stock: newStock,
                 stock_surtido: currentProduct.stock_surtido || 0
             };
 
-            console.log('📦 Actualizando stock:', { productId, stockData });
+            console.log('Actualizando stock:', { productId, stockData });
 
             // Actualizar en backend
             const response = await window.api.updateProductStock(productId, stockData);
-
-            // Extraer el producto de la respuesta antes de sincronizar
-            const updatedProduct = response.product; // Extraer el producto real de la respuesta
+            const updatedProduct = response.product || response;
 
             if (!updatedProduct || !updatedProduct._id) {
-                console.error('❌ Respuesta de API inválida:', response);
+                console.error('Respuesta de API inválida:', response);
                 throw new Error('Respuesta del servidor inválida');
             }
 
-            // SINCRONIZACIÓN INMEDIATA CORREGIDA
+            console.log('Stock actualizado en servidor:', updatedProduct);
+
+            // SINCRONIZACIÓN INMEDIATA
             await this._syncStockUpdateImmediate(updatedProduct, productId);
 
-            uiManager.showAlert('Stock actualizado correctamente', 'success');
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert(`Stock actualizado correctamente: ${updatedProduct.stock} unidades`, 'success');
+            }
 
             // Cerrar modal
             if (this.stockModal) {
@@ -1057,11 +1092,21 @@ export const productManager = {
                 this._highlightUpdatedProduct(productId);
             }, 300);
 
-            console.log('✅ Stock actualizado y sincronizado:', updatedProduct);
-
         } catch (error) {
-            console.error('❌ Error al actualizar stock:', error);
-            uiManager.showAlert(`Error al actualizar el stock: ${error.message}`, 'danger');
+            console.error('Error al actualizar stock:', error);
+
+            let errorMessage = 'Error al actualizar el stock';
+            if (error.message.includes('network') || error.message.includes('fetch')) {
+                errorMessage = 'Error de conexión. Verifique su conexión a internet';
+            } else {
+                errorMessage = `Error: ${error.message}`;
+            }
+
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert(errorMessage, 'danger');
+            } else {
+                alert(errorMessage);
+            }
         } finally {
             const saveBtn = document.getElementById('save-stock-btn');
             if (saveBtn) {
@@ -1071,38 +1116,32 @@ export const productManager = {
         }
     },
 
-    // FUNCIÓN CORREGIDA: Sincronización inmediata para stock
-    async _syncStockUpdateImmediate(updatedProduct, productId) {
-        console.log('📦 Sincronizando actualización de stock inmediatamente...', updatedProduct);
+    // Funciones de sincronización inmediata
+    async _syncProductUpdateImmediate(updatedProduct, productId) {
+        console.log('Sincronizando actualización inmediatamente...', updatedProduct);
 
         try {
-            // VALIDACIÓN: Asegurar que tenemos un producto válido
             if (!updatedProduct || !updatedProduct._id) {
-                console.error('❌ Producto inválido para sincronización:', updatedProduct);
+                console.error('Producto inválido para sincronización:', updatedProduct);
                 throw new Error('Producto inválido recibido para sincronización');
             }
 
-            // VALIDACIÓN: Asegurar que products sea un array
             if (!Array.isArray(this.products)) {
-                console.warn('⚠️ this.products no es un array, inicializando...');
+                console.warn('this.products no es un array, inicializando...');
                 this.products = [];
             }
 
             // Actualizar en cache local
             const index = this.products.findIndex(p => p._id === productId);
             if (index !== -1) {
-                // Actualizar específicamente los campos de stock
                 this.products[index] = {
                     ...this.products[index],
-                    stock: updatedProduct.stock,
-                    stock_surtido: updatedProduct.stock_surtido,
-                    stock_almacenado: updatedProduct.stock_almacenado,
-                    lastUpdated: updatedProduct.lastUpdated
+                    ...updatedProduct,
+                    _id: productId
                 };
-                console.log('✅ Stock actualizado en cache local');
+                console.log('Cache local actualizado');
             } else {
-                console.warn('⚠️ Producto no encontrado para actualizar stock');
-                // Fallback: agregar el producto completo
+                console.warn('Producto no encontrado en cache, agregándolo...');
                 this.products.push(updatedProduct);
                 this.sortProductsById();
             }
@@ -1110,61 +1149,166 @@ export const productManager = {
             // Re-renderizar tabla inmediatamente
             this._renderTableImmediate();
 
-            // Emitir evento con datos correctos
+            // Notificar evento
             if (eventManager && typeof eventManager.emit === 'function') {
-                eventManager.emit('data:product:stock-updated', {
-                    productId,
-                    newStock: updatedProduct.stock, // Usar el stock del producto real
-                    product: updatedProduct // Pasar el producto real, no la respuesta completa
-                });
+                eventManager.emit('data:product:updated', updatedProduct);
             }
 
-            // Forzar actualización de estilos
             await this._forceStyleRefresh();
-
-            console.log('✅ Sincronización de stock completada');
+            console.log('Sincronización de actualización completada');
 
         } catch (error) {
-            console.error('❌ Error en sincronización de stock:', error);
-            // Fallback: recargar productos
+            console.error('Error en sincronización inmediata de actualización:', error);
             await this.loadProducts();
         }
     },
 
-    // FUNCIÓN MEJORADA: deleteProduct con sincronización inmediata
+    async _syncProductCreateImmediate(newProduct) {
+        console.log('Sincronizando creación inmediatamente...', newProduct);
+
+        try {
+            if (!newProduct || !newProduct._id) {
+                console.error('Producto inválido para sincronización de creación:', newProduct);
+                throw new Error('Producto inválido recibido para sincronización de creación');
+            }
+
+            if (!Array.isArray(this.products)) {
+                console.warn('this.products no es un array, inicializando...');
+                this.products = [];
+            }
+
+            // Verificar si ya existe
+            const exists = this.products.some(p => p._id === newProduct._id);
+            if (!exists) {
+                this.products.push(newProduct);
+                this.sortProductsById();
+                console.log('Nuevo producto agregado al cache');
+            } else {
+                console.warn('Producto ya existe, actualizando...');
+                const index = this.products.findIndex(p => p._id === newProduct._id);
+                this.products[index] = newProduct;
+            }
+
+            // Re-renderizar tabla inmediatamente
+            this._renderTableImmediate();
+
+            // Notificar evento
+            if (eventManager && typeof eventManager.emit === 'function') {
+                eventManager.emit('data:product:created', newProduct);
+            }
+
+            await this._forceStyleRefresh();
+            console.log('Sincronización de creación completada');
+
+        } catch (error) {
+            console.error('Error en sincronización inmediata de creación:', error);
+            await this.loadProducts();
+        }
+    },
+
+    async _syncStockUpdateImmediate(updatedProduct, productId) {
+        console.log('Sincronizando actualización de stock inmediatamente...', updatedProduct);
+
+        try {
+            if (!updatedProduct || !updatedProduct._id) {
+                console.error('Producto inválido para sincronización:', updatedProduct);
+                throw new Error('Producto inválido recibido para sincronización');
+            }
+
+            if (!Array.isArray(this.products)) {
+                console.warn('this.products no es un array, inicializando...');
+                this.products = [];
+            }
+
+            // Actualizar en cache local
+            const index = this.products.findIndex(p => p._id === productId);
+            if (index !== -1) {
+                this.products[index] = {
+                    ...this.products[index],
+                    stock: updatedProduct.stock,
+                    stock_surtido: updatedProduct.stock_surtido,
+                    stock_almacenado: updatedProduct.stock_almacenado,
+                    lastUpdated: updatedProduct.lastUpdated
+                };
+                console.log('Stock actualizado en cache local');
+            } else {
+                console.warn('Producto no encontrado para actualizar stock');
+                this.products.push(updatedProduct);
+                this.sortProductsById();
+            }
+
+            // Re-renderizar tabla inmediatamente
+            this._renderTableImmediate();
+
+            // Emitir evento
+            if (eventManager && typeof eventManager.emit === 'function') {
+                eventManager.emit('data:product:stock-updated', {
+                    productId,
+                    newStock: updatedProduct.stock,
+                    product: updatedProduct
+                });
+            }
+
+            await this._forceStyleRefresh();
+            console.log('Sincronización de stock completada');
+
+        } catch (error) {
+            console.error('Error en sincronización de stock:', error);
+            await this.loadProducts();
+        }
+    },
+
     async deleteProduct(productId) {
-        // VALIDACIÓN: Asegurar que products sea un array
         if (!Array.isArray(this.products)) {
-            console.warn('⚠️ this.products no es un array, inicializando...');
+            console.warn('this.products no es un array, inicializando...');
             this.products = [];
         }
 
         const productToDelete = this.products.find(p => p._id === productId);
         const productName = productToDelete ? productToDelete.name : 'el producto';
 
-        if (confirm(`¿Está seguro de eliminar ${productName}? Esta acción no se puede deshacer.`)) {
+        const confirmMessage = `¿Está seguro de eliminar "${productName}"? Esta acción no se puede deshacer.`;
+
+        if (confirm(confirmMessage)) {
             try {
+                console.log('Eliminando producto:', productId);
+
                 await window.api.deleteProduct(productId);
 
-                // SINCRONIZACIÓN INMEDIATA: Eliminar del cache local
+                // Sincronización inmediata
                 const initialLength = this.products.length;
                 this.products = this.products.filter(p => p._id !== productId);
 
                 if (this.products.length < initialLength) {
-                    console.log('✅ Producto eliminado del cache local inmediatamente');
+                    console.log('Producto eliminado del cache local inmediatamente');
                     this._renderTableImmediate();
                 }
 
                 if (eventManager && typeof eventManager.emit === 'function') {
                     eventManager.emit('data:product:deleted', productId);
                 }
-                uiManager.showAlert(`${productName} eliminado correctamente`, 'success');
 
-                console.log('✅ Producto eliminado y sincronizado:', productId);
+                if (uiManager && uiManager.showAlert) {
+                    uiManager.showAlert(`${productName} eliminado correctamente`, 'success');
+                }
+
+                console.log('Producto eliminado y sincronizado:', productId);
 
             } catch (error) {
-                console.error('❌ Error al eliminar producto:', error);
-                uiManager.showAlert(`Error al eliminar el producto: ${error.message}`, 'danger');
+                console.error('Error al eliminar producto:', error);
+
+                let errorMessage = 'Error al eliminar el producto';
+                if (error.message.includes('network') || error.message.includes('fetch')) {
+                    errorMessage = 'Error de conexión. Verifique su conexión a internet';
+                } else {
+                    errorMessage = `Error: ${error.message}`;
+                }
+
+                if (uiManager && uiManager.showAlert) {
+                    uiManager.showAlert(errorMessage, 'danger');
+                } else {
+                    alert(errorMessage);
+                }
             }
         }
     },
@@ -1185,8 +1329,7 @@ export const productManager = {
         }
     },
 
-    // ===== FUNCIONES AUXILIARES =====
-
+    // Funciones auxiliares
     generateBarcode() {
         const prefix = '200';
         const middleDigits = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
@@ -1218,17 +1361,28 @@ export const productManager = {
         const barcode = barcodeInput?.value.trim();
 
         if (!barcode) {
-            uiManager.showAlert('Ingrese un código de barras', 'warning');
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert('Ingrese un código de barras', 'warning');
+            } else {
+                alert('Ingrese un código de barras');
+            }
             return;
         }
 
         try {
-            const product = await window.api.getProductByBarcode(barcode);
+            const response = await window.api.getProductByBarcode(barcode);
+            const product = response.product || response;
+
             const scannerModal = bootstrap.Modal.getInstance(document.getElementById('barcode-scanner-modal'));
             if (scannerModal) scannerModal.hide();
+
             this.showEditProductModal(product._id);
         } catch (error) {
-            uiManager.showAlert('Producto no encontrado', 'warning');
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert('Producto no encontrado con ese código de barras', 'warning');
+            } else {
+                alert('Producto no encontrado');
+            }
         }
     },
 
@@ -1241,16 +1395,17 @@ export const productManager = {
             return;
         }
 
-        // VALIDACIÓN: Asegurar que products sea un array
         if (!Array.isArray(this.products)) {
-            console.warn('⚠️ this.products no es un array para filtrar');
+            console.warn('this.products no es un array para filtrar');
             return;
         }
 
         const filteredProducts = this.products.filter(product =>
             (product.name || '').toLowerCase().includes(searchTerm) ||
             (product.barcode || '').toLowerCase().includes(searchTerm) ||
-            (product.sphere || '').includes(searchTerm)
+            (product.sphere || '').includes(searchTerm) ||
+            (product.cylinder || '').includes(searchTerm) ||
+            (product.addition || '').includes(searchTerm)
         );
 
         const originalProducts = [...this.products];
@@ -1259,112 +1414,23 @@ export const productManager = {
         this.products = originalProducts;
     },
 
-    async refreshProductsManually() {
-        console.log('🔄 Refrescando productos manualmente...');
-        try {
-            const freshProducts = await window.api.getProducts();
-            
-            // VALIDACIÓN: Verificar formato de respuesta
-            if (Array.isArray(freshProducts)) {
-                this.products = freshProducts;
-            } else if (freshProducts && Array.isArray(freshProducts.products)) {
-                this.products = freshProducts.products;
-            } else {
-                console.warn('⚠️ Formato de respuesta inesperado:', freshProducts);
-                this.products = [];
-            }
-            
-            this.sortProductsById();
-            this._renderTableImmediate();
-            console.log('✅ Productos refrescados manualmente');
-
-            if (window.uiManager) {
-                window.uiManager.showAlert('Productos actualizados', 'success');
-            }
-        } catch (error) {
-            console.error('❌ Error en refresh manual:', error);
-            if (window.uiManager) {
-                window.uiManager.showAlert('Error al actualizar productos', 'danger');
-            }
-        }
-    },
-
-    // NUEVA FUNCIÓN: Verificar y corregir sincronización
-    async checkAndFixSync() {
-        console.log('🔍 Verificando sincronización...');
-
-        try {
-            const freshProducts = await window.api.getProducts();
-            
-            // VALIDACIÓN: Verificar formato
-            let validFreshProducts;
-            if (Array.isArray(freshProducts)) {
-                validFreshProducts = freshProducts;
-            } else if (freshProducts && Array.isArray(freshProducts.products)) {
-                validFreshProducts = freshProducts.products;
-            } else {
-                console.error('❌ Formato inválido de productos:', freshProducts);
-                return false;
-            }
-
-            // Comparar con cache local
-            if (validFreshProducts.length !== this.products.length) {
-                console.log('⚠️ Diferencia en cantidad detectada, sincronizando...');
-                this.products = validFreshProducts;
-                this.sortProductsById();
-                this._renderTableImmediate();
-                return true;
-            }
-
-            // Verificar actualizaciones
-            let hasChanges = false;
-            validFreshProducts.forEach(freshProduct => {
-                const localProduct = this.products.find(p => p._id === freshProduct._id);
-                if (localProduct && localProduct.lastUpdated !== freshProduct.lastUpdated) {
-                    console.log('⚠️ Producto desincronizado detectado:', freshProduct.name);
-                    hasChanges = true;
-                }
-            });
-
-            if (hasChanges) {
-                console.log('🔄 Sincronizando cambios detectados...');
-                this.products = validFreshProducts;
-                this.sortProductsById();
-                this._renderTableImmediate();
-                return true;
-            }
-
-            console.log('✅ Sincronización verificada - todo en orden');
-            return false;
-
-        } catch (error) {
-            console.error('❌ Error verificando sincronización:', error);
-            return false;
-        }
-    },
-
-    // NUEVA FUNCIÓN: Forzar actualización de estilos
     async _forceStyleRefresh() {
         return new Promise(resolve => {
             setTimeout(() => {
-                // Forzar re-aplicación de estilos de tabla
                 const table = document.getElementById('products-table');
                 if (table) {
                     table.classList.remove('table', 'table-base');
-                    // Forzar reflow
                     table.offsetHeight;
                     table.classList.add('table', 'table-base');
                 }
 
-                // Actualizar estilos del contenedor
-                const container = table?.closest('.table-container');
+                const container = table?.closest('.table-container, .table-responsive');
                 if (container) {
                     container.classList.remove('table-container-base');
                     container.offsetHeight;
                     container.classList.add('table-container-base');
                 }
 
-                // Llamar a uiManager si está disponible
                 if (window.uiManager && window.uiManager.forceStyleUpdate) {
                     window.uiManager.forceStyleUpdate();
                 }
@@ -1374,14 +1440,92 @@ export const productManager = {
         });
     },
 
-    // ===== MÉTODOS DE UTILIDAD Y DEBUG =====
-
+    // Métodos de utilidad y debug
     async refresh() {
-        console.log('🔄 Refrescando ProductManager...');
+        console.log('Refrescando ProductManager...');
         if (this.isInitialized) {
             await this.loadProducts();
         } else {
-            console.warn('⚠️ ProductManager no inicializado');
+            console.warn('ProductManager no inicializado');
+        }
+    },
+
+    async refreshProductsManually() {
+        console.log('Refrescando productos manualmente...');
+        try {
+            const freshProducts = await window.api.getProducts();
+
+            if (Array.isArray(freshProducts)) {
+                this.products = freshProducts;
+            } else if (freshProducts && Array.isArray(freshProducts.products)) {
+                this.products = freshProducts.products;
+            } else {
+                console.warn('Formato de respuesta inesperado:', freshProducts);
+                this.products = [];
+            }
+
+            this.sortProductsById();
+            this._renderTableImmediate();
+            console.log('Productos refrescados manualmente');
+
+            if (window.uiManager) {
+                window.uiManager.showAlert('Productos actualizados', 'success');
+            }
+        } catch (error) {
+            console.error('Error en refresh manual:', error);
+            if (window.uiManager) {
+                window.uiManager.showAlert('Error al actualizar productos', 'danger');
+            }
+        }
+    },
+
+    async checkAndFixSync() {
+        console.log('Verificando sincronización...');
+
+        try {
+            const freshProducts = await window.api.getProducts();
+
+            let validFreshProducts;
+            if (Array.isArray(freshProducts)) {
+                validFreshProducts = freshProducts;
+            } else if (freshProducts && Array.isArray(freshProducts.products)) {
+                validFreshProducts = freshProducts.products;
+            } else {
+                console.error('Formato inválido de productos:', freshProducts);
+                return false;
+            }
+
+            if (validFreshProducts.length !== this.products.length) {
+                console.log('Diferencia en cantidad detectada, sincronizando...');
+                this.products = validFreshProducts;
+                this.sortProductsById();
+                this._renderTableImmediate();
+                return true;
+            }
+
+            let hasChanges = false;
+            validFreshProducts.forEach(freshProduct => {
+                const localProduct = this.products.find(p => p._id === freshProduct._id);
+                if (localProduct && localProduct.lastUpdated !== freshProduct.lastUpdated) {
+                    console.log('Producto desincronizado detectado:', freshProduct.name);
+                    hasChanges = true;
+                }
+            });
+
+            if (hasChanges) {
+                console.log('Sincronizando cambios detectados...');
+                this.products = validFreshProducts;
+                this.sortProductsById();
+                this._renderTableImmediate();
+                return true;
+            }
+
+            console.log('Sincronización verificada - todo en orden');
+            return false;
+
+        } catch (error) {
+            console.error('Error verificando sincronización:', error);
+            return false;
         }
     },
 
@@ -1390,22 +1534,23 @@ export const productManager = {
             isInitialized: this.isInitialized,
             productsCount: Array.isArray(this.products) ? this.products.length : 0,
             hasModals: !!(this.productModal && this.stockModal),
-            isSubscribed: dataSync && typeof dataSync.isSubscribed === 'function' 
-                ? dataSync.isSubscribed(this.viewName, 'products') 
+            isSubscribed: dataSync && typeof dataSync.isSubscribed === 'function'
+                ? dataSync.isSubscribed(this.viewName, 'products')
                 : false,
-            initializationInProgress: !!this.initializationPromise
+            initializationInProgress: !!this.initializationPromise,
+            currentEditingProduct: !!this.currentEditingProduct
         };
     },
 
     forceRerender() {
-        console.log('🔄 Forzando re-renderizado...');
+        console.log('Forzando re-renderizado...');
         if (this.isInitialized) {
             this.renderProductsTable();
         }
     },
 
     validateDataIntegrity() {
-        console.log('🔍 Validando integridad de datos...');
+        console.log('Validando integridad de datos...');
 
         if (!Array.isArray(this.products)) {
             return { valid: false, issues: ['products no es un array'] };
@@ -1430,10 +1575,10 @@ export const productManager = {
         }
 
         if (issues.length > 0) {
-            console.warn('⚠️ Problemas de integridad encontrados:', issues);
+            console.warn('Problemas de integridad encontrados:', issues);
             return { valid: false, issues };
         } else {
-            console.log('✅ Integridad de datos válida');
+            console.log('Integridad de datos válida');
             return { valid: true, issues: [] };
         }
     },
@@ -1475,44 +1620,42 @@ export const productManager = {
             }
         };
 
-        console.log('📤 Datos exportados:', data);
+        console.log('Datos exportados:', data);
         return data;
     },
 
     async forceReinit() {
-        console.log('🔄 Forzando reinicialización...');
+        console.log('Forzando reinicialización...');
 
         try {
             this.destroy();
             await new Promise(resolve => setTimeout(resolve, 100));
             await this.init();
-            console.log('✅ Reinicialización forzada completada');
+            console.log('Reinicialización forzada completada');
         } catch (error) {
-            console.error('❌ Error en reinicialización forzada:', error);
+            console.error('Error en reinicialización forzada:', error);
             throw error;
         }
     },
 
-    // FUNCIÓN CORREGIDA: destroy con validaciones mejoradas
     destroy() {
-        console.log('🧹 Destruyendo ProductManager...');
+        console.log('Destruyendo ProductManager...');
 
         try {
-            // VALIDACIÓN mejorada para dataSync
             if (dataSync && typeof dataSync.isSubscribed === 'function' && typeof dataSync.unsubscribe === 'function') {
                 if (dataSync.isSubscribed(this.viewName, 'products')) {
                     dataSync.unsubscribe(this.viewName, 'products');
-                    console.log('✅ Desuscrito de dataSync');
+                    console.log('Desuscrito de dataSync');
                 }
             } else {
-                console.warn('⚠️ dataSync no disponible o métodos faltantes');
+                console.warn('dataSync no disponible o métodos faltantes');
             }
 
             if (this.productModal) {
                 try {
                     this.productModal.dispose();
                 } catch (e) {
-                    console.warn('⚠️ Error disposing productModal:', e.message);
+                    console.warn('Error disposing productModal:', e.message);
                 }
                 this.productModal = null;
             }
@@ -1521,7 +1664,7 @@ export const productManager = {
                 try {
                     this.stockModal.dispose();
                 } catch (e) {
-                    console.warn('⚠️ Error disposing stockModal:', e.message);
+                    console.warn('Error disposing stockModal:', e.message);
                 }
                 this.stockModal = null;
             }
@@ -1541,6 +1684,7 @@ export const productManager = {
             });
 
             this.products = [];
+            this.currentEditingProduct = null;
             this.isInitialized = false;
             this.initializationPromise = null;
 
@@ -1548,10 +1692,30 @@ export const productManager = {
                 delete window.productManager;
             }
 
-            console.log('✅ ProductManager destruido completamente');
+            console.log('ProductManager destruido completamente');
 
         } catch (error) {
-            console.error('❌ Error durante la destrucción:', error);
+            console.error('Error durante la destrucción:', error);
         }
+    },
+
+    debug() {
+        const debugInfo = {
+            status: this.getStatus(),
+            stats: this.getStats(),
+            integrity: this.validateDataIntegrity(),
+            sampleProducts: this.products.slice(0, 3),
+            methods: Object.getOwnPropertyNames(this).filter(prop => typeof this[prop] === 'function')
+        };
+
+        console.group('ProductManager Debug Info');
+        console.table(debugInfo.status);
+        console.table(debugInfo.stats);
+        console.log('Integridad:', debugInfo.integrity);
+        console.log('Productos muestra:', debugInfo.sampleProducts);
+        console.log('Métodos disponibles:', debugInfo.methods);
+        console.groupEnd();
+
+        return debugInfo;
     }
 };

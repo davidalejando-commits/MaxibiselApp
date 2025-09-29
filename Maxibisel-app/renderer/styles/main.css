@@ -131,7 +131,7 @@ body {
    ESTILOS ESPECÍFICOS - TABLA DE PRODUCTOS
    ======================================== */
 #products-view .table-container {
-    max-height: 480px;
+    max-height: 440px;
     overflow-y: auto;
     overflow-x: hidden;
     border: 1px solid #dee2e6;
