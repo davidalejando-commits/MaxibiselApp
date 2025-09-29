@@ -407,24 +407,42 @@ export const transactionManager = {
   async loadProducts() {
     try {
       console.log('Cargando productos...');
-      const productData = await window.api.getProducts();
+      const response = await window.api.getProducts();
       
-      // CORRECCIÓN: Verificar que los datos sean un array
-      if (Array.isArray(productData)) {
-        this.products = productData;
-      } else {
-        console.warn('Los productos no son un array:', productData);
+      console.log('📦 Respuesta completa del servidor:', response);
+      
+      // CORRECCIÓN PRINCIPAL: Extraer el array 'products' de la respuesta
+      if (response && response.success && Array.isArray(response.products)) {
+        this.products = response.products;
+        console.log(`✅ ${this.products.length} productos cargados correctamente`);
+      } 
+      // Alternativa: Si la respuesta ES directamente un array (por si acaso)
+      else if (Array.isArray(response)) {
+        this.products = response;
+        console.log(`✅ ${this.products.length} productos cargados (formato array directo)`);
+      } 
+      // Si no hay productos o formato incorrecto
+      else {
+        console.warn('⚠️ La respuesta no contiene productos válidos:', response);
         this.products = [];
       }
       
-      console.log(`Productos cargados: ${this.products.length}`);
-      this.sortProductsById();
-      this.extractUniqueNames();
-      this.populateReferenceSelect();
+      // Continuar con el procesamiento solo si hay productos
+      if (this.products.length > 0) {
+        this.sortProductsById();
+        this.extractUniqueNames();
+        this.populateReferenceSelect();
+      } else {
+        console.warn('⚠️ No hay productos para procesar');
+        this.uniqueNames = [];
+        this.populateReferenceSelect(); // Limpiar el select
+      }
+      
     } catch (error) {
-      console.error('Error al cargar productos:', error);
-      this.products = []; // Asegurar que products sea un array vacío en caso de error
-      uiManager.showAlert('Error al cargar los productos', 'danger');
+      console.error('💥 Error al cargar productos:', error);
+      this.products = [];
+      this.uniqueNames = [];
+      uiManager.showAlert('Error al cargar los productos: ' + error.message, 'danger');
     }
   },
 
@@ -453,21 +471,33 @@ export const transactionManager = {
   },
 
   extractUniqueNames() {
-    // CORRECCIÓN: Verificar que this.products sea un array
-    if (!Array.isArray(this.products)) {
-      this.uniqueNames = [];
-      return;
-    }
+  if (!Array.isArray(this.products)) {
+    console.warn('⚠️ this.products no es un array válido');
+    this.uniqueNames = [];
+    return;
+  }
 
-    const namesSet = new Set();
-    this.products.forEach(product => {
-      if (product && product.name && product.name.trim()) {
-        namesSet.add(product.name.trim());
+  const namesSet = new Set();
+  
+  this.products.forEach(product => {
+    // Validar que el producto y su name existen
+    if (product && product.name && typeof product.name === 'string') {
+      const trimmedName = product.name.trim();
+      if (trimmedName.length > 0) {
+        namesSet.add(trimmedName);
       }
-    });
-    this.uniqueNames = Array.from(namesSet).sort();
-    console.log(`Referencias únicas encontradas: ${this.uniqueNames.length}`);
-  },
+    }
+  });
+  
+  this.uniqueNames = Array.from(namesSet).sort();
+  
+  console.log(`📋 Referencias únicas encontradas: ${this.uniqueNames.length}`);
+  
+  // Mostrar las primeras 5 referencias para verificar
+  if (this.uniqueNames.length > 0) {
+    console.log('🔤 Primeras referencias:', this.uniqueNames.slice(0, 5));
+  }
+},
 
   populateReferenceSelect() {
     const referenciaSelect = document.getElementById('referencia');
