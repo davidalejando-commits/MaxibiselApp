@@ -7,6 +7,7 @@ import { salesManager } from './sales.js';
 import { transactionManager } from './transactions.js';
 import { uiManager } from './ui.js';
 import { userManager } from './users.js';
+import { syncCoordinator } from './sync-coordinator.js';
 
 // Variable global para gestores (útil para debugging)
 window.appManagers = {
@@ -53,6 +54,7 @@ async function initializeApp() {
         }
         
         dataSync.init();
+        syncCoordinator.init();
         
         // ✅ PASO 3: Configurar listeners globales
         await setupGlobalEventListeners();

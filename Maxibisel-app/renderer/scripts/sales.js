@@ -974,4 +974,109 @@ export const salesManager = {
     };
     this.resetSale();
   },
+  // ========== MÉTODOS DE SINCRONIZACIÓN ==========
+
+  setupSyncListeners() {
+    console.log('🔧 SalesManager: Configurando listeners de sincronización...');
+
+    // Suscribirse al coordinador
+    if (window.syncCoordinator && typeof window.syncCoordinator.subscribe === 'function') {
+      this.unsubscribeFromCoordinator = window.syncCoordinator.subscribe(
+        'salesManager',
+        (eventType, data) => this.handleSyncEvent(eventType, data)
+      );
+    }
+
+    // Escuchar actualizaciones de productos
+    eventManager.on('external:product-updated', (product) => {
+      this.handleProductUpdated(product);
+    });
+
+    eventManager.on('external:stock-updated', (data) => {
+      this.handleStockUpdated(data);
+    });
+  },
+
+  handleSyncEvent(eventType, data) {
+    console.log(`🔄 SalesManager recibió evento: ${eventType}`);
+
+    switch (eventType) {
+      case 'product:updated':
+        this.handleProductUpdated(data);
+        break;
+      case 'stock:updated':
+        this.handleStockUpdated(data);
+        break;
+      case 'force:refresh':
+        this.loadInitialData();
+        break;
+    }
+  },
+
+  handleProductUpdated(product) {
+    if (!product || !product._id) return;
+
+    console.log('🔄 SalesManager: Actualizando producto', product._id);
+
+    // Actualizar en availableLenses
+    if (Array.isArray(this.state.availableLenses)) {
+      const index = this.state.availableLenses.findIndex(p => p._id === product._id);
+      if (index !== -1) {
+        this.state.availableLenses[index] = product;
+        console.log('✅ Producto actualizado en availableLenses');
+      }
+    }
+
+    // Actualizar en selectedLenses si está ahí
+    if (Array.isArray(this.state.selectedLenses)) {
+      const selectedIndex = this.state.selectedLenses.findIndex(p => p._id === product._id);
+      if (selectedIndex !== -1) {
+        const currentQuantity = this.state.selectedLenses[selectedIndex].quantity;
+        this.state.selectedLenses[selectedIndex] = {
+          ...product,
+          quantity: currentQuantity
+        };
+        this.renderSelectedLenses();
+        console.log('✅ Producto actualizado en selectedLenses');
+      }
+    }
+
+    // Re-renderizar resultados de búsqueda si el producto está visible
+    if (Array.isArray(this.state.searchResults)) {
+      const searchIndex = this.state.searchResults.findIndex(p => p._id === product._id);
+      if (searchIndex !== -1) {
+        this.state.searchResults[searchIndex] = product;
+        this.renderSearchResults();
+      }
+    }
+  },
+
+  handleStockUpdated(data) {
+    console.log('📦 SalesManager: Stock actualizado', data.productId);
+
+    if (data.product) {
+      this.handleProductUpdated(data.product);
+    } else if (data.productId && data.newStock !== undefined) {
+      // Actualizar solo el stock
+      const updateStockInArray = (array) => {
+        const index = array.findIndex(p => p._id === data.productId);
+        if (index !== -1) {
+          array[index].stock = data.newStock;
+          if (data.stock_surtido !== undefined) {
+            array[index].stock_surtido = data.stock_surtido;
+          }
+          return true;
+        }
+        return false;
+      };
+
+      updateStockInArray(this.state.availableLenses);
+      if (updateStockInArray(this.state.selectedLenses)) {
+        this.renderSelectedLenses();
+      }
+      if (updateStockInArray(this.state.searchResults)) {
+        this.renderSearchResults();
+      }
+    }
+  }
 };

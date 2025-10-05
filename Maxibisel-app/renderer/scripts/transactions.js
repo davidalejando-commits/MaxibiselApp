@@ -1,5 +1,6 @@
 // Gestión de Surtido - VERSIÓN UNIFICADA CON EXPORTACIÓN CSV - CORREGIDA
 import { uiManager } from './ui.js';
+import { eventManager } from './eventManager.js';
 
 // Sistema unificado de exportación CSV integrado
 const unifiedExportSystem = {
@@ -402,6 +403,7 @@ export const transactionManager = {
 
     this.loadProducts();
     this.bindEvents();
+    this.setupSyncListeners();
   },
 
   async loadProducts() {
@@ -915,6 +917,68 @@ export const transactionManager = {
     } catch (error) {
       console.error('Error en exportación:', error);
       uiManager.showAlert(`Error al generar plantilla: ${error.message}`, 'danger');
+    }
+  },
+  // ========== SINCRONIZACIÓN ==========
+
+  setupSyncListeners() {
+    console.log('🔧 TransactionManager: Configurando sincronización...');
+
+    if (window.syncCoordinator && typeof window.syncCoordinator.subscribe === 'function') {
+      this.unsubscribeFromCoordinator = window.syncCoordinator.subscribe(
+        'transactionManager',
+        (eventType, data) => this.handleSyncEvent(eventType, data)
+      );
+    }
+
+    eventManager.on('external:product-updated', (product) => {
+      this.handleProductUpdated(product);
+    });
+
+    eventManager.on('external:stock-updated', (data) => {
+      this.handleStockUpdated(data);
+    });
+  },
+
+  handleSyncEvent(eventType, data) {
+    console.log(`🔄 TransactionManager recibió evento: ${eventType}`);
+
+    switch (eventType) {
+      case 'product:updated':
+        this.handleProductUpdated(data);
+        break;
+      case 'stock:updated':
+        this.handleStockUpdated(data);
+        break;
+      case 'force:refresh':
+        this.loadProducts();
+        break;
+    }
+  },
+
+  handleProductUpdated(product) {
+    if (!product || !product._id) return;
+
+    console.log('🔄 TransactionManager: Actualizando producto', product._id);
+
+    if (!Array.isArray(this.products)) return;
+
+    const index = this.products.findIndex(p => p._id === product._id);
+    if (index !== -1) {
+      this.products[index] = product;
+
+      // Si estamos viendo esta referencia, re-renderizar
+      if (this.currentReference === product.name) {
+        this.loadReferencia(this.currentReference);
+      }
+    }
+  },
+
+  handleStockUpdated(data) {
+    console.log('📦 TransactionManager: Stock actualizado', data.productId);
+
+    if (data.product) {
+      this.handleProductUpdated(data.product);
     }
   }
 };

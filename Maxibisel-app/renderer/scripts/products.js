@@ -76,16 +76,36 @@ export const productManager = {
     },
 
     _setupTableScrolling() {
-        const tableContainer = document.querySelector('.table-responsive, .table-container');
-        if (tableContainer) {
-            const headerHeight = document.querySelector('nav')?.offsetHeight || 60;
-            const availableHeight = window.innerHeight - headerHeight - 100;
+        const productsView = document.querySelector('#products-view');
+        const card = document.querySelector('#products-view .card');
+        const tableContainer = document.querySelector('#products-view .table-container');
 
-            tableContainer.style.maxHeight = `${availableHeight}px`;
-            tableContainer.style.overflowY = 'auto';
-            tableContainer.style.border = '1px solid #dee2e6';
-            tableContainer.style.borderRadius = '0.375rem';
+        if (tableContainer && card) {
+            // Calcular altura disponible
+            const navbar = document.querySelector('nav');
+            const navbarHeight = navbar ? navbar.offsetHeight : 60;
+            const marginTop = 32; // mt-4 de Bootstrap (1rem * 16px)
+            const headerSection = document.querySelector('#products-view .d-flex.justify-content-between');
+            const headerHeight = headerSection ? headerSection.offsetHeight : 60;
+            const cardPadding = 48; // padding del card-body
 
+            // Altura total de la card
+            const availableHeight = window.innerHeight - navbarHeight - marginTop - 40;
+            card.style.height = `${availableHeight}px`;
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.overflow = 'hidden';
+
+            // Card-body flex
+            const cardBody = card.querySelector('.card-body');
+            if (cardBody) {
+                cardBody.style.flex = '1';
+                cardBody.style.display = 'flex';
+                cardBody.style.flexDirection = 'column';
+                cardBody.style.overflow = 'hidden';
+            }
+
+            // Solo configurar el header sticky de la tabla
             const table = tableContainer.querySelector('table');
             if (table) {
                 table.style.marginBottom = '0';
@@ -99,12 +119,8 @@ export const productManager = {
                 }
             }
 
-            console.log('Scroll de tabla configurado');
+            console.log('Scroll de tabla configurado con altura:', availableHeight);
         }
-
-        window.addEventListener('resize', () => {
-            this._setupTableScrolling();
-        });
     },
 
     setupAuthEventListeners() {
@@ -248,6 +264,7 @@ export const productManager = {
         });
 
         this._setupStockEvents();
+        this.setupSyncListeners();
     },
 
     _setupStockEvents() {
@@ -1717,5 +1734,97 @@ export const productManager = {
         console.groupEnd();
 
         return debugInfo;
+    },
+    // ========== SINCRONIZACIÓN MEJORADA ==========
+
+    setupSyncListeners() {
+        console.log('🔧 Configurando listeners de sincronización...');
+
+        // Suscribirse al coordinador de sincronización
+        if (window.syncCoordinator && typeof window.syncCoordinator.subscribe === 'function') {
+            this.unsubscribeFromCoordinator = window.syncCoordinator.subscribe(
+                'productManager',
+                (eventType, data) => this.handleSyncEvent(eventType, data)
+            );
+            console.log('✅ Suscrito a syncCoordinator');
+        }
+
+        // Escuchar eventos externos
+        eventManager.on('external:product-updated', (product) => {
+            console.log('🌐 ProductManager: Actualización externa recibida', product._id);
+            this.handleExternalProductUpdate(product);
+        });
+
+        eventManager.on('external:stock-updated', (data) => {
+            console.log('🌐 ProductManager: Stock externo actualizado', data.productId);
+            this.handleExternalStockUpdate(data);
+        });
+
+        eventManager.on('sync:product-synced', (syncData) => {
+            console.log('✅ ProductManager: Producto sincronizado', syncData.productId);
+            this._highlightUpdatedProduct(syncData.productId);
+        });
+    },
+
+    handleSyncEvent(eventType, data) {
+        console.log(`🔄 ProductManager recibió evento de sync: ${eventType}`);
+
+        switch (eventType) {
+            case 'product:updated':
+                this._handleProductUpdatedImmediate(data);
+                break;
+            case 'stock:updated':
+                this._handleStockUpdatedImmediate(data);
+                break;
+            case 'force:refresh':
+                this.loadProducts();
+                break;
+        }
+    },
+
+    handleExternalProductUpdate(product) {
+        if (!product || !product._id) return;
+
+        console.log('🔄 Actualizando producto desde fuente externa:', product._id);
+
+        // Actualizar en cache local
+        const index = this.products.findIndex(p => p._id === product._id);
+        if (index !== -1) {
+            this.products[index] = {
+                ...this.products[index],
+                ...product
+            };
+        } else {
+            this.products.push(product);
+            this.sortProductsById();
+        }
+
+        // Re-renderizar tabla
+        this._renderTableImmediate();
+
+        // Destacar producto actualizado
+        this._highlightUpdatedProduct(product._id);
+    },
+
+    handleExternalStockUpdate(data) {
+        if (!data || !data.productId) return;
+
+        console.log('🔄 Actualizando stock desde fuente externa:', data.productId);
+
+        // Si tenemos el producto completo, usarlo
+        if (data.product) {
+            this.handleExternalProductUpdate(data.product);
+            return;
+        }
+
+        // Sino, actualizar solo el stock
+        const index = this.products.findIndex(p => p._id === data.productId);
+        if (index !== -1) {
+            this.products[index].stock = data.newStock;
+            this.products[index].stock_surtido = data.product?.stock_surtido || this.products[index].stock_surtido;
+            this._renderTableImmediate();
+            this._highlightUpdatedProduct(data.productId);
+        }
+    
     }
 };
