@@ -1,4 +1,4 @@
-// Gestión de productos - Versión corregida completa sin precio
+// Gestión de productos - Versión corregida completa con modal personalizado
 import { dataSync } from './dataSync.js';
 import { eventManager } from './eventManager.js';
 import { uiManager } from './ui.js';
@@ -7,10 +7,13 @@ export const productManager = {
     products: [],
     productModal: null,
     stockModal: null,
+    deleteModal: null,
     viewName: 'productManager',
     isInitialized: false,
     initializationPromise: null,
     currentEditingProduct: null,
+    productToDeleteId: null,
+    productToDeleteName: null,
 
     async init() {
         if (this.initializationPromise) {
@@ -81,22 +84,19 @@ export const productManager = {
         const tableContainer = document.querySelector('#products-view .table-container');
 
         if (tableContainer && card) {
-            // Calcular altura disponible
             const navbar = document.querySelector('nav');
             const navbarHeight = navbar ? navbar.offsetHeight : 60;
-            const marginTop = 32; // mt-4 de Bootstrap (1rem * 16px)
+            const marginTop = 32;
             const headerSection = document.querySelector('#products-view .d-flex.justify-content-between');
             const headerHeight = headerSection ? headerSection.offsetHeight : 60;
-            const cardPadding = 48; // padding del card-body
+            const cardPadding = 48;
 
-            // Altura total de la card
             const availableHeight = window.innerHeight - navbarHeight - marginTop - 40;
             card.style.height = `${availableHeight}px`;
             card.style.display = 'flex';
             card.style.flexDirection = 'column';
             card.style.overflow = 'hidden';
 
-            // Card-body flex
             const cardBody = card.querySelector('.card-body');
             if (cardBody) {
                 cardBody.style.flex = '1';
@@ -105,7 +105,6 @@ export const productManager = {
                 cardBody.style.overflow = 'hidden';
             }
 
-            // Solo configurar el header sticky de la tabla
             const table = tableContainer.querySelector('table');
             if (table) {
                 table.style.marginBottom = '0';
@@ -165,7 +164,7 @@ export const productManager = {
     },
 
     async _waitForDOMElements(maxWait = 10000) {
-        const requiredElements = ['products-table-body', 'product-modal', 'stock-modal'];
+        const requiredElements = ['products-table-body', 'product-modal', 'stock-modal', 'confirm-delete-modal'];
         const startTime = Date.now();
         console.log('Esperando elementos DOM...', requiredElements);
 
@@ -234,6 +233,11 @@ export const productManager = {
                 this.stockModal = new bootstrap.Modal(stockModalEl);
                 console.log('Modal de stock inicializado');
             }
+
+            // No necesitamos inicializar el modal de eliminación con Bootstrap
+            // ya que lo manejamos manualmente con display: flex/none
+            console.log('Modal de eliminación listo para uso');
+
         } catch (error) {
             console.error('Error inicializando modales:', error);
         }
@@ -250,7 +254,9 @@ export const productManager = {
             { id: 'generate-barcode-btn', event: 'click', handler: this.generateBarcode.bind(this) },
             { id: 'barcode-scan-btn', event: 'click', handler: this.showBarcodeScannerModal.bind(this) },
             { id: 'manual-barcode-btn', event: 'click', handler: this.searchByManualBarcode.bind(this) },
-            { id: 'product-search', event: 'input', handler: this.filterProducts.bind(this) }
+            { id: 'product-search', event: 'input', handler: this.filterProducts.bind(this) },
+            { id: 'confirm-delete-btn', event: 'click', handler: this.executeDelete.bind(this) },
+            { id: 'cancel-delete-btn', event: 'click', handler: this.hideDeleteModal.bind(this) }
         ];
 
         eventBindings.forEach(({ id, event, handler }) => {
@@ -905,7 +911,6 @@ export const productManager = {
                 stock: parseInt(document.getElementById('product-stock')?.value) || 0
             };
 
-            // Validaciones básicas
             if (!productData.name) {
                 if (uiManager && uiManager.showAlert) {
                     uiManager.showAlert('El nombre del producto es obligatorio', 'warning');
@@ -924,6 +929,16 @@ export const productManager = {
                 return;
             }
 
+            // Validación de longitud del código de barras
+            if (productData.barcode.length < 8) {
+                if (uiManager && uiManager.showAlert) {
+                    uiManager.showAlert('El código de barras debe tener al menos 8 dígitos', 'warning');
+                } else {
+                    alert('El código de barras debe tener al menos 8 dígitos');
+                }
+                return;
+            }
+
             console.log('Datos a guardar:', { productId, productData });
 
             const saveBtn = document.getElementById('save-product-btn');
@@ -936,18 +951,14 @@ export const productManager = {
             let finalProduct;
 
             if (productId) {
-                // EDICIÓN
                 console.log('Editando producto existente:', productId);
 
-                // Si el stock cambió, manejar por separado
                 if (this.currentEditingProduct && this.currentEditingProduct.stock !== productData.stock) {
                     console.log('Stock cambió, actualizando por separado...');
 
-                    // Actualizar datos sin stock primero
                     const { stock, ...dataWithoutStock } = productData;
                     const updateResponse = await window.api.updateProduct(productId, dataWithoutStock);
 
-                    // Luego actualizar stock
                     const stockData = {
                         stock: productData.stock,
                         stock_surtido: this.currentEditingProduct.stock_surtido || 0
@@ -955,7 +966,6 @@ export const productManager = {
                     const stockResponse = await window.api.updateProductStock(productId, stockData);
                     finalProduct = stockResponse.product || stockResponse;
                 } else {
-                    // Solo actualizar datos del producto
                     response = await window.api.updateProduct(productId, productData);
                     finalProduct = response.product || response;
                 }
@@ -963,20 +973,23 @@ export const productManager = {
                 console.log('Producto actualizado:', finalProduct);
 
             } else {
-                // CREACIÓN
                 console.log('Creando nuevo producto...');
                 response = await window.api.createProduct(productData);
+
+                // Validar respuesta
+                if (!response || !response.success) {
+                    throw new Error(response?.message || 'Error al crear producto');
+                }
+
                 finalProduct = response.product || response;
                 console.log('Producto creado:', finalProduct);
             }
 
-            // VALIDACIÓN: Verificar respuesta válida
             if (!finalProduct || !finalProduct._id) {
                 console.error('Respuesta inválida del servidor:', response);
                 throw new Error('Respuesta del servidor inválida');
             }
 
-            // SINCRONIZACIÓN INMEDIATA
             if (productId) {
                 await this._syncProductUpdateImmediate(finalProduct, productId);
                 if (uiManager && uiManager.showAlert) {
@@ -989,31 +1002,33 @@ export const productManager = {
                 }
             }
 
-            // Cerrar modal
             if (this.productModal) {
                 this.productModal.hide();
             }
 
-            // Limpiar datos de edición
             this.currentEditingProduct = null;
 
-            // Destacar producto después de cerrar modal
             setTimeout(() => {
                 this._highlightUpdatedProduct(finalProduct._id);
             }, 300);
 
         } catch (error) {
-            console.error('Error al guardar producto:', error);
+            console.error('Error completo al guardar producto:', error);
 
             let errorMessage = 'Error al guardar el producto';
-            if (error.message.includes('duplicate') || error.message.includes('unique')) {
+
+            if (error.message.includes('código de barras es obligatorio')) {
+                errorMessage = 'El código de barras es obligatorio';
+            } else if (error.message.includes('duplicate') ||
+                error.message.includes('unique') ||
+                error.message.includes('ya existe')) {
                 errorMessage = 'Ya existe un producto con ese código de barras';
             } else if (error.message.includes('validation')) {
                 errorMessage = 'Datos del producto no válidos';
             } else if (error.message.includes('network') || error.message.includes('fetch')) {
                 errorMessage = 'Error de conexión. Verifique su conexión a internet';
-            } else {
-                errorMessage = `Error: ${error.message}`;
+            } else if (error.message) {
+                errorMessage = error.message;
             }
 
             if (uiManager && uiManager.showAlert) {
@@ -1062,7 +1077,6 @@ export const productManager = {
                 saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Actualizando...';
             }
 
-            // Obtener producto actual para mantener stock_surtido
             let currentProduct = this.products.find(p => p._id === productId);
             if (!currentProduct) {
                 console.log('Producto no en cache, obteniendo del servidor...');
@@ -1081,7 +1095,6 @@ export const productManager = {
 
             console.log('Actualizando stock:', { productId, stockData });
 
-            // Actualizar en backend
             const response = await window.api.updateProductStock(productId, stockData);
             const updatedProduct = response.product || response;
 
@@ -1092,19 +1105,16 @@ export const productManager = {
 
             console.log('Stock actualizado en servidor:', updatedProduct);
 
-            // SINCRONIZACIÓN INMEDIATA
             await this._syncStockUpdateImmediate(updatedProduct, productId);
 
             if (uiManager && uiManager.showAlert) {
                 uiManager.showAlert(`Stock actualizado correctamente: ${updatedProduct.stock} unidades`, 'success');
             }
 
-            // Cerrar modal
             if (this.stockModal) {
                 this.stockModal.hide();
             }
 
-            // Destacar producto actualizado
             setTimeout(() => {
                 this._highlightUpdatedProduct(productId);
             }, 300);
@@ -1133,7 +1143,6 @@ export const productManager = {
         }
     },
 
-    // Funciones de sincronización inmediata
     async _syncProductUpdateImmediate(updatedProduct, productId) {
         console.log('Sincronizando actualización inmediatamente...', updatedProduct);
 
@@ -1148,7 +1157,6 @@ export const productManager = {
                 this.products = [];
             }
 
-            // Actualizar en cache local
             const index = this.products.findIndex(p => p._id === productId);
             if (index !== -1) {
                 this.products[index] = {
@@ -1163,10 +1171,8 @@ export const productManager = {
                 this.sortProductsById();
             }
 
-            // Re-renderizar tabla inmediatamente
             this._renderTableImmediate();
 
-            // Notificar evento
             if (eventManager && typeof eventManager.emit === 'function') {
                 eventManager.emit('data:product:updated', updatedProduct);
             }
@@ -1194,7 +1200,6 @@ export const productManager = {
                 this.products = [];
             }
 
-            // Verificar si ya existe
             const exists = this.products.some(p => p._id === newProduct._id);
             if (!exists) {
                 this.products.push(newProduct);
@@ -1206,10 +1211,8 @@ export const productManager = {
                 this.products[index] = newProduct;
             }
 
-            // Re-renderizar tabla inmediatamente
             this._renderTableImmediate();
 
-            // Notificar evento
             if (eventManager && typeof eventManager.emit === 'function') {
                 eventManager.emit('data:product:created', newProduct);
             }
@@ -1237,7 +1240,6 @@ export const productManager = {
                 this.products = [];
             }
 
-            // Actualizar en cache local
             const index = this.products.findIndex(p => p._id === productId);
             if (index !== -1) {
                 this.products[index] = {
@@ -1254,10 +1256,8 @@ export const productManager = {
                 this.sortProductsById();
             }
 
-            // Re-renderizar tabla inmediatamente
             this._renderTableImmediate();
 
-            // Emitir evento
             if (eventManager && typeof eventManager.emit === 'function') {
                 eventManager.emit('data:product:stock-updated', {
                     productId,
@@ -1275,6 +1275,8 @@ export const productManager = {
         }
     },
 
+    // ========== MÉTODOS DE ELIMINACIÓN CON MODAL PERSONALIZADO ==========
+
     async deleteProduct(productId) {
         if (!Array.isArray(this.products)) {
             console.warn('this.products no es un array, inicializando...');
@@ -1284,49 +1286,82 @@ export const productManager = {
         const productToDelete = this.products.find(p => p._id === productId);
         const productName = productToDelete ? productToDelete.name : 'el producto';
 
-        const confirmMessage = `¿Está seguro de eliminar "${productName}"? Esta acción no se puede deshacer.`;
+        this.productToDeleteId = productId;
+        this.productToDeleteName = productName;
 
-        if (confirm(confirmMessage)) {
-            try {
-                console.log('Eliminando producto:', productId);
+        this.showDeleteModal(productName);
+    },
 
-                await window.api.deleteProduct(productId);
+    showDeleteModal(productName) {
+        const modal = document.getElementById('confirm-delete-modal');
+        const messageElement = document.getElementById('delete-modal-message');
 
-                // Sincronización inmediata
-                const initialLength = this.products.length;
-                this.products = this.products.filter(p => p._id !== productId);
+        if (messageElement) {
+            messageElement.textContent = `¿Está seguro de eliminar "${productName}"? Esta acción no se puede deshacer.`;
+        }
 
-                if (this.products.length < initialLength) {
-                    console.log('Producto eliminado del cache local inmediatamente');
-                    this._renderTableImmediate();
-                }
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    },
 
-                if (eventManager && typeof eventManager.emit === 'function') {
-                    eventManager.emit('data:product:deleted', productId);
-                }
+    hideDeleteModal() {
+        const modal = document.getElementById('confirm-delete-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        this.productToDeleteId = null;
+        this.productToDeleteName = null;
+    },
 
-                if (uiManager && uiManager.showAlert) {
-                    uiManager.showAlert(`${productName} eliminado correctamente`, 'success');
-                }
+    async executeDelete() {
+        if (!this.productToDeleteId) {
+            console.warn('No hay producto para eliminar');
+            this.hideDeleteModal();
+            return;
+        }
 
-                console.log('Producto eliminado y sincronizado:', productId);
+        try {
+            console.log('Eliminando producto:', this.productToDeleteId);
 
-            } catch (error) {
-                console.error('Error al eliminar producto:', error);
+            await window.api.deleteProduct(this.productToDeleteId);
 
-                let errorMessage = 'Error al eliminar el producto';
-                if (error.message.includes('network') || error.message.includes('fetch')) {
-                    errorMessage = 'Error de conexión. Verifique su conexión a internet';
-                } else {
-                    errorMessage = `Error: ${error.message}`;
-                }
+            const initialLength = this.products.length;
+            this.products = this.products.filter(p => p._id !== this.productToDeleteId);
 
-                if (uiManager && uiManager.showAlert) {
-                    uiManager.showAlert(errorMessage, 'danger');
-                } else {
-                    alert(errorMessage);
-                }
+            if (this.products.length < initialLength) {
+                console.log('Producto eliminado del cache local inmediatamente');
+                this._renderTableImmediate();
             }
+
+            if (eventManager && typeof eventManager.emit === 'function') {
+                eventManager.emit('data:product:deleted', this.productToDeleteId);
+            }
+
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert(`${this.productToDeleteName} eliminado correctamente`, 'success');
+            }
+
+            this.hideDeleteModal();
+            console.log('Producto eliminado y sincronizado:', this.productToDeleteId);
+
+        } catch (error) {
+            console.error('Error al eliminar producto:', error);
+
+            let errorMessage = 'Error al eliminar el producto';
+            if (error.message.includes('network') || error.message.includes('fetch')) {
+                errorMessage = 'Error de conexión. Verifique su conexión a internet';
+            } else {
+                errorMessage = `Error: ${error.message}`;
+            }
+
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert(errorMessage, 'danger');
+            } else {
+                alert(errorMessage);
+            }
+
+            this.hideDeleteModal();
         }
     },
 
@@ -1346,7 +1381,6 @@ export const productManager = {
         }
     },
 
-    // Funciones auxiliares
     generateBarcode() {
         const prefix = '200';
         const middleDigits = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
@@ -1457,7 +1491,6 @@ export const productManager = {
         });
     },
 
-    // Métodos de utilidad y debug
     async refresh() {
         console.log('Refrescando ProductManager...');
         if (this.isInitialized) {
@@ -1689,7 +1722,7 @@ export const productManager = {
             const elementIds = [
                 'add-product-btn', 'save-product-btn', 'save-stock-btn',
                 'products-table-body', 'generate-barcode-btn', 'barcode-scan-btn',
-                'manual-barcode-btn', 'product-search'
+                'manual-barcode-btn', 'product-search', 'confirm-delete-btn', 'cancel-delete-btn'
             ];
 
             elementIds.forEach(id => {
@@ -1702,6 +1735,8 @@ export const productManager = {
 
             this.products = [];
             this.currentEditingProduct = null;
+            this.productToDeleteId = null;
+            this.productToDeleteName = null;
             this.isInitialized = false;
             this.initializationPromise = null;
 
@@ -1735,12 +1770,10 @@ export const productManager = {
 
         return debugInfo;
     },
-    // ========== SINCRONIZACIÓN MEJORADA ==========
 
     setupSyncListeners() {
         console.log('🔧 Configurando listeners de sincronización...');
 
-        // Suscribirse al coordinador de sincronización
         if (window.syncCoordinator && typeof window.syncCoordinator.subscribe === 'function') {
             this.unsubscribeFromCoordinator = window.syncCoordinator.subscribe(
                 'productManager',
@@ -1749,7 +1782,6 @@ export const productManager = {
             console.log('✅ Suscrito a syncCoordinator');
         }
 
-        // Escuchar eventos externos
         eventManager.on('external:product-updated', (product) => {
             console.log('🌐 ProductManager: Actualización externa recibida', product._id);
             this.handleExternalProductUpdate(product);
@@ -1787,22 +1819,20 @@ export const productManager = {
 
         console.log('🔄 Actualizando producto desde fuente externa:', product._id);
 
-        // Actualizar en cache local
-        const index = this.products.findIndex(p => p._id === product._id);
-        if (index !== -1) {
-            this.products[index] = {
-                ...this.products[index],
-                ...product
-            };
-        } else {
-            this.products.push(product);
-            this.sortProductsById();
+        if (Array.isArray(this.products)) {
+            const index = this.products.findIndex(p => p._id === product._id);
+            if (index !== -1) {
+                this.products[index] = {
+                    ...this.products[index],
+                    ...product
+                };
+            } else {
+                this.products.push(product);
+                this.sortProductsById();
+            }
         }
 
-        // Re-renderizar tabla
         this._renderTableImmediate();
-
-        // Destacar producto actualizado
         this._highlightUpdatedProduct(product._id);
     },
 
@@ -1811,20 +1841,19 @@ export const productManager = {
 
         console.log('🔄 Actualizando stock desde fuente externa:', data.productId);
 
-        // Si tenemos el producto completo, usarlo
         if (data.product) {
             this.handleExternalProductUpdate(data.product);
             return;
         }
 
-        // Sino, actualizar solo el stock
-        const index = this.products.findIndex(p => p._id === data.productId);
-        if (index !== -1) {
-            this.products[index].stock = data.newStock;
-            this.products[index].stock_surtido = data.product?.stock_surtido || this.products[index].stock_surtido;
-            this._renderTableImmediate();
-            this._highlightUpdatedProduct(data.productId);
+        if (data.productId && data.newStock !== undefined) {
+            const index = this.products.findIndex(p => p._id === data.productId);
+            if (index !== -1) {
+                this.products[index].stock = data.newStock;
+                this.products[index].stock_surtido = data.product?.stock_surtido || this.products[index].stock_surtido;
+                this._renderTableImmediate();
+                this._highlightUpdatedProduct(data.productId);
+            }
         }
-    
     }
 };

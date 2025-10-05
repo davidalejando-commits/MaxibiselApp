@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Sistema de Inventario Óptico",
   "main": "main.js",
-  "author": "David Delgado",
+  "author": "MaxiBisel",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -46,14 +46,16 @@
       }
     ],
     "asar": false,
-    "win": {
+    "win": {                                    
       "icon": "renderer/assets/LogoMMini.ico",
       "target": [
         {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
+          "target": "nsis",      
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",  
+          "arch": ["x64"]
         }
       ]
     },

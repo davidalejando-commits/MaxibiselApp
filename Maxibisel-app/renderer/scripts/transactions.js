@@ -2,14 +2,26 @@
 import { uiManager } from './ui.js';
 import { eventManager } from './eventManager.js';
 
+const loadXLSX = async () => {
+  if (typeof XLSX === 'undefined') {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      script.onload = () => resolve(window.XLSX);
+      script.onerror = () => reject(new Error('No se pudo cargar SheetJS'));
+      document.head.appendChild(script);
+    });
+  }
+  return window.XLSX;
+};
 // Sistema unificado de exportación CSV integrado
 const unifiedExportSystem = {
-
+  // Verificar que XLSX esté disponible
   // Rangos estándar para la industria óptica
   sphereRanges: {
     positive: [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50, 2.75, 3.00, 3.25, 3.50, 3.75, 4.00, 4.25, 4.50, 4.75, 5.00, 5.25, 5.50, 5.75, 6.00],
     negative: ['N', -0.25, -0.50, -0.75, -1.00, -1.25, -1.50, -1.75, -2.00, -2.25, -2.50, -2.75, -3.00, -3.25, -3.50, -3.75, -4.00, -4.25, -4.50, -4.75, -5.00, -5.25, -5.50, -5.75, -6.00],
-    bifocal: ['N', 0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50, 2.75, 3.00]
+    bifocal: ['N', 0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50, 2.75, 3.00,]
   },
 
   cylinderRange: ['N', -0.25, -0.50, -0.75, -1.00, -1.25, -1.50, -1.75, -2.00, -2.25, -2.50, -2.75, -3.00, -3.25, -3.50, -3.75, -4.00],
@@ -34,41 +46,61 @@ const unifiedExportSystem = {
     console.log('Analizando primer producto para detectar tipo:', firstProduct);
 
     const addition = this.normalizeValue(firstProduct.addition);
+    const cylinder = this.normalizeValue(firstProduct.cylinder);
 
-    console.log('Adición normalizada:', addition);
+    console.log('Valores detectados:', { addition, cylinder });
 
-    // Si tiene adición válida (no es 'N' ni 0), determinar si es bifocal o progresivo
-    if (addition !== 'N' && addition > 0) {
-      // Verificar en el código de barras o nombre si indica lateralidad
-      const productInfo = (firstProduct.name || '').toLowerCase() + ' ' + (firstProduct.barcode || '').toLowerCase();
+    // MONOFOCAL: Tiene esfera y/o cilindro, pero NO tiene adición
+    if (addition === 'N' || addition === 0) {
+      console.log('Detectado: MONOFOCAL (sin adición)');
+      return 'monofocal';
+    }
 
-      // Buscar indicadores de lateralidad (progresivos)
-      if (productInfo.includes('od') || productInfo.includes('os') ||
-        productInfo.includes('derech') || productInfo.includes('izquier') ||
-        productInfo.includes('right') || productInfo.includes('left') ||
-        productInfo.includes('r') || productInfo.includes('l')) {
-        console.log('Detectado: PROGRESIVO');
+    // Tiene adición válida, revisar si es bifocal o progresivo
+    if (addition > 0) {
+      // Verificar lateralidad en el código de barras o adición misma
+      const barcodeText = (firstProduct.barcode || '').toUpperCase();
+      const additionText = (firstProduct.addition || '').toUpperCase();
+
+      // Los progresivos típicamente tienen R o L al final de la adición
+      const hasLaterality =
+        additionText.endsWith('R') ||
+        additionText.endsWith('L') ||
+        barcodeText.includes(' R') ||
+        barcodeText.includes(' L') ||
+        barcodeText.includes('OD') ||
+        barcodeText.includes('OS');
+
+      if (hasLaterality) {
+        console.log('Detectado: PROGRESIVO (con lateralidad R/L)');
         return 'progressive';
       } else {
-        console.log('Detectado: BIFOCAL');
+        console.log('Detectado: BIFOCAL (con adición sin lateralidad)');
         return 'bifocal';
       }
     }
 
-    console.log('Detectado: MONOFOCAL');
+    // Por defecto, si no se determina, es monofocal
+    console.log('Detectado: MONOFOCAL (por defecto)');
     return 'monofocal';
-  },
+  }, 
 
   // Extraer lateralidad del producto (para progresivos)
   extractEye(product) {
-    const text = ((product.name || '') + ' ' + (product.barcode || '')).toLowerCase();
+    // Revisar primero en la adición misma
+    const additionText = (product.addition || '').toUpperCase().trim();
 
-    if (text.includes('od') || text.includes('derech') || text.includes('right')) return 'R';
-    if (text.includes('os') || text.includes('izquier') || text.includes('left')) return 'L';
+    if (additionText.endsWith('R') || additionText.endsWith(' R')) return 'R';
+    if (additionText.endsWith('L') || additionText.endsWith(' L')) return 'L';
+
+    // Si no está en adición, revisar código de barras
+    const barcodeText = (product.barcode || '').toUpperCase();
+
+    if (barcodeText.includes('OD') || barcodeText.includes(' R')) return 'R';
+    if (barcodeText.includes('OS') || barcodeText.includes(' L')) return 'L';
 
     return 'AMBOS';
-  },
-
+  }, 
   // Agrupar productos según tipo de lente
   groupProducts(products, lensType) {
     const groups = {};
@@ -122,25 +154,31 @@ const unifiedExportSystem = {
   createMonofocalTemplate(groupedData, referencia) {
     const csvLines = [];
 
-    // Crear tabla para esferas positivas
-    csvLines.push([`${referencia} - MONOFOCALES - ESFERAS POSITIVAS`]);
+    // ==================== TABLA DE ESFERAS POSITIVAS ====================
+    csvLines.push([`INVENTARIO: ${referencia}`]);
+    csvLines.push([]);
+    csvLines.push(['POSITIVO']);
     csvLines.push([]);
 
-    // Encabezados para positivas
-    const positiveHeader = ['ESF\\CIL'];
+    // Encabezado: ESF \ CIL
+    const positiveHeader = ['ESF \\ CIL'];
     this.cylinderRange.forEach(cyl => {
-      positiveHeader.push(cyl === 'N' ? 'N' : (cyl >= 0 ? `+${cyl.toFixed(2)}` : cyl.toFixed(2)));
+      if (cyl === 'N') {
+        positiveHeader.push('N');
+      } else {
+        positiveHeader.push(cyl.toFixed(2));
+      }
     });
     csvLines.push(positiveHeader);
 
     // Filas de esferas positivas
     this.sphereRanges.positive.forEach(sph => {
-      const row = [sph >= 0 ? `+${sph.toFixed(2)}` : sph.toFixed(2)];
+      const row = [`+${sph.toFixed(2)}`];
 
       this.cylinderRange.forEach(cyl => {
         const key = `${sph}_${cyl}`;
         const stock = groupedData[key] ? groupedData[key].stock_surtido : 0;
-        row.push(stock > 0 ? stock : '');
+        row.push(stock || '');
       });
 
       csvLines.push(row);
@@ -148,109 +186,201 @@ const unifiedExportSystem = {
 
     csvLines.push([]);
     csvLines.push([]);
-
-    // Crear tabla para esferas negativas
-    csvLines.push([`${referencia} - MONOFOCALES - ESFERAS NEGATIVAS`]);
     csvLines.push([]);
 
-    // Encabezados para negativas
-    const negativeHeader = ['ESF\\CIL'];
+    // ==================== TABLA DE ESFERAS NEGATIVAS ====================
+    csvLines.push(['NEGATIVO']);
+    csvLines.push([]);
+
+    // Encabezado
+    const negativeHeader = ['ESF \\ CIL'];
     this.cylinderRange.forEach(cyl => {
-      negativeHeader.push(cyl === 'N' ? 'N' : (cyl >= 0 ? `+${cyl.toFixed(2)}` : cyl.toFixed(2)));
+      if (cyl === 'N') {
+        negativeHeader.push('N');
+      } else {
+        negativeHeader.push(cyl.toFixed(2));
+      }
     });
     csvLines.push(negativeHeader);
 
-    // Filas de esferas negativas
+    // Filas de esferas negativas (incluyendo N/PLANO)
     this.sphereRanges.negative.forEach(sph => {
-      const row = [sph === 'N' ? 'N' : (sph >= 0 ? `+${sph.toFixed(2)}` : sph.toFixed(2))];
+      const row = [sph === 'N' ? 'N' : sph.toFixed(2)];
 
       this.cylinderRange.forEach(cyl => {
         const key = `${sph}_${cyl}`;
         const stock = groupedData[key] ? groupedData[key].stock_surtido : 0;
-        row.push(stock > 0 ? stock : '');
+        row.push(stock || '');
       });
 
       csvLines.push(row);
     });
 
     return csvLines;
-  },
+  }, 
 
   // Crear plantilla CSV para bifocales
   createBifocalTemplate(groupedData, referencia) {
     const csvLines = [];
 
-    csvLines.push([`${referencia} - BIFOCALES`]);
+    // ==================== TABLA DE ESFERAS POSITIVAS ====================
+    csvLines.push([`INVENTARIO: ${referencia}`]);
+    csvLines.push([]);
+    csvLines.push(['POSITIVO']);
     csvLines.push([]);
 
-    // Encabezados (ESF\ADD)
-    const header = ['ESF\\ADD'];
+    // Encabezado: ESF \ ADD
+    const positiveHeader = ['ESF \\ ADD'];
     this.additionRange.forEach(add => {
-      header.push(`+${add.toFixed(2)}`);
+      positiveHeader.push(`+${add.toFixed(2)}`);
     });
-    csvLines.push(header);
+    csvLines.push(positiveHeader);
 
-    // Filas de esferas
-    this.sphereRanges.bifocal.forEach(sph => {
-      const row = [sph === 'N' ? 'N' : (sph >= 0 ? `+${sph.toFixed(2)}` : sph.toFixed(2))];
+    // Filas de esferas positivas (hasta 3.00)
+    this.sphereRanges.positive.forEach(sph => {
+      if (sph <= 3.00) {
+        const row = [`+${sph.toFixed(2)}`];
 
-      this.additionRange.forEach(add => {
-        const key = `${sph}_${add}`;
-        const stock = groupedData[key] ? groupedData[key].stock_surtido : 0;
-        row.push(stock > 0 ? stock : '');
-      });
+        this.additionRange.forEach(add => {
+          const key = `${sph}_${add}`;
+          const stock = groupedData[key] ? groupedData[key].stock_surtido : 0;
+          row.push(stock || '');
+        });
 
-      csvLines.push(row);
+        csvLines.push(row);
+      }
+    });
+
+    csvLines.push([]);
+    csvLines.push([]);
+    csvLines.push([]);
+
+    // ==================== TABLA DE ESFERAS NEGATIVAS ====================
+    csvLines.push(['NEGATIVO']);
+    csvLines.push([]);
+
+    // Encabezado
+    const negativeHeader = ['ESF \\ ADD'];
+    this.additionRange.forEach(add => {
+      negativeHeader.push(`+${add.toFixed(2)}`);
+    });
+    csvLines.push(negativeHeader);
+
+    // Filas de esferas negativas (N hasta -3.00)
+    this.sphereRanges.negative.forEach(sph => {
+      if (sph === 'N' || sph >= -3.00) {
+        const row = [sph === 'N' ? 'N' : sph.toFixed(2)];
+
+        this.additionRange.forEach(add => {
+          const key = `${sph}_${add}`;
+          const stock = groupedData[key] ? groupedData[key].stock_surtido : 0;
+          row.push(stock || '');
+        });
+
+        csvLines.push(row);
+      }
     });
 
     return csvLines;
   },
 
+  
   // Crear plantilla CSV para progresivos
   createProgressiveTemplate(groupedData, referencia) {
     const csvLines = [];
 
-    csvLines.push([`${referencia} - PROGRESIVOS`]);
+    // ==================== TABLA DE ESFERAS POSITIVAS ====================
+    csvLines.push([`INVENTARIO: ${referencia}`]);
+    csvLines.push([]);
+    csvLines.push(['POSITIVO']);
     csvLines.push([]);
 
-    // Encabezados con doble columna por adición (R/L)
-    const header = ['ESF\\ADD'];
+    // Encabezado con columnas R/L para cada adición
+    const positiveHeader = ['ESF \\ ADD'];
     this.additionRange.forEach(add => {
-      header.push(`+${add.toFixed(2)} R`);
-      header.push(`+${add.toFixed(2)} L`);
+      positiveHeader.push(`+${add.toFixed(2)} R`);
+      positiveHeader.push(`+${add.toFixed(2)} L`);
     });
-    csvLines.push(header);
+    csvLines.push(positiveHeader);
 
-    // Filas de esferas
-    this.sphereRanges.bifocal.forEach(sph => {
-      const row = [sph === 'N' ? 'N' : (sph >= 0 ? `+${sph.toFixed(2)}` : sph.toFixed(2))];
+    // Filas de esferas positivas (hasta 3.00)
+    this.sphereRanges.positive.forEach(sph => {
+      if (sph <= 3.00) {
+        const row = [`+${sph.toFixed(2)}`];
 
-      this.additionRange.forEach(add => {
-        // Buscar stock para ojo derecho y izquierdo
-        let stockR = 0;
-        let stockL = 0;
+        this.additionRange.forEach(add => {
+          let stockR = 0;
+          let stockL = 0;
 
-        // Buscar en todas las combinaciones de cilindros para esta esfera y adición
-        this.cylinderRange.forEach(cyl => {
-          const keyR = `${sph}_${cyl}_${add}_R`;
-          const keyL = `${sph}_${cyl}_${add}_L`;
-          const keyAmbos = `${sph}_${cyl}_${add}_AMBOS`;
+          this.cylinderRange.forEach(cyl => {
+            const keyR = `${sph}_${cyl}_${add}_R`;
+            const keyL = `${sph}_${cyl}_${add}_L`;
+            const keyAmbos = `${sph}_${cyl}_${add}_AMBOS`;
 
-          if (groupedData[keyR]) stockR += groupedData[keyR].stock_surtido;
-          if (groupedData[keyL]) stockL += groupedData[keyL].stock_surtido;
-          if (groupedData[keyAmbos]) {
-            // Si es "AMBOS", dividir entre R y L
-            const ambosStock = groupedData[keyAmbos].stock_surtido;
-            stockR += Math.floor(ambosStock / 2);
-            stockL += Math.ceil(ambosStock / 2);
-          }
+            if (groupedData[keyR]) stockR += groupedData[keyR].stock_surtido;
+            if (groupedData[keyL]) stockL += groupedData[keyL].stock_surtido;
+
+            if (groupedData[keyAmbos]) {
+              const ambosStock = groupedData[keyAmbos].stock_surtido;
+              stockR += Math.floor(ambosStock / 2);
+              stockL += Math.ceil(ambosStock / 2);
+            }
+          });
+
+          row.push(stockR || '');
+          row.push(stockL || '');
         });
 
-        row.push(stockR > 0 ? stockR : '');
-        row.push(stockL > 0 ? stockL : '');
-      });
+        csvLines.push(row);
+      }
+    });
 
-      csvLines.push(row);
+    csvLines.push([]);
+    csvLines.push([]);
+    csvLines.push([]);
+
+    // ==================== TABLA DE ESFERAS NEGATIVAS ====================
+    csvLines.push(['NEGATIVO']);
+    csvLines.push([]);
+
+    // Encabezado
+    const negativeHeader = ['ESF \\ ADD'];
+    this.additionRange.forEach(add => {
+      negativeHeader.push(`+${add.toFixed(2)} R`);
+      negativeHeader.push(`+${add.toFixed(2)} L`);
+    });
+    csvLines.push(negativeHeader);
+
+    // Filas de esferas negativas (N hasta -3.00)
+    this.sphereRanges.negative.forEach(sph => {
+      if (sph === 'N' || sph >= -3.00) {
+        const row = [sph === 'N' ? 'N' : sph.toFixed(2)];
+
+        this.additionRange.forEach(add => {
+          let stockR = 0;
+          let stockL = 0;
+
+          this.cylinderRange.forEach(cyl => {
+            const keyR = `${sph}_${cyl}_${add}_R`;
+            const keyL = `${sph}_${cyl}_${add}_L`;
+            const keyAmbos = `${sph}_${cyl}_${add}_AMBOS`;
+
+            if (groupedData[keyR]) stockR += groupedData[keyR].stock_surtido;
+            if (groupedData[keyL]) stockL += groupedData[keyL].stock_surtido;
+
+            if (groupedData[keyAmbos]) {
+              const ambosStock = groupedData[keyAmbos].stock_surtido;
+              stockR += Math.floor(ambosStock / 2);
+              stockL += Math.ceil(ambosStock / 2);
+            }
+          });
+
+          row.push(stockR || '');
+          row.push(stockL || '');
+        });
+
+        csvLines.push(row);
+      }
     });
 
     return csvLines;
@@ -262,16 +392,120 @@ const unifiedExportSystem = {
       row.map(cell => {
         const cellValue = (cell === null || cell === undefined) ? '' : cell.toString();
         // Escapar comillas y envolver en comillas si es necesario
-        if (cellValue.includes(',') || cellValue.includes('"') || cellValue.includes('\n')) {
+        if (cellValue.includes(';') || cellValue.includes('"') || cellValue.includes('\n')) {
           return '"' + cellValue.replace(/"/g, '""') + '"';
         }
         return cellValue;
-      }).join(',')
+      }).join(';')  // ← CAMBIO: Punto y coma en lugar de coma
     ).join('\n');
+  },
+  // Nueva función: Exportar a Excel con formato
+  // Nueva función: Exportar a Excel con formato
+  // Función mejorada: Exportar como HTML con formato (Excel lo abre perfectamente)
+  async exportToExcel(data, referencia, lensType) {
+    try {
+      let html = `
+        <html xmlns:x="urn:schemas-microsoft-com:office:excel">
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            table { 
+              border-collapse: collapse; 
+              font-family: Arial, sans-serif; 
+              font-size: 10pt;
+            }
+            th, td { 
+              border: 1px solid #000; 
+              padding: 4px 8px;
+              text-align: center; 
+              white-space: nowrap;
+            }
+            .title { 
+              background-color: #4472C4; 
+              color: white; 
+              font-weight: bold; 
+              font-size: 12pt; 
+              padding: 8px;
+            }
+            .section { 
+              background-color: #D9E1F2; 
+              font-weight: bold; 
+              font-size: 11pt; 
+              padding: 6px;
+            }
+            .header { 
+              background-color: #5B9BD5; 
+              color: white; 
+              font-weight: bold; 
+              padding: 5px 8px;
+            }
+            .row-header { 
+              font-weight: bold; 
+              background-color: #F2F2F2;
+            }
+            td:first-child {
+              width: 80px;
+            }
+            td:not(:first-child) {
+              width: 60px;
+            }
+          </style>
+        </head>
+        <body>
+          <table>
+      `;
+
+      data.forEach((row, rowIndex) => {
+        html += '<tr>';
+
+        row.forEach((cell, colIndex) => {
+          const cellValue = (cell === null || cell === undefined || cell === '') ? '&nbsp;' : cell;
+          const cellStr = cellValue.toString();
+
+          // Determinar clase de la celda
+          let cellClass = '';
+          if (cellStr.includes('INVENTARIO:')) {
+            cellClass = 'title';
+          } else if (cellStr.includes('ESFERAS POSITIVAS') || cellStr.includes('ESFERAS NEGATIVAS')) {
+            cellClass = 'section';
+          } else if (cellStr.includes('ESF \\')) {
+            cellClass = 'header';
+          } else if (colIndex === 0 && cellStr !== '&nbsp;' && cellStr !== '') {
+            cellClass = 'row-header';
+          }
+
+          html += `<td class="${cellClass}">${cellValue}</td>`;
+        });
+
+        html += '</tr>';
+      });
+
+      html += `
+          </table>
+        </body>
+        </html>
+      `;
+
+      // Crear y descargar archivo
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${referencia}_inventario_${lensType}.xls`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error('Error al generar Excel:', error);
+      throw new Error(`No se pudo generar el archivo Excel: ${error.message}`);
+    }
   },
 
   // Función principal de exportación
-  exportUnifiedCSV(products, referencia) {
+  async exportUnifiedCSV(products, referencia) {
+
     if (!products || products.length === 0) {
       throw new Error('No hay productos para exportar');
     }
@@ -301,23 +535,8 @@ const unifiedExportSystem = {
         throw new Error('Tipo de lente no reconocido');
     }
 
-    // Convertir a CSV
-    const csvContent = this.arrayToCSV(csvData);
-
-    // Crear y descargar archivo
-    const BOM = '\uFEFF'; // BOM para UTF-8
-    const blob = new Blob([BOM + csvContent], {
-      type: 'text/csv;charset=utf-8'
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${referencia}_inventario_${lensType}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Exportar a Excel con formato
+    await this.exportToExcel(csvData, referencia, lensType);
 
     return {
       lensType,
@@ -401,9 +620,11 @@ export const transactionManager = {
             </div>
         `;
 
+    this.setupSyncListeners();
     this.loadProducts();
     this.bindEvents();
-    this.setupSyncListeners();
+
+    console.log('✅ TransactionManager inicializado completamente');
   },
 
   async loadProducts() {
@@ -885,7 +1106,7 @@ export const transactionManager = {
   },
 
   // FUNCIÓN DE EXPORTACIÓN UNIFICADA CSV - CORREGIDA
-  exportUnifiedCSV() {
+  async exportUnifiedCSV() {
     const referencia = document.getElementById('referencia').value;
     if (!referencia) {
       uiManager.showAlert('Por favor selecciona una referencia primero', 'warning');
@@ -908,7 +1129,7 @@ export const transactionManager = {
     }
 
     try {
-      const result = unifiedExportSystem.exportUnifiedCSV(filteredProducts, referencia);
+      const result = await unifiedExportSystem.exportUnifiedCSV(filteredProducts, referencia);
 
       uiManager.showAlert(
         `Plantilla ${result.lensType.toUpperCase()} exportada correctamente - ${result.totalProducts} productos procesados`,
@@ -924,20 +1145,42 @@ export const transactionManager = {
   setupSyncListeners() {
     console.log('🔧 TransactionManager: Configurando sincronización...');
 
+    // Suscribirse al coordinador
     if (window.syncCoordinator && typeof window.syncCoordinator.subscribe === 'function') {
       this.unsubscribeFromCoordinator = window.syncCoordinator.subscribe(
         'transactionManager',
         (eventType, data) => this.handleSyncEvent(eventType, data)
       );
+      console.log('✅ Suscrito a syncCoordinator');
+    } else {
+      console.warn('⚠️ syncCoordinator no disponible');
     }
 
+    // Escuchar eventos de producto actualizado
     eventManager.on('external:product-updated', (product) => {
+      console.log('📡 TransactionManager recibió external:product-updated:', product._id);
       this.handleProductUpdated(product);
     });
 
+    // Escuchar eventos de stock actualizado
     eventManager.on('external:stock-updated', (data) => {
+      console.log('📡 TransactionManager recibió external:stock-updated:', data.productId);
       this.handleStockUpdated(data);
     });
+
+    // ✅ NUEVO: Escuchar evento directo de actualización de producto
+    eventManager.on('data:product:updated', (product) => {
+      console.log('📡 TransactionManager recibió data:product:updated:', product._id);
+      this.handleProductUpdated(product);
+    });
+
+    // ✅ NUEVO: Escuchar evento directo de actualización de stock
+    eventManager.on('data:product:stock-updated', (data) => {
+      console.log('📡 TransactionManager recibió data:product:stock-updated:', data.productId);
+      this.handleStockUpdated(data);
+    });
+
+    console.log('✅ Listeners de sincronización configurados en TransactionManager');
   },
 
   handleSyncEvent(eventType, data) {
@@ -961,24 +1204,128 @@ export const transactionManager = {
 
     console.log('🔄 TransactionManager: Actualizando producto', product._id);
 
-    if (!Array.isArray(this.products)) return;
+    if (!Array.isArray(this.products)) {
+      console.warn('⚠️ TransactionManager.products no es un array');
+      return;
+    }
 
     const index = this.products.findIndex(p => p._id === product._id);
     if (index !== -1) {
-      this.products[index] = product;
+      // Actualizar producto en cache
+      this.products[index] = {
+        ...this.products[index],
+        ...product
+      };
 
-      // Si estamos viendo esta referencia, re-renderizar
-      if (this.currentReference === product.name) {
+      console.log(`✅ Producto actualizado en cache: ${product.name}`);
+
+      // CORRECCIÓN: Re-renderizar vista activa
+      if (this.currentReference) {
+        // Actualizar filteredProducts también
+        const filteredIndex = this.filteredProducts.findIndex(p => p._id === product._id);
+        if (filteredIndex !== -1) {
+          this.filteredProducts[filteredIndex] = this.products[index];
+          console.log('✅ Producto actualizado en filteredProducts');
+
+          // Re-renderizar solo si el producto pertenece a la referencia actual
+          if (product.name === this.currentReference) {
+            this.updateSingleProductRow(product._id);
+          }
+        }
+      }
+    } else {
+      console.log('⚠️ Producto no encontrado en cache, agregándolo...');
+      this.products.push(product);
+      this.sortProductsById();
+
+      // Si pertenece a la referencia actual, recargar
+      if (product.name === this.currentReference) {
         this.loadReferencia(this.currentReference);
       }
     }
-  },
+  }, 
 
   handleStockUpdated(data) {
     console.log('📦 TransactionManager: Stock actualizado', data.productId);
 
+    // Priorizar producto completo
     if (data.product) {
       this.handleProductUpdated(data.product);
+      return;
     }
+
+    // Fallback: actualizar solo stock
+    if (data.productId && (data.newStock !== undefined || data.stock_surtido !== undefined)) {
+      const index = this.products.findIndex(p => p._id === data.productId);
+      if (index !== -1) {
+        if (data.newStock !== undefined) {
+          this.products[index].stock = data.newStock;
+        }
+        if (data.stock_surtido !== undefined) {
+          this.products[index].stock_surtido = data.stock_surtido;
+        }
+
+        // Si está en la vista actual, actualizar
+        if (this.currentReference === this.products[index].name) {
+          this.updateSingleProductRow(data.productId);
+        }
+      }
+    }
+  },
+  // ✅ NUEVA FUNCIÓN: Actualizar una sola fila de la tabla (más eficiente)
+  updateSingleProductRow(productId) {
+    const product = this.products.find(p => p._id === productId);
+    if (!product) return;
+
+    const tableBody = document.getElementById('table-body');
+    if (!tableBody) return;
+
+    // Buscar la fila del producto
+    const rows = tableBody.querySelectorAll('tr');
+    let targetRow = null;
+
+    for (const row of rows) {
+      const input = row.querySelector(`input[data-id="${productId}"]`);
+      if (input) {
+        targetRow = row;
+        break;
+      }
+    }
+
+    if (!targetRow) {
+      console.log('⚠️ Fila no encontrada, re-renderizando tabla completa');
+      this.renderFilteredProducts(this.filteredProducts);
+      return;
+    }
+
+    // Actualizar valores en la fila
+    const stockSurtidoInput = targetRow.querySelector('input[data-field="stock_surtido"]');
+    if (stockSurtidoInput) {
+      stockSurtidoInput.value = product.stock_surtido || 0;
+      stockSurtidoInput.max = product.stock || 0;
+    }
+
+    const stockAlmacenado = (product.stock || 0) - (product.stock_surtido || 0);
+    const stockAlmacenadoCell = targetRow.children[6];
+    if (stockAlmacenadoCell) {
+      stockAlmacenadoCell.innerHTML = `<span class="text-muted">${stockAlmacenado}</span>`;
+    }
+
+    const status = this.getStatusInfo(product.stock_surtido || 0);
+    const statusCell = targetRow.children[7];
+    if (statusCell) {
+      statusCell.innerHTML = `<span class="${status.class}">${status.icon} ${status.text}</span>`;
+    }
+
+    // Efecto visual de actualización
+    targetRow.style.backgroundColor = '#e8f5e8';
+    targetRow.style.transition = 'background-color 0.5s ease';
+
+    setTimeout(() => {
+      targetRow.style.backgroundColor = '';
+    }, 2000);
+
+    console.log(`✅ Fila actualizada para producto: ${product.name}`);
   }
+
 };

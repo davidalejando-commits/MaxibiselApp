@@ -48,11 +48,6 @@ const productSchema = new mongoose.Schema({
         unique: true,
         required: true
     },
-    price: {
-        type: Number,
-        required: true,
-        min: 0
-    },
     lastUpdated: {
         type: Date,
         default: Date.now

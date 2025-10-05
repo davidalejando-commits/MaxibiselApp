@@ -94,6 +94,7 @@
                     <button class="btn btn-primary" id="add-product-btn">
                         <i class="bi bi-plus-circle me-1"></i>Nuevo Lente
                     </button>
+
                 </div>
 
                 <div class="card shadow">
@@ -115,6 +116,17 @@
                                     <!-- Los productos se cargarán dinámicamente -->
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- Modal de confirmación de eliminación -->
+                <div class="modal" id="confirm-delete-modal">
+                    <div class="modal-content">
+                        <h3 class="modal-title">Confirmar Eliminación</h3>
+                        <p class="modal-message" id="delete-modal-message">¿Está seguro que desea eliminar este producto?</p>
+                        <div class="modal-buttons">
+                            <button class="modal-btn confirm-btn" id="confirm-delete-btn">Confirmar</button>
+                            <button class="modal-btn cancel-modal-btn" id="cancel-delete-btn">Cancelar</button>
                         </div>
                     </div>
                 </div>

@@ -59,50 +59,71 @@ exports.getProductById = async (req, res) => {
 };
 
 // Crear nuevo producto
+// Crear nuevo producto
 exports.createProduct = async (req, res) => {
     try {
         console.log('➕ [CONTROLLER] Creando nuevo producto');
         console.log('📝 [CONTROLLER] Datos recibidos:', req.body);
-        
+
         const productData = req.body;
-        
-        // Verificar si ya existe un producto con el mismo código de barras
-        if (productData.barcode) {
-            const existingProduct = await Product.findOne({ barcode: productData.barcode });
-            if (existingProduct) {
-                return res.status(409).json({
-                    success: false,
-                    message: 'Ya existe un producto con ese código de barras'
-                });
-            }
+
+        // Validar que barcode no esté vacío
+        if (!productData.barcode || productData.barcode.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                message: 'El código de barras es obligatorio'
+            });
         }
-        
+
+        // Verificar si ya existe un producto con el mismo código de barras
+        const existingProduct = await Product.findOne({
+            barcode: productData.barcode.trim()
+        });
+        if (existingProduct) {
+            return res.status(409).json({
+                success: false,
+                message: 'Ya existe un producto con ese código de barras'
+            });
+        }
+
         const newProduct = new Product(productData);
         const savedProduct = await newProduct.save();
-        
+
         // Emitir evento al frontend
         if (req.app.get('io')) {
             const io = req.app.get('io');
             io.emit('product:created', savedProduct);
             console.log('📡 [CONTROLLER] Evento de producto creado emitido');
         }
-        
+
         res.status(201).json({
             success: true,
             message: 'Producto creado correctamente',
             product: savedProduct
         });
-        
+
     } catch (error) {
         console.error('💥 [CONTROLLER] Error al crear producto:', error);
-        res.status(500).json({
+
+        // Mejor manejo de errores
+        let statusCode = 500;
+        let message = 'Error interno del servidor';
+
+        if (error.code === 11000) {
+            statusCode = 409;
+            message = 'Ya existe un producto con ese código de barras';
+        } else if (error.name === 'ValidationError') {
+            statusCode = 400;
+            message = 'Datos de producto inválidos: ' + error.message;
+        }
+
+        res.status(statusCode).json({
             success: false,
-            message: 'Error interno del servidor',
+            message: message,
             error: error.message
         });
     }
 };
-
 // Actualizar producto
 exports.updateProduct = async (req, res) => {
     try {
