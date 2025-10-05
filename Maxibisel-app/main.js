@@ -173,7 +173,8 @@ async function startBackend() {
 
         // Buscar carpeta del backend
         const backendPaths = [
-            path.join(__dirname, '..', 'backend'),
+            path.join(process.resourcesPath, 'backend'), // PRODUCCIÓN
+            path.join(__dirname, '..', 'backend'),        // DESARROLLO
             path.join(__dirname, 'backend'),
             path.join(process.cwd(), 'backend')
         ];
@@ -206,9 +207,12 @@ async function startBackend() {
 
         updateLoadingMessage('Iniciando servidor backend...');
 
-        // Iniciar proceso del backend
+        // Determinar comando según entorno (start para producción, dev para desarrollo)
+        const backendCommand = app.isPackaged ? 'start' : 'dev';
         const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-        backendProcess = spawn(npmCommand, ['run', 'dev'], {
+
+        // Iniciar proceso del backend
+        backendProcess = spawn(npmCommand, ['run', backendCommand], {
             cwd: backendPath,
             env: env,
             stdio: ['ignore', 'pipe', 'pipe'],

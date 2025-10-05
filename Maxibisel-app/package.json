@@ -1,59 +1,70 @@
 {
   "name": "maxibisel",
   "version": "1.0.0",
-  "description": "Aplicación de escritorio para gestión de inventario",
+  "description": "Sistema de Inventario Óptico",
   "main": "main.js",
+  "author": "MaxiBisel",
+  "license": "MIT",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
+    "build:win": "electron-builder --win --x64",
     "pack": "electron-builder --dir"
   },
   "dependencies": {
     "axios": "^1.9.0",
-    "electron-store": "^8.2.0",
-    "mongodb": "^6.16.0"
+    "electron-store": "^8.2.0"
   },
   "devDependencies": {
     "electron": "^28.3.3",
     "electron-builder": "^24.9.1"
   },
   "build": {
-    "appId": "com.opticinventory.app",
+    "appId": "com.maxibisel.inventario",
     "productName": "Sistema de Inventario Óptico",
     "directories": {
       "output": "dist"
     },
     "files": [
-      "**/*",
-      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
-      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
-      "!**/node_modules/*.d.ts",
-      "!**/node_modules/.bin",
-      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
-      "!.editorconfig",
-      "!**/._*",
-      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
-      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
-      "!**/{appveyor.yml,.travis.yml,circle.yml}",
-      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "package.json"
     ],
-    "mac": {
-      "icon": "renderer/assets/logoMMini.png",
-      "category": "public.app-category.business"
-    },
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!node_modules"
+        ]
+      },
+      {
+        "from": "../backend/node_modules",
+        "to": "backend/node_modules"
+      }
+    ],
+    "asar": false,
     "win": {
-      "icon": "renderer/assets/logoMMini.png",
+      "icon": "renderer/assets/LogoMMini.ico",
       "target": [
-        "nsis"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
-    "linux": {
-      "icon": "renderer/assets/logoMMini.png",
-      "target": [
-        "deb",
-        "AppImage"
-      ],
-      "category": "Office"
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "installerIcon": "renderer/assets/LogoMMini.ico",
+      "uninstallerIcon": "renderer/assets/LogoMMini.ico",
+      "shortcutName": "Sistema de Inventario"
     }
   }
 }
