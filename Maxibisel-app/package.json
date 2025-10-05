@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Sistema de Inventario Óptico",
   "main": "main.js",
-  "author": "MaxiBisel",
+  "author": "David Delgado",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
