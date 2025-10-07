@@ -12,7 +12,7 @@ export const userManager = {
       
       <div class="alert alert-info">
         <i class="bi bi-info-circle me-2"></i>
-        El módulo de usuarios será implementado en una próxima versión.
+        El módulo para generar códigos de barra será implementado en una próxima versión.
       </div>
     `;
     }
