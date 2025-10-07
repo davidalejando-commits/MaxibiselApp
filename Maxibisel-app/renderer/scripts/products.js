@@ -930,11 +930,11 @@ export const productManager = {
             }
 
             // Validación de longitud del código de barras
-            if (productData.barcode.length < 8) {
+            if (productData.barcode.length < 3) {
                 if (uiManager && uiManager.showAlert) {
                     uiManager.showAlert('El código de barras debe tener al menos 8 dígitos', 'warning');
                 } else {
-                    alert('El código de barras debe tener al menos 8 dígitos');
+                    alert('El código de barras debe tener al menos 3 dígitos');
                 }
                 return;
             }

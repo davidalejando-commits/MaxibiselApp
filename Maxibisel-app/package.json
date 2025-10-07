@@ -1,9 +1,9 @@
 {
   "name": "maxibisel",
   "version": "1.0.0",
-  "description": "Sistema de Inventario Óptico",
+  "description": "Sistema de Inventario MB",
   "main": "main.js",
-  "author": "MaxiBisel",
+  "author": "David Delgado",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -21,7 +21,7 @@
   },
   "build": {
     "appId": "com.maxibisel.inventario",
-    "productName": "Sistema de Inventario Óptico",
+    "productName": "Sistema de Inventario MB",
     "directories": {
       "output": "dist"
     },
@@ -66,7 +66,7 @@
       "createStartMenuShortcut": true,
       "installerIcon": "renderer/assets/LogoMMini.ico",
       "uninstallerIcon": "renderer/assets/LogoMMini.ico",
-      "shortcutName": "Sistema de Inventario"
+      "shortcutName": "Sistema de Inventario MB"
     }
   }
 }
