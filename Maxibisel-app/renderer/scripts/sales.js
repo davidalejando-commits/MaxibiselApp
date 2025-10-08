@@ -149,23 +149,39 @@ export const sales = {
   },
 };
 
-// Funciones helper para formatear campos de lentes - SIMPLIFICADAS
-function formatLensField(label, value) {
-  if (
-    !value ||
-    value === "N/A" ||
-    value === "" ||
-    value === null ||
-    value === undefined
-  ) {
-    return "";
+// ✅ FUNCIONES HELPER MEJORADAS PARA FORMATO DE LENTES
+function formatLensSpecs(lens) {
+  if (!lens) return "";
+  
+  const sphere = lens.sphere;
+  const cylinder = lens.cylinder;
+  const addition = lens.addition;
+  
+  // Validar si los valores son válidos (no vacíos, no "N/A", etc.)
+  const isValidValue = (val) => {
+    return val && val !== "N/A" && val !== "" && val !== null && val !== undefined;
+  };
+  
+  const hasSphere = isValidValue(sphere);
+  const hasCylinder = isValidValue(cylinder);
+  const hasAddition = isValidValue(addition);
+  
+  // Si tiene esfera y cilindro: "-0.25 -2.00"
+  if (hasSphere && hasCylinder) {
+    return `${sphere} ${cylinder}`;
   }
-  return `${label}: ${value}`;
-}
-
-function createInfoLine(fields) {
-  const validFields = fields.filter((field) => field !== "");
-  return validFields.length > 0 ? `<p>${validFields.join(" | ")}</p>` : "";
+  
+  // Si tiene esfera y adición: "-0.25 / +3.00"
+  if (hasSphere && hasAddition) {
+    return `${sphere} / ${addition}`;
+  }
+  
+  // Si solo tiene esfera: "-0.25"
+  if (hasSphere) {
+    return sphere;
+  }
+  
+  return "";
 }
 
 function getLensTitle(name) {
@@ -183,6 +199,7 @@ export const salesManager = {
     searchResults: [],
     currentSale: null,
     isEditMode: false,
+    isProcessing: false, // ✅ NUEVO: Flag para mostrar loader
   },
 
   // ✅ FUNCIÓN CORREGIDA: Mover sortLensesById dentro del objeto
@@ -291,35 +308,46 @@ export const salesManager = {
         </div>
 
         <!-- Panel derecho -->
-<div class="panel" >
-  <div class="panel-header">
-    <h2 class="panel-title ps-1">Productos Seleccionados</h2>
-  </div>
-  <div class="selected-container scrollable-content" id="selectedLenses">
-    <div class="selected-lens" id="empty-selection">
-      <p>No hay Productos seleccionados</p>
-    </div>
-  </div>
-  
-  <!-- Opción de descuento desde bodega -->
-  <div class="warehouse-option">
-    <label class="warehouse-toggle">
-      <input type="checkbox" id="warehouseCheckbox">
-      <span class="warehouse-label">
-        <i class="bi bi-box-seam"></i>
-        Descontar directamente de bodega
-      </span>
-    </label>
-    
-  </div>
-  
-  <div class="panel-footer">
-    <div class="action-buttons">
-      <button class="action-btn save-btn" id="saveButton">Registrar salida</button>
-      <button class="action-btn cancel-btn" id="cancelButton">Cancelar</button>
-    </div>
-  </div>
-</div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="d-flex justify-content-between align-items-center w-100">
+              <h2 class="panel-title ps-1 mb-0">Productos Seleccionados</h2>
+              <div class="selected-counter" id="selectedCounter">
+                <i class="bi bi-box-seam me-1"></i>
+                <span id="selectedCount">0</span>
+              </div>
+            </div>
+          </div>
+          <div class="selected-container scrollable-content" id="selectedLenses">
+            <div class="selected-lens" id="empty-selection">
+              <p>No hay Productos seleccionados</p>
+            </div>
+          </div>
+          
+          <!-- Opción de descuento desde bodega -->
+          <div class="warehouse-option">
+            <label class="warehouse-toggle">
+              <input type="checkbox" id="warehouseCheckbox">
+              <span class="warehouse-label">
+                <i class="bi bi-box-seam"></i>
+                Descontar directamente de bodega
+              </span>
+            </label>
+          </div>
+          
+          <div class="panel-footer">
+            <div class="action-buttons">
+              <button class="action-btn save-btn" id="saveButton">
+                <span id="saveButtonText">Registrar salida</span>
+                <div class="spinner-border spinner-border-sm ms-2 d-none" id="saveSpinner" role="status">
+                  <span class="visually-hidden">Procesando...</span>
+                </div>
+              </button>
+              <button class="action-btn cancel-btn" id="cancelButton">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Modal de confirmación -->
       <div class="modal" id="confirmModal">
@@ -332,6 +360,47 @@ export const salesManager = {
           </div>
         </div>
       </div>
+      
+      <style>
+        .selected-counter {
+          display: flex;
+          align-items: center;
+          background: linear-gradient(135deg, #667eea 0%, #2600ffff 100%);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-weight: 600;
+          font-size: 0.95rem;
+          box-shadow: 0 2px 8px rgba(0, 47, 255, 0.3);
+          transition: all 0.3s ease;
+        }
+        
+        .selected-counter:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(87, 113, 233, 0.4);
+        }
+        
+        .selected-counter i {
+          font-size: 1.1rem;
+        }
+        
+        #selectedCount {
+          min-width: 20px;
+          text-align: center;
+          font-size: 1.1rem;
+        }
+        
+        .spinner-border-sm {
+          width: 1rem;
+          height: 1rem;
+          border-width: 0.15em;
+        }
+        
+        .action-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      </style>
     `;
   },
 
@@ -351,9 +420,9 @@ export const salesManager = {
       .addEventListener("click", () => this.handleCancel());
     // Checkbox de bodega
     document.getElementById('warehouseCheckbox').addEventListener('change', (e) => {
-    this.state.useWarehouseStock = e.target.checked;
-    console.log('📦 Modo bodega:', this.state.useWarehouseStock ? 'ACTIVADO' : 'DESACTIVADO');
-});  
+      this.state.useWarehouseStock = e.target.checked;
+      console.log('📦 Modo bodega:', this.state.useWarehouseStock ? 'ACTIVADO' : 'DESACTIVADO');
+    });  
 
     // Modal
     document
@@ -399,6 +468,40 @@ export const salesManager = {
     });
   },
 
+  // ✅ NUEVO: Actualizar contador de productos seleccionados
+  updateSelectedCounter() {
+    const countElement = document.getElementById("selectedCount");
+    if (countElement && Array.isArray(this.state.selectedLenses)) {
+      const totalItems = this.state.selectedLenses.reduce(
+        (sum, lens) => sum + (lens.quantity || 0),
+        0
+      );
+      countElement.textContent = totalItems;
+    }
+  },
+
+  // ✅ NUEVO: Mostrar/ocultar loader de procesamiento
+  showProcessingLoader(show = true) {
+    const saveButton = document.getElementById("saveButton");
+    const saveButtonText = document.getElementById("saveButtonText");
+    const saveSpinner = document.getElementById("saveSpinner");
+    const cancelButton = document.getElementById("cancelButton");
+
+    if (show) {
+      this.state.isProcessing = true;
+      saveButton.disabled = true;
+      cancelButton.disabled = true;
+      saveButtonText.textContent = "Procesando...";
+      saveSpinner.classList.remove("d-none");
+    } else {
+      this.state.isProcessing = false;
+      saveButton.disabled = false;
+      cancelButton.disabled = false;
+      saveButtonText.textContent = "Registrar salida";
+      saveSpinner.classList.add("d-none");
+    }
+  },
+
   handleNewSale() {
     // ✅ VALIDACIÓN: Asegurar que selectedLenses sea un array
     if (!Array.isArray(this.state.selectedLenses)) {
@@ -427,34 +530,36 @@ export const salesManager = {
     this.state.isEditMode = false;
 
     document.getElementById("selectedLenses").innerHTML = `
-            <div class="selected-lens" id="empty-selection">
-                <p>No hay Productos seleccionados</p>
-            </div>
-        `;
+      <div class="selected-lens" id="empty-selection">
+        <p>No hay Productos seleccionados</p>
+      </div>
+    `;
 
     // Restablecer checkbox de bodega
     const warehouseCheckbox = document.getElementById('warehouseCheckbox');
     if (warehouseCheckbox) {
-    warehouseCheckbox.checked = false;
+      warehouseCheckbox.checked = false;
     }
 
     document.getElementById("searchInput").value = "";
     document.getElementById("searchResults").innerHTML = `
-            <div class="lens-item" data-id="ejemplo-placeholder">
-                <p>Busque Productos para mostrar resultados...</p>
-            </div>
-        `;
+      <div class="lens-item" data-id="ejemplo-placeholder">
+        <p>Busque Productos para mostrar resultados...</p>
+      </div>
+    `;
     
+    // ✅ Actualizar contador
+    this.updateSelectedCounter();
   },
 
   handleSearch(event) {
     const searchTerm = event.target.value.toLowerCase().trim();
     if (!searchTerm) {
       document.getElementById("searchResults").innerHTML = `
-                <div class="lens-item" data-id="ejemplo-placeholder">
-                    <p>Busque productos para mostrar resultados...</p>
-                </div>
-            `;
+        <div class="lens-item" data-id="ejemplo-placeholder">
+          <p>Busque productos para mostrar resultados...</p>
+        </div>
+      `;
       return;
     }
 
@@ -466,10 +571,10 @@ export const salesManager = {
       );
       this.state.availableLenses = [];
       document.getElementById("searchResults").innerHTML = `
-                <div class="lens-item">
-                    <p>Error: No se pueden buscar productos</p>
-                </div>
-            `;
+        <div class="lens-item">
+          <p>Error: No se pueden buscar productos</p>
+        </div>
+      `;
       return;
     }
 
@@ -483,7 +588,7 @@ export const salesManager = {
       );
     });
 
-    // ✅ CORRECCIÓN: Usar this.sortLensesById
+    // ✅ CORRECCIÓN: Usar this.sortLensesById para el panel izquierdo
     this.sortLensesById(filteredLenses);
     this.state.searchResults = filteredLenses;
     this.renderSearchResults();
@@ -500,34 +605,26 @@ export const salesManager = {
 
     if (this.state.searchResults.length === 0) {
       resultsContainer.innerHTML = `
-                <div class="lens-item">
-                    <p>No se encontraron resultados</p>
-                </div>
-            `;
+        <div class="lens-item">
+          <p>No se encontraron resultados</p>
+        </div>
+      `;
       return;
     }
 
     const resultsHTML = this.state.searchResults
       .map((lens) => {
-        const sphereField = formatLensField("Esfera", lens.sphere);
-        const cylinderField = formatLensField("Cilindro", lens.cylinder);
-        const additionField = formatLensField("Adición", lens.addition);
-
-        const specsLine = createInfoLine([
-          sphereField,
-          cylinderField,
-          additionField,
-        ]);
+        const specsText = formatLensSpecs(lens);
         const titleHTML = getLensTitle(lens.name);
 
         return `
-                <div class="lens-item" data-id="${lens._id}">
-                    <div class="lens-details">
-                        ${titleHTML}
-                        ${specsLine}
-                    </div>
-                </div>
-            `;
+          <div class="lens-item" data-id="${lens._id}">
+            <div class="lens-details">
+              ${titleHTML}
+              ${specsText ? `<p>${specsText}</p>` : ''}
+            </div>
+          </div>
+        `;
       })
       .join("");
 
@@ -561,15 +658,15 @@ export const salesManager = {
     if (existingIndex >= 0) {
       this.state.selectedLenses[existingIndex].quantity += 1;
     } else {
+      // ✅ NO ORDENAR: Simplemente agregar al final
       this.state.selectedLenses.push({
         ...selectedLens,
         quantity: 1,
       });
     }
 
-    // ✅ CORRECCIÓN: Usar this.sortLensesById
-    this.sortLensesById(this.state.selectedLenses);
     this.renderSelectedLenses();
+    this.updateSelectedCounter(); // ✅ Actualizar contador
   },
 
   removeLensFromSelection(lensId) {
@@ -583,6 +680,7 @@ export const salesManager = {
       (lens) => lens._id !== lensId
     );
     this.renderSelectedLenses();
+    this.updateSelectedCounter(); // ✅ Actualizar contador
   },
 
   renderSelectedLenses() {
@@ -595,46 +693,39 @@ export const salesManager = {
 
     if (this.state.selectedLenses.length === 0) {
       selectedContainer.innerHTML = `
-                <div class="selected-lens" id="empty-selection">
-                    <p>No hay productos seleccionados</p>
-                </div>
-            `;
+        <div class="selected-lens" id="empty-selection">
+          <p>No hay productos seleccionados</p>
+        </div>
+      `;
       return;
     }
 
+    // ✅ NO ORDENAR: Mantener el orden de selección
     const selectedHTML = this.state.selectedLenses
       .map((lens) => {
-        const sphereField = formatLensField("Esfera", lens.sphere);
-        const cylinderField = formatLensField("Cilindro", lens.cylinder);
-        const additionField = formatLensField("Adición", lens.addition);
-
-        const specsLine = createInfoLine([
-          sphereField,
-          cylinderField,
-          additionField,
-        ]);
+        const specsText = formatLensSpecs(lens);
         const titleHTML = getLensTitle(lens.name);
 
         return `
-                <div class="selected-lens" data-id="${lens._id}">
-                    <div class="lens-info">
-                        ${titleHTML}
-                        ${specsLine}
-                        <div class="quantity-control">
-                            <button class="qty-btn qty-decrease" data-id="${lens._id}">
-                                <i class="bi bi-dash-lg"></i>
-                            </button>
-                            <span class="qty-value">${lens.quantity}</span>
-                            <button class="qty-btn qty-increase" data-id="${lens._id}">
-                                <i class="bi bi-plus-lg"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <button class="remove-lens" data-id="${lens._id}">
-                        <i class="bi bi-trash3"></i>
-                    </button>
-                </div>
-            `;
+          <div class="selected-lens" data-id="${lens._id}">
+            <div class="lens-info">
+              ${titleHTML}
+              ${specsText ? `<p>${specsText}</p>` : ''}
+              <div class="quantity-control">
+                <button class="qty-btn qty-decrease" data-id="${lens._id}">
+                  <i class="bi bi-dash-lg"></i>
+                </button>
+                <span class="qty-value">${lens.quantity}</span>
+                <button class="qty-btn qty-increase" data-id="${lens._id}">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+              </div>
+            </div>
+            <button class="remove-lens" data-id="${lens._id}">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </div>
+        `;
       })
       .join("");
 
@@ -655,6 +746,7 @@ export const salesManager = {
 
     this.state.selectedLenses[index].quantity += 1;
     this.renderSelectedLenses();
+    this.updateSelectedCounter(); // ✅ Actualizar contador
   },
 
   decreaseQuantity(lensId) {
@@ -675,6 +767,7 @@ export const salesManager = {
       this.state.selectedLenses[index].quantity -= 1;
       this.renderSelectedLenses();
     }
+    this.updateSelectedCounter(); // ✅ Actualizar contador
   },
 
   handleSave() {
@@ -696,16 +789,34 @@ export const salesManager = {
 
   async finalizeSale() {
     try {
+      // ✅ Mostrar loader
+      this.showProcessingLoader(true);
+      
       const updateResult = await this.updateInventoryIntelligently();
 
       if (updateResult) {
-        uiManager.showAlert("Registro exitoso", "success");
+        // ✅ Calcular total de productos actualizados
+        const totalProductsUpdated = this.state.selectedLenses.reduce(
+          (sum, lens) => sum + (lens.quantity || 0),
+          0
+        );
+        
+        // ✅ Ocultar loader
+        this.showProcessingLoader(false);
+        
+        uiManager.showAlert(
+          `Registro exitoso. ${totalProductsUpdated} producto${totalProductsUpdated !== 1 ? 's' : ''} actualizado${totalProductsUpdated !== 1 ? 's' : ''}`,
+          "success"
+        );
         this.resetSale();
         return true;
       } else {
         throw new Error("No se pudo actualizar el inventario");
       }
     } catch (error) {
+      // ✅ Ocultar loader en caso de error
+      this.showProcessingLoader(false);
+      
       console.error("Error al finalizar el registro:", error);
       uiManager.showAlert(
         "Error al realizar los cambios: " + error.message,
@@ -726,6 +837,7 @@ export const salesManager = {
       }
 
       const useWarehouseStock = this.state.useWarehouseStock || false;
+      let updatedCount = 0; // ✅ Contador de productos actualizados
 
       for (const selectedLens of this.state.selectedLenses) {
         if (!selectedLens || !selectedLens._id) {
@@ -827,6 +939,7 @@ export const salesManager = {
           }
         }
 
+        updatedCount++; // ✅ Incrementar contador
         console.log(
           `✅ Inventario actualizado y sincronizado para ${productName}`
         );
@@ -835,7 +948,7 @@ export const salesManager = {
       // Recargar datos locales
       await this.loadInitialData();
 
-      console.log("✅ Actualización inteligente de inventario completada");
+      console.log(`✅ Actualización inteligente completada: ${updatedCount} productos actualizados`);
       return true;
     } catch (error) {
       console.error("💥 Error en actualización inteligente:", error);
@@ -971,9 +1084,11 @@ export const salesManager = {
       searchResults: [],
       currentSale: null,
       isEditMode: false,
+      isProcessing: false,
     };
     this.resetSale();
   },
+  
   // ========== MÉTODOS DE SINCRONIZACIÓN ==========
 
   setupSyncListeners() {
