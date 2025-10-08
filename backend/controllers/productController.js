@@ -1,363 +1,334 @@
 const Product = require('../models/product');
 const Transaction = require('../models/transaction');
 
-// Obtener todos los productos
-exports.getAllProducts = async (req, res) => {
-    try {
-        console.log('📋 [CONTROLLER] Obteniendo todos los productos');
-        
-        const products = await Product.find({})
-            .sort({ createdAt: -1 })
-            .lean();
-        
-        res.status(200).json({
-            success: true,
-            message: 'Productos obtenidos correctamente',
-            products: products,
-            count: products.length
-        });
-        
-    } catch (error) {
-        console.error('💥 [CONTROLLER] Error al obtener productos:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error interno del servidor',
-            error: error.message
-        });
-    }
-};
-
-// Obtener producto por ID
-exports.getProductById = async (req, res) => {
-    try {
-        const productId = req.params.id;
-        console.log(`🔍 [CONTROLLER] Buscando producto con ID: ${productId}`);
-        
-        const product = await Product.findById(productId);
-        
-        if (!product) {
-            return res.status(404).json({
-                success: false,
-                message: 'Producto no encontrado'
-            });
-        }
-        
-        res.status(200).json({
-            success: true,
-            message: 'Producto encontrado',
-            product: product
-        });
-        
-    } catch (error) {
-        console.error('💥 [CONTROLLER] Error al obtener producto por ID:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error interno del servidor',
-            error: error.message
-        });
-    }
-};
-
-// Crear nuevo producto
-// Crear nuevo producto
-exports.createProduct = async (req, res) => {
-    try {
-        console.log('➕ [CONTROLLER] Creando nuevo producto');
-        console.log('📝 [CONTROLLER] Datos recibidos:', req.body);
-
-        const productData = req.body;
-
-        // Validar que barcode no esté vacío
-        if (!productData.barcode || productData.barcode.trim() === '') {
-            return res.status(400).json({
-                success: false,
-                message: 'El código de barras es obligatorio'
-            });
-        }
-
-        // Verificar si ya existe un producto con el mismo código de barras
-        const existingProduct = await Product.findOne({
-            barcode: productData.barcode.trim()
-        });
-        if (existingProduct) {
-            return res.status(409).json({
-                success: false,
-                message: 'Ya existe un producto con ese código de barras'
-            });
-        }
-
-        const newProduct = new Product(productData);
-        const savedProduct = await newProduct.save();
-
-        // Emitir evento al frontend
-        if (req.app.get('io')) {
-            const io = req.app.get('io');
-            io.emit('product:created', savedProduct);
-            console.log('📡 [CONTROLLER] Evento de producto creado emitido');
-        }
-
-        res.status(201).json({
-            success: true,
-            message: 'Producto creado correctamente',
-            product: savedProduct
-        });
-
-    } catch (error) {
-        console.error('💥 [CONTROLLER] Error al crear producto:', error);
-
-        // Mejor manejo de errores
-        let statusCode = 500;
-        let message = 'Error interno del servidor';
-
-        if (error.code === 11000) {
-            statusCode = 409;
-            message = 'Ya existe un producto con ese código de barras';
-        } else if (error.name === 'ValidationError') {
-            statusCode = 400;
-            message = 'Datos de producto inválidos: ' + error.message;
-        }
-
-        res.status(statusCode).json({
-            success: false,
-            message: message,
-            error: error.message
-        });
-    }
-};
-// Actualizar producto
-exports.updateProduct = async (req, res) => {
-    try {
-        const productId = req.params.id;
-        console.log(`🔄 [CONTROLLER] Actualizando producto ${productId}`);
-        console.log('📝 [CONTROLLER] Datos recibidos:', req.body);
-        
-        const updateData = req.body;
-        updateData.lastUpdated = new Date();
-        
-        const updatedProduct = await Product.findByIdAndUpdate(
-            productId,
-            { $set: updateData },
-            {
-                new: true,
-                runValidators: true
-            }
-        );
-        
-        if (!updatedProduct) {
-            return res.status(404).json({
-                success: false,
-                message: 'Producto no encontrado'
-            });
-        }
-        
-        // Emitir evento al frontend
-        if (req.app.get('io')) {
-            const io = req.app.get('io');
-            io.emit('product:updated', updatedProduct);
-            console.log('📡 [CONTROLLER] Evento de producto actualizado emitido');
-        }
-        
-        res.status(200).json({
-            success: true,
-            message: 'Producto actualizado correctamente',
-            product: updatedProduct
-        });
-        
-    } catch (error) {
-        console.error('💥 [CONTROLLER] Error al actualizar producto:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error interno del servidor',
-            error: error.message
-        });
-    }
-};
-
-// Eliminar producto
-exports.deleteProduct = async (req, res) => {
-    try {
-        const productId = req.params.id;
-        console.log(`🗑️ [CONTROLLER] Eliminando producto ${productId}`);
-        
-        const deletedProduct = await Product.findByIdAndDelete(productId);
-        
-        if (!deletedProduct) {
-            return res.status(404).json({
-                success: false,
-                message: 'Producto no encontrado'
-            });
-        }
-        
-        // Emitir evento al frontend
-        if (req.app.get('io')) {
-            const io = req.app.get('io');
-            io.emit('product:deleted', { productId, product: deletedProduct });
-            console.log('📡 [CONTROLLER] Evento de producto eliminado emitido');
-        }
-        
-        res.status(200).json({
-            success: true,
-            message: 'Producto eliminado correctamente',
-            product: deletedProduct
-        });
-        
-    } catch (error) {
-        console.error('💥 [CONTROLLER] Error al eliminar producto:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error interno del servidor',
-            error: error.message
-        });
-    }
-};
-
-// Obtener producto por código de barras
-exports.getProductByBarcode = async (req, res) => {
-    try {
-        const barcode = req.params.barcode;
-        console.log(`🔍 [CONTROLLER] Buscando producto con código de barras: ${barcode}`);
-        
-        const product = await Product.findOne({ barcode: barcode });
-        
-        if (!product) {
-            return res.status(404).json({
-                success: false,
-                message: 'Producto no encontrado con ese código de barras'
-            });
-        }
-        
-        res.status(200).json({
-            success: true,
-            message: 'Producto encontrado',
-            product: product
-        });
-        
-    } catch (error) {
-        console.error('💥 [CONTROLLER] Error al obtener producto por código de barras:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error interno del servidor',
-            error: error.message
-        });
-    }
-};
-
-// Función updateProductStock (la que ya tienes, corregida)
+// ============================================================================
+// FUNCIÓN MEJORADA: updateProductStock
+// ============================================================================
 exports.updateProductStock = async (req, res) => {
+    const productId = req.params.id;
+    const { stock, stock_surtido } = req.body;
+    
+    console.log('\n========================================');
+    console.log('🔄 [STOCK-UPDATE] INICIO DE ACTUALIZACIÓN');
+    console.log('========================================');
+    console.log('📦 ProductID:', productId);
+    console.log('📝 Datos recibidos:', JSON.stringify({ stock, stock_surtido }, null, 2));
+    console.log('⏰ Timestamp:', new Date().toISOString());
+    
     try {
-        const productId = req.params.id;
-        const { stock, stock_surtido } = req.body;
-
-        console.log(`🔄 [CONTROLLER] Actualizando stock del producto ${productId}`);
-        console.log(`📦 [CONTROLLER] Datos recibidos:`, { stock, stock_surtido });
-
-        // Validaciones
+        // ====================================================================
+        // PASO 1: VALIDACIONES INICIALES
+        // ====================================================================
         if (stock === undefined && stock_surtido === undefined) {
+            console.error('❌ [STOCK-UPDATE] ERROR: No se proporcionaron datos para actualizar');
             return res.status(400).json({
                 success: false,
-                message: 'Se requiere al menos un valor de stock para actualizar'
+                message: 'Se requiere al menos un valor de stock para actualizar',
+                error: 'MISSING_STOCK_DATA'
             });
         }
 
-        const oldProduct = await Product.findById(productId);
-        if (!oldProduct) {
-            return res.status(404).json({
-                success: false,
-                message: 'Producto no encontrado'
-            });
-        }
-
-        // Preparar datos de actualización
-        const updateData = {
-            lastUpdated: new Date()
-        };
-
+        // Validar formato de números
         if (stock !== undefined) {
             const stockNumber = parseInt(stock);
             if (isNaN(stockNumber) || stockNumber < 0) {
+                console.error('❌ [STOCK-UPDATE] ERROR: Stock inválido:', stock);
                 return res.status(400).json({
                     success: false,
-                    message: 'El stock debe ser un número válido mayor o igual a 0'
+                    message: 'El stock debe ser un número válido mayor o igual a 0',
+                    error: 'INVALID_STOCK_VALUE',
+                    receivedValue: stock
                 });
             }
-            updateData.stock = stockNumber;
         }
 
         if (stock_surtido !== undefined) {
             const stockSurtidoNumber = parseInt(stock_surtido);
             if (isNaN(stockSurtidoNumber) || stockSurtidoNumber < 0) {
+                console.error('❌ [STOCK-UPDATE] ERROR: Stock surtido inválido:', stock_surtido);
                 return res.status(400).json({
                     success: false,
-                    message: 'El stock surtido debe ser un número válido mayor o igual a 0'
+                    message: 'El stock surtido debe ser un número válido mayor o igual a 0',
+                    error: 'INVALID_STOCK_SURTIDO_VALUE',
+                    receivedValue: stock_surtido
                 });
             }
-            updateData.stock_surtido = stockSurtidoNumber;
+        }
+
+        // ====================================================================
+        // PASO 2: OBTENER PRODUCTO ACTUAL
+        // ====================================================================
+        console.log('🔍 [STOCK-UPDATE] Buscando producto en BD...');
+        const oldProduct = await Product.findById(productId);
+        
+        if (!oldProduct) {
+            console.error('❌ [STOCK-UPDATE] ERROR: Producto no encontrado en BD');
+            return res.status(404).json({
+                success: false,
+                message: 'Producto no encontrado',
+                error: 'PRODUCT_NOT_FOUND',
+                productId: productId
+            });
+        }
+
+        console.log('✅ [STOCK-UPDATE] Producto encontrado:');
+        console.log('   - Nombre:', oldProduct.name);
+        console.log('   - Código:', oldProduct.barcode);
+        console.log('   - Stock actual:', oldProduct.stock);
+        console.log('   - Stock surtido actual:', oldProduct.stock_surtido);
+
+        // ====================================================================
+        // PASO 3: CALCULAR NUEVOS VALORES
+        // ====================================================================
+        const newStock = stock !== undefined ? parseInt(stock) : oldProduct.stock;
+        const newStockSurtido = stock_surtido !== undefined ? parseInt(stock_surtido) : oldProduct.stock_surtido;
+
+        console.log('📊 [STOCK-UPDATE] Calculando nuevos valores:');
+        console.log('   - Nuevo stock total:', newStock);
+        console.log('   - Nuevo stock surtido:', newStockSurtido);
+
+        // VALIDACIÓN CRÍTICA: stock_surtido no puede exceder stock
+        if (newStockSurtido > newStock) {
+            console.error('❌ [STOCK-UPDATE] ERROR: Stock surtido excede stock total');
+            console.error('   - Stock total:', newStock);
+            console.error('   - Stock surtido intentado:', newStockSurtido);
+            
+            return res.status(400).json({
+                success: false,
+                message: `El stock surtido (${newStockSurtido}) no puede ser mayor que el stock total (${newStock})`,
+                error: 'STOCK_SURTIDO_EXCEEDS_TOTAL',
+                values: {
+                    stock: newStock,
+                    stock_surtido: newStockSurtido,
+                    difference: newStockSurtido - newStock
+                }
+            });
+        }
+
+        // ====================================================================
+        // PASO 4: PREPARAR DATOS DE ACTUALIZACIÓN
+        // ====================================================================
+        const updateData = {
+            lastUpdated: new Date()
+        };
+
+        if (stock !== undefined) {
+            updateData.stock = newStock;
+        }
+
+        if (stock_surtido !== undefined) {
+            updateData.stock_surtido = newStockSurtido;
         }
 
         // Calcular stock almacenado
-        const finalStock = updateData.stock !== undefined ? updateData.stock : oldProduct.stock;
-        const finalStockSurtido = updateData.stock_surtido !== undefined ? updateData.stock_surtido : oldProduct.stock_surtido;
-        updateData.stock_almacenado = finalStock - finalStockSurtido;
+        updateData.stock_almacenado = newStock - newStockSurtido;
 
-        // Actualizar producto
+        console.log('📝 [STOCK-UPDATE] Datos de actualización preparados:');
+        console.log(JSON.stringify(updateData, null, 2));
+
+        // ====================================================================
+        // PASO 5: EJECUTAR ACTUALIZACIÓN EN BD
+        // ====================================================================
+        console.log('💾 [STOCK-UPDATE] Ejecutando actualización en MongoDB...');
+        
         const updatedProduct = await Product.findByIdAndUpdate(
             productId,
             { $set: updateData },
             {
-                new: true,
-                runValidators: true,
-                lean: false
+                new: true,          // Retornar documento actualizado
+                runValidators: true, // Ejecutar validaciones del schema
+                lean: false          // Retornar documento Mongoose completo
             }
         );
 
-        // Emitir eventos al frontend
+        if (!updatedProduct) {
+            console.error('❌ [STOCK-UPDATE] ERROR: No se pudo actualizar el producto');
+            return res.status(500).json({
+                success: false,
+                message: 'Error al actualizar el producto en la base de datos',
+                error: 'UPDATE_FAILED'
+            });
+        }
+
+        console.log('✅ [STOCK-UPDATE] Producto actualizado en BD correctamente');
+
+        // ====================================================================
+        // PASO 6: VERIFICAR ACTUALIZACIÓN
+        // ====================================================================
+        console.log('🔍 [STOCK-UPDATE] Verificando actualización...');
+        const verifiedProduct = await Product.findById(productId).lean();
+        
+        if (!verifiedProduct) {
+            console.error('❌ [STOCK-UPDATE] ERROR: No se pudo verificar la actualización');
+            return res.status(500).json({
+                success: false,
+                message: 'No se pudo verificar la actualización',
+                error: 'VERIFICATION_FAILED'
+            });
+        }
+
+        // Verificar que los valores se guardaron correctamente
+        const verificationErrors = [];
+        
+        if (stock !== undefined && verifiedProduct.stock !== newStock) {
+            verificationErrors.push(`Stock esperado: ${newStock}, guardado: ${verifiedProduct.stock}`);
+        }
+        
+        if (stock_surtido !== undefined && verifiedProduct.stock_surtido !== newStockSurtido) {
+            verificationErrors.push(`Stock surtido esperado: ${newStockSurtido}, guardado: ${verifiedProduct.stock_surtido}`);
+        }
+
+        if (verificationErrors.length > 0) {
+            console.error('❌ [STOCK-UPDATE] ERROR: Discrepancia en verificación:');
+            verificationErrors.forEach(err => console.error('   -', err));
+            
+            return res.status(500).json({
+                success: false,
+                message: 'Los datos no se guardaron correctamente',
+                error: 'DATA_MISMATCH',
+                details: verificationErrors,
+                expected: { stock: newStock, stock_surtido: newStockSurtido },
+                actual: { stock: verifiedProduct.stock, stock_surtido: verifiedProduct.stock_surtido }
+            });
+        }
+
+        console.log('✅ [STOCK-UPDATE] Verificación exitosa - Datos correctos en BD');
+
+        // ====================================================================
+        // PASO 7: REGISTRAR TRANSACCIÓN
+        // ====================================================================
+        if (stock !== undefined && newStock !== oldProduct.stock) {
+            try {
+                console.log('📝 [STOCK-UPDATE] Registrando transacción...');
+                
+                const transaction = new Transaction({
+                    productId: productId,
+                    type: newStock < oldProduct.stock ? 'sale' : 'entry',
+                    quantity: Math.abs(oldProduct.stock - newStock),
+                    previousStock: oldProduct.stock,
+                    newStock: newStock,
+                    userId: req.user ? req.user.id : null,
+                    notes: `Actualización de inventario - Stock ${newStock < oldProduct.stock ? 'reducido' : 'aumentado'}`
+                });
+
+                await transaction.save();
+                console.log('✅ [STOCK-UPDATE] Transacción registrada:', transaction._id);
+                
+            } catch (transError) {
+                // No fallar la actualización si falla el registro de transacción
+                console.warn('⚠️ [STOCK-UPDATE] Advertencia: No se pudo registrar transacción:', transError.message);
+            }
+        }
+
+        // ====================================================================
+        // PASO 8: EMITIR EVENTOS SOCKET.IO
+        // ====================================================================
         if (req.app.get('io')) {
-            const io = req.app.get('io');
-            
-            io.emit('product:stock-updated', {
-                productId,
-                oldStock: oldProduct.stock,
-                newStock: updatedProduct.stock,
-                product: updatedProduct
-            });
-            
-            io.emit('product:updated', updatedProduct);
-            
-            console.log('📡 [CONTROLLER] Eventos emitidos al frontend');
+            try {
+                const io = req.app.get('io');
+                
+                console.log('📡 [STOCK-UPDATE] Emitiendo eventos Socket.IO...');
+                
+                // Evento específico de actualización de stock
+                io.emit('product:stock-updated', {
+                    productId: productId,
+                    oldStock: oldProduct.stock,
+                    newStock: verifiedProduct.stock,
+                    oldStockSurtido: oldProduct.stock_surtido,
+                    newStockSurtido: verifiedProduct.stock_surtido,
+                    product: verifiedProduct,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Evento general de producto actualizado
+                io.emit('product:updated', verifiedProduct);
+                
+                console.log('✅ [STOCK-UPDATE] Eventos emitidos correctamente');
+                
+            } catch (socketError) {
+                console.warn('⚠️ [STOCK-UPDATE] Advertencia: Error al emitir eventos:', socketError.message);
+            }
+        } else {
+            console.warn('⚠️ [STOCK-UPDATE] Socket.IO no disponible');
         }
 
-        // Registrar transacción si el stock cambió
-        if (updateData.stock !== undefined && updateData.stock !== oldProduct.stock) {
-            const transaction = new Transaction({
-                productId: productId,
-                type: 'sale',
-                quantity: oldProduct.stock - updateData.stock,
-                previousStock: oldProduct.stock,
-                newStock: updateData.stock,
-                userId: req.user ? req.user.id : null,
-                notes: 'Salida de productos - Actualización de inventario'
-            });
+        // ====================================================================
+        // PASO 9: RESPONDER AL CLIENTE
+        // ====================================================================
+        const changes = {
+            previousStock: oldProduct.stock,
+            newStock: verifiedProduct.stock,
+            stockChanged: verifiedProduct.stock !== oldProduct.stock,
+            previousStockSurtido: oldProduct.stock_surtido,
+            newStockSurtido: verifiedProduct.stock_surtido,
+            stockSurtidoChanged: verifiedProduct.stock_surtido !== oldProduct.stock_surtido,
+            stockReduced: oldProduct.stock - verifiedProduct.stock,
+            stockAlmacenado: verifiedProduct.stock_almacenado
+        };
 
-            await transaction.save();
-        }
+        console.log('✅ [STOCK-UPDATE] Cambios aplicados:');
+        console.log(JSON.stringify(changes, null, 2));
+        console.log('========================================');
+        console.log('✅ [STOCK-UPDATE] ACTUALIZACIÓN COMPLETADA');
+        console.log('========================================\n');
 
         res.status(200).json({
             success: true,
             message: 'Stock actualizado correctamente',
-            product: updatedProduct,
-            changes: {
-                previousStock: oldProduct.stock,
-                newStock: updatedProduct.stock,
-                stockReduced: oldProduct.stock - updatedProduct.stock
-            }
+            product: verifiedProduct,
+            changes: changes,
+            timestamp: new Date().toISOString()
         });
 
     } catch (error) {
-        console.error('💥 [CONTROLLER] Error completo al actualizar stock:', error);
+        console.error('\n========================================');
+        console.error('💥 [STOCK-UPDATE] ERROR CRÍTICO');
+        console.error('========================================');
+        console.error('Error completo:', error);
+        console.error('Stack trace:', error.stack);
+        console.error('ProductID afectado:', productId);
+        console.error('Datos intentados:', JSON.stringify({ stock, stock_surtido }, null, 2));
+        console.error('========================================\n');
+        
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor al actualizar stock',
+            error: error.message,
+            errorType: error.name,
+            productId: productId,
+            timestamp: new Date().toISOString()
+        });
+    }
+};
+
+// ============================================================================
+// FUNCIÓN AUXILIAR: Obtener todos los productos (también mejorada)
+// ============================================================================
+exports.getAllProducts = async (req, res) => {
+    try {
+        console.log('\n📋 [GET-PRODUCTS] Obteniendo todos los productos...');
+        
+        const products = await Product.find({})
+            .sort({ createdAt: -1 })
+            .lean();
+        
+        console.log(`✅ [GET-PRODUCTS] ${products.length} productos obtenidos correctamente`);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Productos obtenidos correctamente',
+            products: products,
+            count: products.length,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('💥 [GET-PRODUCTS] Error:', error.message);
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor',
-            error: error.message
+            error: error.message,
+            timestamp: new Date().toISOString()
         });
     }
 };
