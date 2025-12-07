@@ -601,40 +601,61 @@ process.on('SIGTERM', cleanShutdown);
 
 // Configurar manejadores IPC
 function setupIpcHandlers() {
-    // Login
+    // Login - CORREGIDO
     ipcMain.handle('api:login', async (event, credentials) => {
         if (!isBackendReady) {
             throw new Error('Backend no disponible');
         }
 
         try {
+            console.log('🔐 Procesando login en main...');
+            
             const response = await axios.post(`${getApiUrl()}/auth/login`, credentials, {
                 timeout: 10000,
                 family: 4
             });
 
+            console.log('✅ Respuesta de login recibida:', {
+                hasToken: !!response.data.token,
+                hasUser: !!response.data.user
+            });
+
+            // Guardar token INMEDIATAMENTE
             if (response.data.token) {
                 store.set('authToken', response.data.token);
+                console.log('✅ Token guardado en store (main)');
+            } else {
+                console.error('❌ No se recibió token en la respuesta');
             }
+            
             if (response.data.user) {
                 store.set('user', response.data.user);
+                console.log('✅ Usuario guardado en store');
             }
 
             return response.data;
         } catch (error) {
-            console.error('Error en login:', error.response?.data || error.message);
+            console.error('❌ Error en login (main):', error.response?.data || error.message);
             throw new Error(error.response?.data?.message || 'Error de autenticación');
         }
     });
 
-    // Solicitudes genéricas a la API
+    // Solicitudes genéricas a la API - MEJORADO
     ipcMain.handle('api:request', async (event, { method, endpoint, data, requiresAuth = true }) => {
         if (!isBackendReady) {
             throw new Error('Backend no disponible');
         }
 
         try {
+            // Obtener token desde el store
             const token = requiresAuth ? store.get('authToken') : null;
+
+            if (requiresAuth && !token) {
+                console.error('❌ No hay token disponible para request autenticado');
+                throw new Error('No hay sesión activa. Por favor inicia sesión nuevamente.');
+            }
+
+            console.log(`📡 API Request: ${method.toUpperCase()} /${endpoint} (Auth: ${!!token})`);
 
             const config = {
                 method: method.toLowerCase(),
@@ -646,6 +667,7 @@ function setupIpcHandlers() {
 
             if (requiresAuth && token) {
                 config.headers['Authorization'] = `Bearer ${token}`;
+                console.log('✅ Token incluido en headers');
             }
 
             if (data && ['post', 'put', 'patch'].includes(method.toLowerCase())) {
@@ -653,14 +675,21 @@ function setupIpcHandlers() {
             }
 
             const response = await axios(config);
+            console.log(`✅ Response: ${method.toUpperCase()} /${endpoint} - Status: ${response.status}`);
+            
             return response.data;
         } catch (error) {
-            console.error('Error en API request:', error.response?.data || error.message);
+            console.error(`❌ Error en API request (${method} /${endpoint}):`, 
+                error.response?.data || error.message);
 
+            // Si es error 401, limpiar token
             if (error.response?.status === 401 && requiresAuth) {
+                console.warn('⚠️ Token inválido, limpiando store...');
                 store.delete('authToken');
                 store.delete('user');
+                throw new Error('Sesión expirada. Por favor inicia sesión nuevamente.');
             }
+            
             throw new Error(error.response?.data?.message || 'Error de conexión');
         }
     });
@@ -674,18 +703,28 @@ function setupIpcHandlers() {
         };
     });
 
-    // Manejadores de store
-    ipcMain.handle('store:get', async (event, key) => store.get(key));
+    // Manejadores de store - CON LOGS
+    ipcMain.handle('store:get', async (event, key) => {
+        const value = store.get(key);
+        console.log(`📦 Store GET: ${key} = ${value ? 'exists' : 'null'}`);
+        return value;
+    });
+    
     ipcMain.handle('store:set', async (event, key, value) => {
         store.set(key, value);
+        console.log(`📦 Store SET: ${key} = ${typeof value}`);
         return true;
     });
+    
     ipcMain.handle('store:delete', async (event, key) => {
         store.delete(key);
+        console.log(`📦 Store DELETE: ${key}`);
         return true;
     });
+    
     ipcMain.handle('store:clear', async () => {
         store.clear();
+        console.log('📦 Store CLEAR: all data');
         return true;
     });
 

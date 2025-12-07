@@ -31,52 +31,55 @@ export const productManager = {
     },
 
     async _performInit() {
-        try {
-            console.log('Inicializando ProductManager...');
+    try {
+        console.log('Inicializando ProductManager...');
 
-            if (!eventManager.isInitialized) {
-                console.log('Inicializando eventManager...');
-                eventManager.init();
-            }
-
-            if (!dataSync.isInitialized) {
-                console.log('Inicializando dataSync...');
-                dataSync.init();
-            }
-
-            this.setupAuthEventListeners();
-            await this._waitForDOMElements(10000);
-            this._initializeModals();
-            this.setupEventListeners();
-            this._setupTableScrolling();
-
-            if (dataSync && typeof dataSync.subscribe === 'function') {
-                dataSync.subscribe(this.viewName, 'products', this.handleDataChange.bind(this));
-            }
-
-            await this.loadProducts();
-            await this._validateInitialization();
-
-            this.isInitialized = true;
-            console.log('ProductManager inicializado completamente');
-
-            setTimeout(() => {
-                if (window.uiManager && window.uiManager.forceStyleUpdate) {
-                    window.uiManager.forceStyleUpdate();
-                }
-            }, 100);
-
-            window.productManager = this;
-            console.log('ProductManager expuesto globalmente');
-
-        } catch (error) {
-            console.error('Error en inicialización de ProductManager:', error);
-            this.isInitialized = false;
-            throw error;
-        } finally {
-            this.initializationPromise = null;
+        if (!eventManager.isInitialized) {
+            console.log('Inicializando eventManager...');
+            eventManager.init();
         }
-    },
+
+        if (!dataSync.isInitialized) {
+            console.log('Inicializando dataSync...');
+            dataSync.init();
+        }
+
+        this.setupAuthEventListeners();
+        await this._waitForDOMElements(10000);
+        this._initializeModals();
+        this.setupEventListeners();
+        this._setupTableScrolling();
+
+        if (dataSync && typeof dataSync.subscribe === 'function') {
+            dataSync.subscribe(this.viewName, 'products', this.handleDataChange.bind(this));
+        }
+
+        // ✅ CAMBIO CRÍTICO: NO cargar productos aquí
+        // Se cargarán después del login exitoso
+        console.log('⏸️ ProductManager inicializado, esperando login para cargar datos...');
+
+        await this._validateInitialization();
+
+        this.isInitialized = true;
+        console.log('✅ ProductManager estructura lista');
+
+        setTimeout(() => {
+            if (window.uiManager && window.uiManager.forceStyleUpdate) {
+                window.uiManager.forceStyleUpdate();
+            }
+        }, 100);
+
+        window.productManager = this;
+        console.log('✅ ProductManager expuesto globalmente');
+
+    } catch (error) {
+        console.error('Error en inicialización de ProductManager:', error);
+        this.isInitialized = false;
+        throw error;
+    } finally {
+        this.initializationPromise = null;
+    }
+},
 
     _setupTableScrolling() {
         const productsView = document.querySelector('#products-view');

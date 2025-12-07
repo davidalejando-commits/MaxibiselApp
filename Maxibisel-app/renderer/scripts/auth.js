@@ -1,78 +1,142 @@
-//Manejo de autenticación - SIN persistencia de token
+// Manejo de autenticación - VERSIÓN CORREGIDA
 import { eventManager } from './eventManager.js';
 
 export const authManager = {
     currentUser: null,
     isLoggedIn: false,
+    token: null,
+    isInitialized: false,
 
-    init() {
-        console.log('🔧 Inicializando AuthManager (sin persistencia)...');
+    async init() {
+        console.log('🔧 Inicializando AuthManager...');
 
-        // Asegurar que el DOM esté completamente cargado
+        // Prevenir inicialización múltiple
+        if (this.isInitialized) {
+            console.warn('⚠️ AuthManager ya está inicializado');
+            return;
+        }
+
+        // Esperar a que el DOM esté listo
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                this.setupEventListeners();
-                this.showLoginScreen(); // Siempre mostrar login al iniciar
+            await new Promise(resolve => {
+                document.addEventListener('DOMContentLoaded', resolve);
             });
+        }
+
+        this.setupEventListeners();
+        
+        // Intentar recuperar sesión guardada
+        const hasSession = await this.checkStoredSession();
+        
+        if (hasSession) {
+            console.log('✅ Sesión válida encontrada');
+            await this.initializeApp();
         } else {
-            this.setupEventListeners();
-            this.showLoginScreen(); // Siempre mostrar login al iniciar
+            console.log('ℹ️ No hay sesión válida');
+            this.showLoginScreen();
+        }
+
+        this.isInitialized = true;
+        console.log('✅ AuthManager inicializado');
+    },
+
+    async checkStoredSession() {
+        try {
+            console.log('🔍 Verificando sesión guardada...');
+            
+            const token = await window.api.store.get('authToken');
+            const user = await window.api.store.get('user');
+
+            if (!token || !user) {
+                console.log('ℹ️ No hay token o usuario guardado');
+                return false;
+            }
+
+            // Verificar que el token sea válido haciendo una petición
+            try {
+                await window.api.health();
+                
+                // Token válido, restaurar sesión
+                this.token = token;
+                this.currentUser = user;
+                this.isLoggedIn = true;
+                
+                console.log('✅ Sesión restaurada:', user.username);
+                return true;
+                
+            } catch (error) {
+                console.warn('⚠️ Token inválido, limpiando sesión');
+                await this.clearStoredSession();
+                return false;
+            }
+            
+        } catch (error) {
+            console.error('❌ Error verificando sesión:', error);
+            return false;
         }
     },
 
+    async clearStoredSession() {
+        await window.api.store.delete('authToken');
+        await window.api.store.delete('user');
+        this.token = null;
+        this.currentUser = null;
+        this.isLoggedIn = false;
+    },
+
     setupEventListeners() {
-        // Verificar que los elementos existan antes de agregar listeners
-        const loginForm = document.getElementById('login-form');
-        const logoutBtn = document.getElementById('logout-btn');
+        const loginForm = this.safeGetElement('login-form');
+        const logoutBtn = this.safeGetElement('logout-btn');
 
         if (loginForm) {
             loginForm.addEventListener('submit', this.handleLogin.bind(this));
-        } else {
-            console.warn('Elemento login-form no encontrado');
         }
 
         if (logoutBtn) {
             logoutBtn.addEventListener('click', this.handleLogout.bind(this));
-        } else {
-            console.warn('Elemento logout-btn no encontrado');
         }
     },
 
-    // Función helper para obtener elementos de forma segura
     safeGetElement(id, required = false) {
         const element = document.getElementById(id);
         if (!element && required) {
-            console.error(`Elemento requerido '${id}' no encontrado`);
+            console.error(`❌ Elemento requerido '${id}' no encontrado`);
         } else if (!element) {
-            console.warn(`Elemento '${id}' no encontrado`);
+            console.warn(`⚠️ Elemento '${id}' no encontrado`);
         }
         return element;
     },
 
-    // Función para mostrar pantalla de login
     showLoginScreen() {
-        console.log('🔓 Mostrando pantalla de login');
+        console.log('🔐 Mostrando pantalla de login');
+        
         const authContainer = this.safeGetElement('auth-container');
         const appContainer = this.safeGetElement('app-container');
 
         if (authContainer) {
             authContainer.classList.remove('d-none');
         }
+        
         if (appContainer) {
             appContainer.classList.add('d-none');
         }
 
-        // Limpiar campos si existen
+        // Limpiar y enfocar campos
         const usernameEl = this.safeGetElement('username');
         const passwordEl = this.safeGetElement('password');
+        const errorEl = this.safeGetElement('login-error');
 
         if (usernameEl) {
             usernameEl.value = '';
-            // Enfocar el campo de usuario después de un pequeño delay
             setTimeout(() => usernameEl.focus(), 100);
         }
+        
         if (passwordEl) {
             passwordEl.value = '';
+        }
+        
+        if (errorEl) {
+            errorEl.classList.add('d-none');
         }
     },
 
@@ -83,7 +147,7 @@ export const authManager = {
         const passwordEl = this.safeGetElement('password', true);
 
         if (!usernameEl || !passwordEl) {
-            this.showLoginError('Elementos de formulario no encontrados');
+            this.showLoginError('Elementos del formulario no encontrados');
             return;
         }
 
@@ -95,43 +159,55 @@ export const authManager = {
             return;
         }
 
-        // Mostrar indicador de carga
         const submitBtn = event.target.querySelector('button[type="submit"]');
         const originalText = submitBtn ? submitBtn.innerHTML : '';
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Iniciando sesión...';
-        }
 
         try {
-            // Ocultar error anterior si existe
-            const loginErrorEl = this.safeGetElement('login-error');
-            if (loginErrorEl) {
-                loginErrorEl.classList.add('d-none');
+            // Mostrar loading
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Iniciando sesión...';
             }
 
-            console.log('🔐 Intentando login...');
+            this.hideLoginError();
+
+            console.log('🔐 Procesando login...');
+            
+            // Realizar login
             const response = await window.api.login({ username, password });
 
+            if (!response.token) {
+                throw new Error('No se recibió token de autenticación');
+            }
+
+            // Guardar en memoria
+            this.token = response.token;
             this.currentUser = response.user;
             this.isLoggedIn = true;
-            console.log('✅ Login exitoso:', this.currentUser.fullName);
 
-            // Actualizar la interfaz después del login exitoso
-            this.updateUIAfterLogin();
+            console.log('✅ Login exitoso:', this.currentUser.username);
 
-            // ✅ EMITIR EVENTO DE LOGIN EXITOSO
-            console.log('🚀 Emitiendo evento auth:login-success');
+            // Verificar que el token se guardó
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            const tokenSaved = await window.api.store.get('authToken');
+            if (!tokenSaved) {
+                throw new Error('Error al guardar el token');
+            }
+            
+            console.log('✅ Token verificado y guardado');
+
+            // Inicializar aplicación
+            await this.initializeApp();
+
+            // Emitir evento de login exitoso
             eventManager.emit('auth:login-success', this.currentUser);
-
-            // ✅ NUEVO: Inicializar y cargar productos automáticamente
-            await this.initializeProductsAfterLogin();
 
         } catch (error) {
             console.error('❌ Error en login:', error);
             this.showLoginError(error.message || 'Error de autenticación');
+            await this.clearStoredSession();
         } finally {
-            // Restaurar botón
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText || 'Iniciar Sesión';
@@ -139,198 +215,256 @@ export const authManager = {
         }
     },
 
-    // ✅ NUEVA FUNCIÓN: Inicializar productos después del login
-    async initializeProductsAfterLogin() {
-        console.log('📦 Inicializando gestión de productos después del login...');
-        
+    async initializeApp() {
+        console.log('🚀 Inicializando aplicación...');
+
         try {
-            // Esperar a que la UI esté completamente configurada
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
-            // Verificar si productManager está disponible
-            if (window.productManager) {
-                console.log('🔄 Inicializando ProductManager...');
-                
-                // Asegurar que productManager esté inicializado
-                if (!window.productManager.isInitialized) {
-                    await window.productManager.init();
-                }
-                
-                // Forzar carga inmediata de productos
-                console.log('📥 Forzando carga inicial de productos...');
-                await window.productManager.loadProducts();
-                
-                console.log('✅ Productos cargados automáticamente después del login');
-                
-                // Emitir evento para notificar que los productos están listos
-                if (window.eventManager) {
-                    window.eventManager.emit('auth:products-initialized', {
-                        timestamp: Date.now(),
-                        productsCount: window.productManager.products.length
-                    });
-                }
-            } else {
-                console.warn('⚠️ ProductManager no está disponible globalmente');
-            }
-            
+            // Actualizar UI
+            this.updateUIAfterLogin();
+
+            // Esperar un momento para asegurar que el DOM esté actualizado
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Cargar datos críticos
+            await this.loadCriticalData();
+
+            // Configurar vista por defecto
+            this.setupDefaultView();
+
+            console.log('✅ Aplicación inicializada correctamente');
+
         } catch (error) {
-            console.error('❌ Error inicializando productos después del login:', error);
-            // No interrumpir el flujo de login por este error
+            console.error('❌ Error al inicializar aplicación:', error);
+            throw error;
         }
     },
 
-    // Función para manejar la actualización de UI después del login
+    async loadCriticalData() {
+        console.log('📦 Cargando datos críticos...');
+
+        try {
+            // Esperar a que productManager esté disponible
+            let attempts = 0;
+            while (!window.productManager && attempts < 20) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+
+            if (!window.productManager) {
+                throw new Error('ProductManager no disponible');
+            }
+
+            console.log('✅ ProductManager encontrado');
+
+            // Inicializar productManager si es necesario
+            if (typeof window.productManager.init === 'function') {
+                await window.productManager.init();
+            }
+
+            // Cargar productos
+            if (typeof window.productManager.loadProducts === 'function') {
+                console.log('📥 Cargando productos...');
+                await window.productManager.loadProducts();
+                
+                const count = window.productManager.products?.length || 0;
+                console.log(`✅ ${count} productos cargados`);
+
+                if (count === 0) {
+                    console.warn('⚠️ No se cargaron productos');
+                }
+            }
+
+            // Inicializar otros managers si están disponibles
+            if (window.salesManager && typeof window.salesManager.loadInitialData === 'function') {
+                console.log('🛒 Inicializando salesManager...');
+                await window.salesManager.loadInitialData();
+            }
+
+            if (window.transactionManager && typeof window.transactionManager.loadProducts === 'function') {
+                console.log('📋 Inicializando transactionManager...');
+                await window.transactionManager.loadProducts();
+            }
+
+            // Emitir evento de datos cargados
+            eventManager.emit('auth:data-loaded', {
+                timestamp: Date.now(),
+                productsCount: window.productManager?.products?.length || 0
+            });
+
+        } catch (error) {
+            console.error('❌ Error cargando datos críticos:', error);
+            
+            // Mostrar advertencia pero no bloquear el login
+            if (window.uiManager && typeof window.uiManager.showAlert === 'function') {
+                window.uiManager.showAlert(
+                    'Algunos datos no se cargaron. Intenta recargar la aplicación.',
+                    'warning'
+                );
+            }
+        }
+    },
+
     updateUIAfterLogin() {
-        console.log('🖥️ Actualizando UI después del login...');
+        console.log('🖥️ Actualizando interfaz...');
 
         const authContainer = this.safeGetElement('auth-container');
         const appContainer = this.safeGetElement('app-container');
         const userDisplay = this.safeGetElement('user-display');
         const adminMenuItem = this.safeGetElement('admin-menu-item');
 
-        // Cambiar contenedores
         if (authContainer) {
             authContainer.classList.add('d-none');
         }
+
         if (appContainer) {
             appContainer.classList.remove('d-none');
         }
 
-        // Mostrar información del usuario
         if (userDisplay && this.currentUser) {
-            userDisplay.textContent = `Usuario: ${this.currentUser.fullName}`;
+            userDisplay.textContent = this.currentUser.fullName || this.currentUser.username;
         }
 
-        // Mostrar/ocultar opciones según el rol
-        if (adminMenuItem) {
-            if (this.currentUser && this.currentUser.role === 'admin') {
+        if (adminMenuItem && this.currentUser) {
+            if (this.currentUser.role === 'admin') {
                 adminMenuItem.classList.remove('d-none');
             } else {
                 adminMenuItem.classList.add('d-none');
             }
         }
-
-        // ✅ CRÍTICO: Asegurar que la vista de productos esté activa por defecto
-        setTimeout(() => {
-            this.ensureDefaultView();
-        }, 100);
     },
 
-    // ✅ FUNCIÓN MEJORADA: Configurar vista por defecto con carga de productos
-    ensureDefaultView() {
-        console.log('📦 Configurando vista de productos como predeterminada...');
+    setupDefaultView() {
+        console.log('📄 Configurando vista por defecto...');
 
-        const productsSection = document.getElementById('products-section');
-        const productsNavLink = document.querySelector('[data-view="products"]');
-
-        // Ocultar todas las secciones primero
+        // Ocultar todas las secciones
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
         });
 
-        // Remover active de todos los nav links
+        // Desactivar todos los nav links
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.remove('active');
         });
 
-        // Activar sección de productos
+        // Activar vista de productos
+        const productsSection = this.safeGetElement('products-section');
+        const productsNavLink = document.querySelector('[data-view="products"]');
+
         if (productsSection) {
             productsSection.classList.add('active');
-            console.log('✅ Sección de productos activada');
         }
 
-        // Activar nav link de productos
         if (productsNavLink) {
             productsNavLink.classList.add('active');
-            console.log('✅ Nav link de productos activado');
         }
 
-        // ✅ NUEVO: Emitir evento de vista activada para que productManager pueda reaccionar
-        if (window.eventManager) {
-            window.eventManager.emit('view:activated', {
-                viewName: 'products',
-                timestamp: Date.now()
-            });
-        }
+        // Emitir evento de vista activada
+        eventManager.emit('view:activated', {
+            viewName: 'products',
+            timestamp: Date.now()
+        });
     },
 
-    // Función para mostrar errores de login
     showLoginError(message) {
         const errorElement = this.safeGetElement('login-error');
         if (errorElement) {
             errorElement.textContent = message;
             errorElement.classList.remove('d-none');
         } else {
-            // Fallback si no existe el elemento
-            console.error('Login error:', message);
-            alert('Error de autenticación: ' + message);
+            console.error('❌ Error de login:', message);
+            alert('Error: ' + message);
+        }
+    },
+
+    hideLoginError() {
+        const errorElement = this.safeGetElement('login-error');
+        if (errorElement) {
+            errorElement.classList.add('d-none');
         }
     },
 
     async handleLogout() {
         try {
-            console.log('🚪 Cerrando sesión...');
-            await window.api.logout();
-        } catch (error) {
-            console.error('Error al cerrar sesión:', error);
-            // Continuar con el logout local incluso si hay error en el servidor
-        } finally {
-            // Siempre resetear la UI y estado local
+            console.log('👋 Cerrando sesión...');
+
+            // Intentar logout en servidor
+            try {
+                await window.api.logout();
+            } catch (error) {
+                console.warn('⚠️ Error en logout del servidor:', error);
+            }
+
+            // Limpiar sesión local
+            await this.clearStoredSession();
+
+            // Resetear UI
             this.resetUIAfterLogout();
 
-            // ✅ EMITIR EVENTO DE LOGOUT
+            // Emitir evento de logout
             eventManager.emit('auth:logout');
+
+            console.log('✅ Sesión cerrada');
+
+        } catch (error) {
+            console.error('❌ Error al cerrar sesión:', error);
         }
     },
 
-    // Función para resetear UI después del logout
     resetUIAfterLogout() {
-        console.log('🔄 Reseteando UI después del logout...');
-
-        // Limpiar estado local
-        this.currentUser = null;
-        this.isLoggedIn = false;
+        console.log('🔄 Reseteando interfaz...');
 
         const appContainer = this.safeGetElement('app-container');
         const authContainer = this.safeGetElement('auth-container');
-        const usernameEl = this.safeGetElement('username');
-        const passwordEl = this.safeGetElement('password');
-        const loginErrorEl = this.safeGetElement('login-error');
 
-        // Mostrar pantalla de login
         if (appContainer) {
             appContainer.classList.add('d-none');
         }
+
         if (authContainer) {
             authContainer.classList.remove('d-none');
         }
 
-        // Limpiar campos de login
+        // Limpiar campos
+        const usernameEl = this.safeGetElement('username');
+        const passwordEl = this.safeGetElement('password');
+        const errorEl = this.safeGetElement('login-error');
+
         if (usernameEl) {
             usernameEl.value = '';
-            setTimeout(() => usernameEl.focus(), 100); // Enfocar campo de usuario
+            setTimeout(() => usernameEl.focus(), 100);
         }
+
         if (passwordEl) {
             passwordEl.value = '';
         }
-        if (loginErrorEl) {
-            loginErrorEl.classList.add('d-none');
-        }
-    },
 
-    // Función de verificación de sesión simplificada
-    checkSession() {
-        // Sin persistencia, siempre mostrar login
-        console.log('📋 Verificando sesión - sin persistencia, mostrando login');
-        this.showLoginScreen();
+        if (errorEl) {
+            errorEl.classList.add('d-none');
+        }
+
+        // Resetear managers si están disponibles
+        if (window.productManager && typeof window.productManager.reset === 'function') {
+            window.productManager.reset();
+        }
+
+        if (window.salesManager && typeof window.salesManager.reset === 'function') {
+            window.salesManager.reset();
+        }
     },
 
     isAdmin() {
         return this.currentUser && this.currentUser.role === 'admin';
     },
 
-    // Función para verificar si está logueado
     isAuthenticated() {
-        return this.isLoggedIn && this.currentUser !== null;
+        return this.isLoggedIn && this.currentUser !== null && this.token !== null;
+    },
+
+    getToken() {
+        return this.token;
+    },
+
+    getUser() {
+        return this.currentUser;
     }
 };

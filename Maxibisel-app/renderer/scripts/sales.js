@@ -1,4 +1,4 @@
-// Gestión de ventas - CON SINCRONIZACIÓN CORREGIDA
+// Gestión de ventas 
 import { dataSync } from "./dataSync.js";
 import { eventManager } from "./eventManager.js";
 import { syncHelper } from "./sync-helper.js";

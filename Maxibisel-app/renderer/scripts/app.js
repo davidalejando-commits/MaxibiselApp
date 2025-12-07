@@ -1,515 +1,407 @@
-//Script principal de la aplicación - VERSIÓN SINCRONIZADA CORREGIDA
-import { authManager } from './auth.js';
-import { dataSync } from './dataSync.js';
-import { eventManager } from './eventManager.js';
-import { productManager } from './products.js';
+// app.js - VERSIÓN FINAL SIMPLIFICADA Y FUNCIONAL
+
 import { salesManager } from './sales.js';
 import { transactionManager } from './transactions.js';
+import { productManager } from './products.js';
 import { uiManager } from './ui.js';
-import { userManager } from './users.js';
-import { syncCoordinator } from './sync-coordinator.js';
+import { eventManager } from './eventManager.js';
 
-// Variable global para gestores (útil para debugging)
-window.appManagers = {
-    auth: authManager,
-    products: productManager,
-    sales: salesManager,
-    transactions: transactionManager,
-    users: userManager,
-    ui: uiManager,
-    events: eventManager,
-    sync: dataSync
-};
+// ==================== VARIABLES GLOBALES ====================
+let currentUser = null;
+let isAuthenticated = false;
 
-// Variable global para debugging
-window.debugSync = () => {
-    console.log('🔍 ESTADO DEL SISTEMA DE SINCRONIZACIÓN:');
-    console.log('📊 Estadísticas de caché:', dataSync.getCacheStats());
-    console.log('📝 Estadísticas de suscriptores:', dataSync.getSubscriberStats());
-    console.log('🎯 Estadísticas de eventos:', eventManager.getStats());
-    
-    // Mostrar datos en caché
-    console.log('💾 Datos en caché:');
-    dataSync.cache.forEach((data, type) => {
-        console.log(`  ${type}: ${Array.isArray(data) ? data.length : 1} elementos`);
-    });
-};
+// ==================== EXPONER MANAGERS ====================
+window.productManager = productManager;
+window.salesManager = salesManager;
+window.transactionManager = transactionManager;
+window.uiManager = uiManager;
+window.eventManager = eventManager;
 
-// ✅ FUNCIÓN DE INICIALIZACIÓN MEJORADA
-async function initializeApp() {
-    console.log('🚀 Iniciando aplicación con sistema de sincronización...');
-    
+console.log('✅ Managers expuestos globalmente');
+
+// ==================== VERIFICACIÓN DE BACKEND ====================
+
+async function checkBackend() {
     try {
-        // ✅ PASO 1: Verificar dependencias críticas
-        if (!eventManager) {
-            throw new Error('eventManager no está disponible');
-        }
-        
-        // ✅ PASO 2: Inicializar sistemas centrales PRIMERO
-        console.log('🔄 Inicializando sistemas centrales...');
-        
-        // Verificar que eventManager tenga los métodos necesarios
-        if (typeof eventManager.init === 'function') {
-            eventManager.init();
-        }
-        
-        dataSync.init();
-        syncCoordinator.init();
-        
-        // ✅ PASO 3: Configurar listeners globales
-        await setupGlobalEventListeners();
-        
-        // ✅ PASO 4: Inicializar gestores en orden de dependencias
-        console.log('🔧 Inicializando gestores de la aplicación...');
-        
-        // Primero UI y Auth (no dependen de datos)
-        if (authManager && typeof authManager.init === 'function') {
-            authManager.init();
-        }
-        
-        if (uiManager && typeof uiManager.init === 'function') {
-            uiManager.init();
-        }
-        
-        // Luego gestores que pueden depender de datos
-        const managers = [productManager, salesManager, transactionManager, userManager];
-        
-        for (const manager of managers) {
-            if (manager && typeof manager.init === 'function') {
-                try {
-                    await manager.init();
-                } catch (error) {
-                    console.error(`❌ Error inicializando gestor:`, error);
-                    // Continuar con otros gestores
-                }
-            }
-        }
-        
-        // ✅ PASO 5: Configurar sistemas adicionales
-        setupNavigationSync();
-        setupHeartbeat();
-        
-        // ✅ PASO 6: Verificar sesión existente (con manejo de errores)
-        if (authManager && typeof authManager.checkSession === 'function') {
-            try {
-                await authManager.checkSession();
-            } catch (error) {
-                console.error('❌ Error verificando sesión:', error);
-                // No es crítico, continuar
-            }
-        }
-        
-        console.log('✅ Aplicación inicializada correctamente');
-        
-        // Log de estado inicial para debugging (con delay)
-        setTimeout(() => {
-            console.log('📋 Estado inicial del sistema:');
-            if (typeof window.debugSync === 'function') {
-                window.debugSync();
-            }
-        }, 2000);
-        
+        await window.api.health();
+        console.log('✅ Backend conectado');
         return true;
-        
     } catch (error) {
-        console.error('❌ Error crítico durante inicialización:', error);
-        
-        // Mostrar error al usuario de forma segura
-        if (uiManager && typeof uiManager.showAlert === 'function') {
-            uiManager.showAlert('Error crítico al inicializar la aplicación. Recarga la página.', 'danger');
-        } else {
-            // Fallback si uiManager no está disponible
-            alert('Error crítico al inicializar la aplicación. Por favor recarga la página.');
-        }
-        
+        console.error('❌ Backend no disponible:', error);
         return false;
     }
 }
 
-// ✅ FUNCIÓN CORREGIDA: setupGlobalEventListeners con verificaciones
-async function setupGlobalEventListeners() {
-    console.log('🔧 Configurando listeners globales...');
-    
+// ==================== INICIALIZACIÓN ====================
+
+async function initialize() {
+    console.log('🚀 Iniciando aplicación...');
+
     try {
-        // Verificar que eventManager esté disponible
-        if (!eventManager || typeof eventManager.on !== 'function') {
-            console.error('❌ eventManager no está disponible para listeners');
+        // Verificar backend
+        const backendOk = await checkBackend();
+        if (!backendOk) {
+            alert('Error: No se puede conectar con el servidor');
             return;
         }
 
-        // Listener para errores de sincronización
-        eventManager.on('sync:error', (error) => {
-            console.error('💥 Error de sincronización:', error);
-            if (uiManager && typeof uiManager.showAlert === 'function') {
-                uiManager.showAlert('Error de sincronización: ' + (error.message || 'Error desconocido'), 'danger');
-            }
-        });
-        
-        // Listener para estado de conexión
-        eventManager.on('connection:lost', () => {
-            if (uiManager && typeof uiManager.showAlert === 'function') {
-                uiManager.showAlert('Conexión perdida. Reintentando...', 'warning');
-            }
-        });
-        
-        eventManager.on('connection:restored', () => {
-            if (uiManager && typeof uiManager.showAlert === 'function') {
-                uiManager.showAlert('Conexión restaurada', 'success');
-            }
-            // Refrescar todos los datos
-            if (dataSync && typeof dataSync.refreshAllData === 'function') {
-                dataSync.refreshAllData().catch(err => {
-                    console.error('❌ Error refrescando datos tras reconexión:', err);
-                });
-            }
-        });
-        
-        // Listener para cambios de autenticación
-        eventManager.on('auth:logout', () => {
-            console.log('🚪 Usuario cerró sesión, limpiando caché...');
-            if (dataSync && typeof dataSync.destroy === 'function') {
-                dataSync.destroy();
-            }
-            if (dataSync && typeof dataSync.init === 'function') {
-                dataSync.init(); // Reinicializar limpio
-            }
-        });
-        
-        // Listener para operaciones batch (múltiples cambios)
-        eventManager.on('data:batch:updated', (updates) => {
-            console.log('📦 Actualización batch recibida:', updates?.length || 0, 'elementos');
-            if (Array.isArray(updates)) {
-                updates.forEach(update => {
-                    try {
-                        if (update?.type === 'product') {
-                            eventManager.emit('data:product:updated', update.data);
-                        }
-                    } catch (error) {
-                        console.error('❌ Error procesando actualización batch:', error);
-                    }
-                });
-            }
-        });
+        // Configurar navegación
+        setupNavigation();
 
-        console.log('✅ Listeners globales configurados');
-        
-    } catch (error) {
-        console.error('❌ Error configurando listeners globales:', error);
-    }
-}
+        // Verificar sesión guardada
+        const hasSession = await checkSavedSession();
 
-// ✅ FUNCIÓN CORREGIDA: setupNavigationSync con verificaciones
-function setupNavigationSync() {
-    console.log('🔧 Configurando sincronización de navegación...');
-    
-    try {
-        if (!eventManager || typeof eventManager.on !== 'function') {
-            console.warn('⚠️ eventManager no disponible para navegación');
-            return;
-        }
-
-        // Escuchar cambios de vista
-        eventManager.on('view:changed', (viewName) => {
-            console.log(`👁️ Vista cambiada a: ${viewName}`);
-            
-            // Refrescar datos cuando se cambia a una vista crítica
-            try {
-                switch (viewName) {
-                    case 'products':
-                        console.log('📦 Vista de productos activa');
-                        break;
-                    case 'sales':
-                        console.log('🛒 Vista de ventas activa');
-                        break;
-                    case 'transactions':
-                        console.log('📊 Vista de transacciones activa');
-                        break;
-                }
-            } catch (error) {
-                console.error('❌ Error en cambio de vista:', error);
-            }
-        });
-        
-        // Detectar cambios de visibilidad de la ventana
-        document.addEventListener('visibilitychange', () => {
-            try {
-                if (!document.hidden) {
-                    console.log('👁️ Ventana visible nuevamente, verificando datos...');
-                    // Opcional: refrescar datos cuando la ventana vuelve a ser visible
-                    // if (dataSync && typeof dataSync.refreshAllData === 'function') {
-                    //     dataSync.refreshAllData();
-                    // }
-                }
-            } catch (error) {
-                console.error('❌ Error en visibilitychange:', error);
-            }
-        });
-
-        console.log('✅ Sincronización de navegación configurada');
-        
-    } catch (error) {
-        console.error('❌ Error configurando sincronización de navegación:', error);
-    }
-}
-
-// ✅ FUNCIÓN CORREGIDA: Sistema de heartbeat con mejor manejo de errores
-function setupHeartbeat() {
-    console.log('💓 Configurando sistema de heartbeat...');
-    
-    try {
-        let heartbeatInterval;
-        let isConnected = true;
-        
-        const startHeartbeat = () => {
-            heartbeatInterval = setInterval(async () => {
-                try {
-                    // Verificar conexión con el backend (si la API está disponible)
-                    if (window.api && typeof window.api.health === 'function') {
-                        const health = await window.api.health();
-                        
-                        if (!isConnected) {
-                            console.log('💓 Conexión restaurada');
-                            isConnected = true;
-                            if (eventManager && typeof eventManager.emit === 'function') {
-                                eventManager.emit('connection:restored');
-                            }
-                        }
-                    }
-                    
-                } catch (error) {
-                    if (isConnected) {
-                        console.log('💔 Conexión perdida');
-                        isConnected = false;
-                        if (eventManager && typeof eventManager.emit === 'function') {
-                            eventManager.emit('connection:lost');
-                        }
-                    }
-                }
-            }, 30000); // Verificar cada 30 segundos
-        };
-        
-        const stopHeartbeat = () => {
-            if (heartbeatInterval) {
-                clearInterval(heartbeatInterval);
-                heartbeatInterval = null;
-            }
-        };
-        
-        // Iniciar heartbeat solo si tenemos API disponible
-        if (window.api) {
-            startHeartbeat();
-            
-            // Limpiar al cerrar
-            window.addEventListener('beforeunload', stopHeartbeat);
-            console.log('✅ Sistema de heartbeat configurado');
+        if (hasSession) {
+            console.log('✅ Sesión válida encontrada');
+            await loadApplication();
         } else {
-            console.warn('⚠️ API no disponible, saltando configuración de heartbeat');
+            console.log('ℹ️ No hay sesión, mostrando login');
+            showLogin();
         }
-        
+
     } catch (error) {
-        console.error('❌ Error configurando heartbeat:', error);
+        console.error('💥 Error fatal:', error);
+        alert('Error al iniciar la aplicación: ' + error.message);
+        showLogin();
     }
 }
 
-// ✅ INICIALIZACIÓN SEGURA CON MÚLTIPLES ESTRATEGIAS
-function safeInitialize() {
-    // Estrategia 1: DOMContentLoaded
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeApp);
-    }
-    // Estrategia 2: Si el DOM ya está listo
-    else if (document.readyState === 'interactive' || document.readyState === 'complete') {
-        // Pequeño delay para asegurar que todos los módulos estén cargados
-        setTimeout(initializeApp, 100);
-    }
-    // Estrategia 3: Fallback con load event
-    else {
-        window.addEventListener('load', initializeApp);
+// ==================== GESTIÓN DE SESIÓN ====================
+
+async function checkSavedSession() {
+    try {
+        const token = await window.api.store.get('authToken');
+        const user = await window.api.store.get('user');
+
+        if (!token || !user) {
+            return false;
+        }
+
+        // Verificar que el token funcione
+        try {
+            await window.api.health();
+            currentUser = user;
+            isAuthenticated = true;
+            console.log('✅ Sesión restaurada:', user.username);
+            return true;
+        } catch (error) {
+            console.warn('⚠️ Token inválido');
+            await clearSession();
+            return false;
+        }
+
+    } catch (error) {
+        console.error('❌ Error verificando sesión:', error);
+        return false;
     }
 }
 
-// Ejecutar inicialización segura
-safeInitialize();
+async function clearSession() {
+    currentUser = null;
+    isAuthenticated = false;
+    await window.api.store.delete('authToken');
+    await window.api.store.delete('user');
+    console.log('🗑️ Sesión limpiada');
+}
 
-// ✅ FUNCIÓN DE LIMPIEZA GLOBAL MEJORADA
-window.addEventListener('beforeunload', () => {
-    console.log('🧹 Limpiando recursos de la aplicación...');
-    
+// ==================== PANTALLA DE LOGIN ====================
+
+function showLogin() {
+    console.log('🔐 Mostrando login');
+
+    const authContainer = document.getElementById('auth-container');
+    const appContainer = document.getElementById('app-container');
+
+    if (authContainer) authContainer.classList.remove('d-none');
+    if (appContainer) appContainer.classList.add('d-none');
+
+    // Limpiar campos
+    const username = document.getElementById('username');
+    const password = document.getElementById('password');
+    const loginError = document.getElementById('login-error');
+
+    if (username) {
+        username.value = '';
+        setTimeout(() => username.focus(), 100);
+    }
+    if (password) password.value = '';
+    if (loginError) loginError.classList.add('d-none');
+
+    // Configurar formulario
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.onsubmit = handleLogin;
+    }
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('username')?.value.trim();
+    const password = document.getElementById('password')?.value.trim();
+    const loginBtn = document.getElementById('login-button');
+    const loginError = document.getElementById('login-error');
+
+    if (!username || !password) {
+        showError('Completa todos los campos');
+        return;
+    }
+
+    const originalText = loginBtn?.textContent || 'Iniciar Sesión';
+
     try {
-        // Destruir gestores que tengan método destroy
-        if (window.appManagers) {
-            Object.entries(window.appManagers).forEach(([name, manager]) => {
-                if (manager && typeof manager.destroy === 'function') {
-                    try {
-                        manager.destroy();
-                        console.log(`✅ ${name} destruido`);
-                    } catch (error) {
-                        console.error(`❌ Error destruyendo ${name}:`, error);
-                    }
-                }
-            });
+        // Mostrar loading
+        if (loginBtn) {
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Iniciando...';
         }
-        
-        // Limpiar sistemas centrales
-        if (eventManager && typeof eventManager.clear === 'function') {
-            eventManager.clear();
+        if (loginError) loginError.classList.add('d-none');
+
+        console.log('🔐 Login en proceso...');
+
+        // Hacer login
+        const response = await window.api.login({ username, password });
+
+        if (!response.token) {
+            throw new Error('No se recibió token');
         }
-        
-        if (dataSync && typeof dataSync.destroy === 'function') {
-            dataSync.destroy();
+
+        currentUser = response.user;
+        isAuthenticated = true;
+
+        console.log('✅ Login exitoso:', currentUser.username);
+
+        // Esperar a que el token se guarde
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Verificar token
+        const savedToken = await window.api.store.get('authToken');
+        if (!savedToken) {
+            throw new Error('Token no se guardó correctamente');
         }
-        
-        console.log('✅ Limpieza completada');
-        
+
+        console.log('✅ Token guardado y verificado');
+
+        // Limpiar formulario
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+
+        // Cargar aplicación
+        await loadApplication();
+
     } catch (error) {
-        console.error('❌ Error durante limpieza:', error);
-    }
-});
-
-// ✅ FUNCIONES UTILITARIAS GLOBALES MEJORADAS
-window.syncUtils = {
-    // Forzar actualización de todos los datos
-    refreshAll: async () => {
-        console.log('🔄 Forzando actualización de todos los datos...');
-        try {
-            if (dataSync && typeof dataSync.refreshAllData === 'function') {
-                return await dataSync.refreshAllData();
-            } else {
-                console.error('❌ dataSync.refreshAllData no está disponible');
-                return null;
-            }
-        } catch (error) {
-            console.error('❌ Error en refreshAll:', error);
-            throw error;
-        }
-    },
-    
-    // Limpiar caché específico
-    clearCache: (dataType) => {
-        console.log(`🗑️ Limpiando caché de: ${dataType}`);
-        try {
-            if (dataSync && typeof dataSync.invalidateCache === 'function') {
-                dataSync.invalidateCache(dataType);
-            } else {
-                console.error('❌ dataSync.invalidateCache no está disponible');
-            }
-        } catch (error) {
-            console.error('❌ Error limpiando cache:', error);
-        }
-    },
-    
-    // Simular evento para testing
-    triggerEvent: (eventName, data) => {
-        console.log(`🎯 Simulando evento: ${eventName}`);
-        try {
-            if (eventManager && typeof eventManager.emit === 'function') {
-                eventManager.emit(eventName, data);
-            } else {
-                console.error('❌ eventManager.emit no está disponible');
-            }
-        } catch (error) {
-            console.error('❌ Error disparando evento:', error);
-        }
-    },
-    
-    // Ver estado completo
-    getState: () => {
-        try {
-            return {
-                cache: dataSync?.getCacheStats ? dataSync.getCacheStats() : 'N/A',
-                subscribers: dataSync?.getSubscriberStats ? dataSync.getSubscriberStats() : 'N/A',
-                events: eventManager?.getStats ? eventManager.getStats() : 'N/A'
-            };
-        } catch (error) {
-            console.error('❌ Error obteniendo estado:', error);
-            return { error: error.message };
-        }
-    },
-    
-    // Habilitar/deshabilitar debug
-    setDebug: (enabled) => {
-        try {
-            if (eventManager && typeof eventManager.setDebug === 'function') {
-                eventManager.setDebug(enabled);
-                console.log(`🔧 Debug mode: ${enabled ? 'ACTIVADO' : 'DESACTIVADO'}`);
-            } else {
-                console.error('❌ eventManager.setDebug no está disponible');
-            }
-        } catch (error) {
-            console.error('❌ Error configurando debug:', error);
+        console.error('❌ Error en login:', error);
+        showError(error.message || 'Error de autenticación');
+        await clearSession();
+    } finally {
+        if (loginBtn) {
+            loginBtn.disabled = false;
+            loginBtn.textContent = originalText;
         }
     }
-};
+}
 
-// ✅ MANEJO AVANZADO DE ERRORES MEJORADO
-window.addEventListener('error', (event) => {
-    console.error('💥 Error global capturado:', event.error);
-    
+function showError(message) {
+    const loginError = document.getElementById('login-error');
+    if (loginError) {
+        loginError.textContent = message;
+        loginError.classList.remove('d-none');
+    }
+}
+
+// ==================== CARGA DE APLICACIÓN ====================
+
+async function loadApplication() {
+    console.log('📱 Cargando aplicación...');
+
     try {
-        // Si es un error de sincronización, intentar recuperación
-        if (event.error?.message?.includes('sync') || event.error?.message?.includes('data')) {
-            console.log('🔄 Intentando recuperación automática...');
-            setTimeout(() => {
-                if (dataSync && typeof dataSync.refreshAllData === 'function') {
-                    dataSync.refreshAllData().catch(err => {
-                        console.error('❌ Falló la recuperación automática:', err);
-                        if (uiManager && typeof uiManager.showAlert === 'function') {
-                            uiManager.showAlert('Error del sistema. Por favor, recargue la aplicación.', 'danger');
-                        }
-                    });
-                }
-            }, 1000);
-        }
-    } catch (recoveryError) {
-        console.error('❌ Error en recuperación automática:', recoveryError);
-    }
-});
+        // Mostrar app
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
 
-// ✅ CONFIGURACIÓN DE TECLAS RÁPIDAS MEJORADA (solo en desarrollo)
-document.addEventListener('keydown', (event) => {
-    try {
-        // Ctrl + Shift + D = Debug info
-        if (event.ctrlKey && event.shiftKey && event.key === 'D') {
-            console.log('🔍 INFORMACIÓN DE DEBUG SOLICITADA');
-            if (typeof window.debugSync === 'function') {
-                window.debugSync();
+        if (authContainer) authContainer.classList.add('d-none');
+        if (appContainer) appContainer.classList.remove('d-none');
+
+        // Actualizar usuario en UI
+        const userDisplay = document.getElementById('user-display');
+        if (userDisplay && currentUser) {
+            userDisplay.textContent = currentUser.fullName || currentUser.username;
+        }
+
+        // Mostrar/ocultar menú admin
+        const adminMenu = document.getElementById('admin-menu-item');
+        if (adminMenu && currentUser) {
+            if (currentUser.role === 'admin') {
+                adminMenu.classList.remove('d-none');
             } else {
-                console.log('🔍 Estado básico:', window.syncUtils.getState());
+                adminMenu.classList.add('d-none');
             }
-            event.preventDefault();
         }
-        
-        // Ctrl + Shift + R = Refresh all data
-        if (event.ctrlKey && event.shiftKey && event.key === 'R') {
-            console.log('🔄 RECARGA MANUAL DE DATOS SOLICITADA');
-            window.syncUtils.refreshAll().then(() => {
-                if (uiManager && typeof uiManager.showAlert === 'function') {
-                    uiManager.showAlert('Datos actualizados', 'success');
-                }
-            }).catch(error => {
-                console.error('❌ Error en recarga manual:', error);
-                if (uiManager && typeof uiManager.showAlert === 'function') {
-                    uiManager.showAlert('Error actualizando datos', 'danger');
-                }
-            });
-            event.preventDefault();
-        }
-        
-        // Ctrl + Shift + C = Clear cache
-        if (event.ctrlKey && event.shiftKey && event.key === 'C') {
-            console.log('🗑️ LIMPIEZA DE CACHÉ SOLICITADA');
-            if (dataSync && dataSync.cache && typeof dataSync.cache.clear === 'function') {
-                dataSync.cache.clear();
-                if (uiManager && typeof uiManager.showAlert === 'function') {
-                    uiManager.showAlert('Caché limpiado', 'info');
-                }
-            } else {
-                console.error('❌ No se puede limpiar el caché');
-            }
-            event.preventDefault();
-        }
-        
+
+        console.log('⏳ Esperando antes de cargar datos...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Cargar datos
+        console.log('📦 Cargando productos...');
+        await loadAllData();
+
+        // Mostrar vista de productos
+        showView('products');
+
+        console.log('✅ Aplicación cargada correctamente');
+
     } catch (error) {
-        console.error('❌ Error en manejo de teclas rápidas:', error);
+        console.error('💥 Error cargando aplicación:', error);
+        uiManager.showAlert('Error al cargar: ' + error.message, 'danger');
+        await handleLogout();
     }
-});
+}
+
+async function loadAllData() {
+    const errors = [];
+
+    // Cargar productos
+    try {
+        if (productManager && typeof productManager.loadProducts === 'function') {
+            await productManager.loadProducts();
+            console.log('✅ Productos cargados');
+        }
+    } catch (error) {
+        console.error('❌ Error productos:', error);
+        errors.push('Productos');
+    }
+
+    // Cargar datos de ventas
+    try {
+        if (salesManager && typeof salesManager.loadInitialData === 'function') {
+            await salesManager.loadInitialData();
+            console.log('✅ Ventas cargadas');
+        }
+    } catch (error) {
+        console.error('❌ Error ventas:', error);
+        errors.push('Ventas');
+    }
+
+    // Cargar transacciones
+    try {
+        if (transactionManager && typeof transactionManager.loadProducts === 'function') {
+            await transactionManager.loadProducts();
+            console.log('✅ Transacciones cargadas');
+        }
+    } catch (error) {
+        console.error('❌ Error transacciones:', error);
+        errors.push('Transacciones');
+    }
+
+    if (errors.length > 0) {
+        console.warn('⚠️ Errores al cargar:', errors.join(', '));
+        uiManager.showAlert(
+            'Algunos datos no se cargaron. Recarga la aplicación.',
+            'warning'
+        );
+    }
+}
+
+// ==================== NAVEGACIÓN ====================
+
+function setupNavigation() {
+    console.log('🧭 Configurando navegación...');
+
+    // Links de navegación
+    document.querySelectorAll('[data-view]').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const view = e.currentTarget.dataset.view;
+            showView(view);
+        });
+    });
+
+    // Botón de logout
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+
+    console.log('✅ Navegación configurada');
+}
+
+function showView(viewName) {
+    console.log(`📄 Mostrando vista: ${viewName}`);
+
+    // ✅ CORRECCIÓN: Ocultar todas las vistas usando .view-container
+    const allViews = document.querySelectorAll('.view-container');
+    allViews.forEach(view => {
+        view.classList.add('d-none');
+        view.style.display = 'none'; // Forzar ocultación
+    });
+
+    // Desactivar todos los nav links
+    document.querySelectorAll('[data-view]').forEach(link => {
+        link.classList.remove('active');
+    });
+
+    // Mostrar SOLO la vista seleccionada
+    const targetView = document.getElementById(`${viewName}-view`);
+    if (targetView) {
+        targetView.classList.remove('d-none');
+        targetView.style.display = 'block'; // Forzar visualización
+        console.log(`✅ Vista ${viewName} activada`);
+    } else {
+        console.error(`❌ Vista ${viewName}-view no encontrada`);
+    }
+
+    // Activar nav link correspondiente
+    const activeLink = document.querySelector(`[data-view="${viewName}"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
+
+    // Inicializar vista
+    initView(viewName);
+}
+
+function initView(viewName) {
+    switch (viewName) {
+        case 'products':
+            if (productManager?.init) productManager.init();
+            break;
+        case 'sales':
+            if (salesManager?.init) salesManager.init();
+            break;
+        case 'transactions':
+            if (transactionManager?.init) transactionManager.init();
+            break;
+    }
+}
+
+// ==================== LOGOUT ====================
+
+async function handleLogout() {
+    console.log('👋 Cerrando sesión...');
+
+    try {
+        await window.api.logout();
+    } catch (error) {
+        console.warn('⚠️ Error logout servidor:', error);
+    }
+
+    await clearSession();
+
+    // Resetear managers
+    if (productManager?.reset) productManager.reset();
+    if (salesManager?.reset) salesManager.reset();
+
+    showLogin();
+
+    uiManager.showAlert('Sesión cerrada', 'success');
+}
+
+// ==================== INICIO ====================
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+} else {
+    initialize();
+}
+
+console.log('✅ app.js cargado');

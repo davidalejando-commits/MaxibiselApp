@@ -1,10 +1,26 @@
 //Script de precarga - Versión corregida y completa
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Exponer API segura a la aplicación del lado del cliente
 contextBridge.exposeInMainWorld('api', {
-    // === AUTENTICACIÓN ===
-    login: (credentials) => ipcRenderer.invoke('api:login', credentials),
+    // === AUTENTICACIÓN - CORREGIDO ===
+    login: async (credentials) => {
+        try {
+            const result = await ipcRenderer.invoke('api:login', credentials);
+            console.log('✅ Login response recibido en preload:', result);
+            
+            // Guardar token inmediatamente
+            if (result.token) {
+                await ipcRenderer.invoke('store:set', 'authToken', result.token);
+                console.log('✅ Token guardado en store');
+            }
+            
+            return result;
+        } catch (error) {
+            console.error('❌ Error en login (preload):', error);
+            throw error;
+        }
+    },
+    
     logout: () => ipcRenderer.invoke('api:request', {
         method: 'post',
         endpoint: 'auth/logout'
@@ -15,29 +31,34 @@ contextBridge.exposeInMainWorld('api', {
         method: 'get',
         endpoint: 'products'
     }),
+    
     getProduct: (id) => ipcRenderer.invoke('api:request', {
         method: 'get',
         endpoint: `products/${id}`
     }),
+    
     createProduct: (productData) => ipcRenderer.invoke('api:request', {
         method: 'post',
         endpoint: 'products',
         data: productData
     }),
+    
     updateProduct: (id, productData) => ipcRenderer.invoke('api:request', {
         method: 'put',
         endpoint: `products/${id}`,
         data: productData
     }),
+    
     deleteProduct: (id) => ipcRenderer.invoke('api:request', {
         method: 'delete',
         endpoint: `products/${id}`
     }),
+    
     getProductByBarcode: (barcode) => ipcRenderer.invoke('api:request', {
         method: 'get',
         endpoint: `products/barcode/${barcode}`
     }),
-    // CORREGIDO: Stock update con endpoint correcto
+    
     updateProductStock: (productId, stockData) => ipcRenderer.invoke('api:request', {
         method: 'patch',
         endpoint: `products/${productId}/stock`,
@@ -49,20 +70,24 @@ contextBridge.exposeInMainWorld('api', {
         method: 'get',
         endpoint: 'users'
     }),
+    
     getUser: (id) => ipcRenderer.invoke('api:request', {
         method: 'get',
         endpoint: `users/${id}`
     }),
+    
     createUser: (userData) => ipcRenderer.invoke('api:request', {
         method: 'post',
         endpoint: 'users',
         data: userData
     }),
+    
     updateUser: (id, userData) => ipcRenderer.invoke('api:request', {
         method: 'put',
         endpoint: `users/${id}`,
         data: userData
     }),
+    
     deleteUser: (id) => ipcRenderer.invoke('api:request', {
         method: 'delete',
         endpoint: `users/${id}`
@@ -78,31 +103,29 @@ contextBridge.exposeInMainWorld('api', {
             endpoint: endpoint
         });
     },
+    
     getTransaction: (id) => ipcRenderer.invoke('api:request', {
         method: 'get',
         endpoint: `transactions/${id}`
     }),
+    
     createTransaction: (transactionData) => ipcRenderer.invoke('api:request', {
         method: 'post',
         endpoint: 'transactions',
         data: transactionData
     }),
 
-    // === VENTAS (Si necesitas crear un endpoint específico para ventas) ===
+    // === VENTAS ===
     createSale: (saleData) => ipcRenderer.invoke('api:request', {
         method: 'post',
-        endpoint: 'transactions', // Por ahora usa transactions
+        endpoint: 'transactions',
         data: { ...saleData, type: 'sale' }
     }),
 
     // === HEALTH CHECK ===
     health: () => ipcRenderer.invoke('api:health'),
 
-    // === CONFIGURACIÓN Y UTILIDADES ===
-    getConfig: () => ipcRenderer.invoke('app:getConfig'),
-    restart: () => ipcRenderer.invoke('app:restart'),
-
-    // === STORE (para tokens y configuración local) ===
+    // === STORE (tokens y configuración) ===
     store: {
         get: (key) => ipcRenderer.invoke('store:get', key),
         set: (key, value) => ipcRenderer.invoke('store:set', key, value),
