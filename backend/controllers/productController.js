@@ -332,3 +332,142 @@ exports.getAllProducts = async (req, res) => {
         });
     }
 };
+// ============================================================================
+// FUNCIÓN: Obtener producto por código de barras
+// ============================================================================
+exports.getProductByBarcode = async (req, res) => {
+    try {
+        const { barcode } = req.params;
+        
+        console.log('\n🔍 [GET-BY-BARCODE] Buscando producto con código:', barcode);
+        
+        const product = await Product.findOne({ barcode: barcode }).lean();
+        
+        if (!product) {
+            console.log('❌ [GET-BY-BARCODE] Producto no encontrado');
+            return res.status(404).json({
+                success: false,
+                message: 'Producto no encontrado',
+                error: 'PRODUCT_NOT_FOUND',
+                barcode: barcode
+            });
+        }
+        
+        console.log('✅ [GET-BY-BARCODE] Producto encontrado:', product.name);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Producto encontrado',
+            product: product,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('💥 [GET-BY-BARCODE] Error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+};
+
+// ============================================================================
+// OTRAS FUNCIONES QUE TAMBIÉN FALTAN
+// ============================================================================
+exports.getProductById = async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id).lean();
+        
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Producto no encontrado'
+            });
+        }
+        
+        res.status(200).json({
+            success: true,
+            product: product
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al obtener producto',
+            error: error.message
+        });
+    }
+};
+
+exports.createProduct = async (req, res) => {
+    try {
+        const product = new Product(req.body);
+        await product.save();
+        
+        res.status(201).json({
+            success: true,
+            message: 'Producto creado correctamente',
+            product: product
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al crear producto',
+            error: error.message
+        });
+    }
+};
+
+exports.updateProduct = async (req, res) => {
+    try {
+        const product = await Product.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true, runValidators: true }
+        );
+        
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Producto no encontrado'
+            });
+        }
+        
+        res.status(200).json({
+            success: true,
+            message: 'Producto actualizado',
+            product: product
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al actualizar producto',
+            error: error.message
+        });
+    }
+};
+
+exports.deleteProduct = async (req, res) => {
+    try {
+        const product = await Product.findByIdAndDelete(req.params.id);
+        
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Producto no encontrado'
+            });
+        }
+        
+        res.status(200).json({
+            success: true,
+            message: 'Producto eliminado correctamente'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al eliminar producto',
+            error: error.message
+        });
+    }
+};
