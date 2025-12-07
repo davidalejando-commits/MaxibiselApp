@@ -5,8 +5,10 @@ import { transactionManager } from './transactions.js';
 import { productManager } from './products.js';
 import { uiManager } from './ui.js';
 import { eventManager } from './eventManager.js';
+import { BarcodeGenerator } from './barcode-generator.js';
 
 // ==================== VARIABLES GLOBALES ====================
+let barcodeGenerator = null;
 let currentUser = null;
 let isAuthenticated = false;
 
@@ -328,11 +330,11 @@ function setupNavigation() {
 function showView(viewName) {
     console.log(`📄 Mostrando vista: ${viewName}`);
 
-    // ✅ CORRECCIÓN: Ocultar todas las vistas usando .view-container
+    // Ocultar todas las vistas
     const allViews = document.querySelectorAll('.view-container');
     allViews.forEach(view => {
         view.classList.add('d-none');
-        view.style.display = 'none'; // Forzar ocultación
+        view.style.display = 'none';
     });
 
     // Desactivar todos los nav links
@@ -344,7 +346,7 @@ function showView(viewName) {
     const targetView = document.getElementById(`${viewName}-view`);
     if (targetView) {
         targetView.classList.remove('d-none');
-        targetView.style.display = 'block'; // Forzar visualización
+        targetView.style.display = 'block';
         console.log(`✅ Vista ${viewName} activada`);
     } else {
         console.error(`❌ Vista ${viewName}-view no encontrada`);
@@ -360,6 +362,9 @@ function showView(viewName) {
     initView(viewName);
 }
 
+// ==================== INICIALIZACIÓN DE VISTAS ====================
+// 🆕 MODIFICADO: Agregada inicialización del generador de códigos de barra
+
 function initView(viewName) {
     switch (viewName) {
         case 'products':
@@ -371,6 +376,33 @@ function initView(viewName) {
         case 'transactions':
             if (transactionManager?.init) transactionManager.init();
             break;
+        case 'users':
+            // 🆕 NUEVO: Inicializar generador de códigos de barra
+            initBarcodeGenerator();
+            break;
+    }
+}
+
+// ==================== GENERADOR DE CÓDIGOS DE BARRA ====================
+// 🆕 NUEVO: Función para inicializar el generador
+
+async function initBarcodeGenerator() {
+    console.log('📊 Inicializando generador de códigos de barra...');
+    
+    try {
+        // Crear instancia si no existe
+        if (!barcodeGenerator) {
+            barcodeGenerator = new BarcodeGenerator();
+            console.log('✅ Generador de códigos creado');
+        }
+        
+        // Inicializar
+        await barcodeGenerator.init();
+        console.log('✅ Generador de códigos inicializado');
+        
+    } catch (error) {
+        console.error('❌ Error al inicializar generador de códigos:', error);
+        uiManager.showAlert('Error al cargar el generador de códigos', 'danger');
     }
 }
 
@@ -390,6 +422,12 @@ async function handleLogout() {
     // Resetear managers
     if (productManager?.reset) productManager.reset();
     if (salesManager?.reset) salesManager.reset();
+    
+    // 🆕 NUEVO: Resetear generador de códigos
+    if (barcodeGenerator) {
+        barcodeGenerator = null;
+        console.log('🗑️ Generador de códigos reseteado');
+    }
 
     showLogin();
 
