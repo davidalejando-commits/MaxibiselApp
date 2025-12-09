@@ -202,7 +202,7 @@ export class BarcodeGenerator {
     changeQuantity(productId, delta) {
         const product = this.selectedProducts.find(p => p._id === productId);
         if (product) {
-            product.quantity = Math.max(1, Math.min(100, product.quantity + delta));
+            product.quantity = Math.max(1, Math.min(1000, product.quantity + delta));
             this.renderSelectedProducts();
         }
     }
@@ -210,7 +210,7 @@ export class BarcodeGenerator {
     setQuantity(productId, quantity) {
         const product = this.selectedProducts.find(p => p._id === productId);
         if (product) {
-            product.quantity = Math.max(1, Math.min(100, quantity));
+            product.quantity = Math.max(1, Math.min(1000, quantity));
             this.renderSelectedProducts();
         }
     }

@@ -53,13 +53,14 @@ const productRoutes = require('./routes/products');
 const userRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
+const facturaRoutes = require('./routes/facturaRoutes');
 
 // Usar rutas (CON autenticación)
 app.use('/api/products', authenticateToken, productRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/auth', authRoutes); // Auth no necesita token
 app.use('/api/transactions', authenticateToken, transactionRoutes);
-
+app.use('/api/facturas', authenticateToken, facturaRoutes);
 // Ruta de prueba
 app.get('/', (req, res) => {
     res.send('API del Sistema de Inventario Óptico funcionando correctamente');

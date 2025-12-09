@@ -7,22 +7,30 @@ export const uiManager = {
     isInitialized: false,
 
     init() {
-        if (this.isInitialized) return;
-        
-        console.log('🎨 Inicializando UI Manager...');
+    if (this.isInitialized) {
+        console.log('⚠️ UI Manager ya estaba inicializado');
+        return;
+    }
+    
+    console.log('🎨 Inicializando UI Manager...');
 
-        // Inicializar manejo de navegación
-        this.initNavigation();
-        
-        // Crear contenedores necesarios
-        this.createAlertContainer();
-        
-        // Configurar event listeners
-        this.setupEventListeners();
+    // Crear contenedores necesarios PRIMERO
+    this.createAlertContainer();
+    
+    // Inicializar manejo de navegación
+    this.initNavigation();
+    
+    // Configurar event listeners
+    this.setupEventListeners();
 
-        this.isInitialized = true;
-        console.log('✅ UI Manager inicializado');
-    },
+    // Mostrar alerta de prueba
+    setTimeout(() => {
+        this.showAlert('Sistema listo', 'success', 3000);
+    }, 500);
+
+    this.isInitialized = true;
+    console.log('✅ UI Manager inicializado');
+},
 
     // ✅ NUEVA FUNCIÓN: Inicializar navegación
     initNavigation() {
@@ -41,18 +49,29 @@ export const uiManager = {
 
     // ✅ NUEVA FUNCIÓN: Crear contenedor de alertas
     createAlertContainer() {
-        // Crear contenedor para alertas si no existe
-        let alertContainer = document.getElementById('alert-container');
-        
-        if (!alertContainer) {
-            alertContainer = document.createElement('div');
-            alertContainer.id = 'alert-container';
-            alertContainer.className = 'position-fixed top-0 start-50 translate-middle-x p-3';
-            alertContainer.style.zIndex = '1050';
-            document.body.appendChild(alertContainer);
-            console.log('✅ Contenedor de alertas creado');
-        }
-    },
+    // Eliminar contenedor anterior si existe
+    let alertContainer = document.getElementById('alert-container');
+    if (alertContainer) {
+        alertContainer.remove();
+    }
+    
+    // Crear nuevo contenedor
+    alertContainer = document.createElement('div');
+    alertContainer.id = 'alert-container';
+    alertContainer.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 600px;
+        width: auto;
+    `;
+    
+    document.body.appendChild(alertContainer);
+    console.log('✅ Contenedor de alertas creado correctamente');
+},
 
     // ✅ NUEVA FUNCIÓN: Configurar event listeners
     setupEventListeners() {
@@ -101,82 +120,196 @@ export const uiManager = {
         }
     },
 
-    // ✅ NUEVA FUNCIÓN: Cambiar vista de forma segura
-    changeView(viewId) {
-        try {
-            // Actualizar clases activas en la navegación
-            const navLinks = document.querySelectorAll('.nav-link');
-            navLinks.forEach(link => {
-                link.classList.remove('active');
-                if (link.dataset?.view === viewId) {
-                    link.classList.add('active');
-                }
-            });
+    // ✅ Cambiar vista de forma segura
+changeView(viewId) {
+    try {
+        console.log(`🔄 Cambiando de vista: ${this.currentView} → ${viewId}`);
 
-            // Ocultar todas las vistas
-            const viewContainers = document.querySelectorAll('.view-container');
-            viewContainers.forEach(container => {
-                container.classList.add('d-none');
-            });
-
-            // Mostrar la vista seleccionada
-            const viewContainer = document.getElementById(`${viewId}-view`);
-            if (viewContainer) {
-                viewContainer.classList.remove('d-none');
-                this.currentView = viewId;
-                console.log(`✅ Vista cambiada a: ${viewId}`);
-            } else {
-                console.error(`❌ No se encontró contenedor para vista: ${viewId}`);
-                this.showAlert(`Vista "${viewId}" no encontrada`, 'warning');
-            }
-
-        } catch (error) {
-            console.error('❌ Error cambiando vista:', error);
-            this.showAlert('Error interno al cambiar vista', 'danger');
+        // ✅ Limpiar vista anterior antes de cambiar
+        if (this.currentView) {
+            this.cleanupCurrentView(this.currentView);
         }
-    },
+
+        // Actualizar clases activas en la navegación
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.dataset?.view === viewId) {
+                link.classList.add('active');
+            }
+        });
+
+        // Ocultar todas las vistas
+        const viewContainers = document.querySelectorAll('.view-container');
+        viewContainers.forEach(container => {
+            container.classList.add('d-none');
+        });
+
+        // Mostrar la vista seleccionada
+        const viewContainer = document.getElementById(`${viewId}-view`);
+        if (viewContainer) {
+            viewContainer.classList.remove('d-none');
+            this.currentView = viewId;
+            console.log(`✅ Vista cambiada a: ${viewId}`);
+            
+            // ✅ NUEVO: Reinicializar vista después de mostrarla
+            this.initializeCurrentView(viewId);
+        } else {
+            console.error(`❌ No se encontró contenedor para vista: ${viewId}`);
+            this.showAlert(`Vista "${viewId}" no encontrada`, 'warning');
+        }
+
+    } catch (error) {
+        console.error('❌ Error cambiando vista:', error);
+        this.showAlert('Error interno al cambiar vista', 'danger');
+    }
+},
+
+cleanupCurrentView(viewName) {
+    console.log(`🧹 Limpiando vista: ${viewName}`);
+    
+    try {
+        // Limpiar vista de ventas/salidas
+        if (viewName === 'sales' && window.salesManager) {
+            if (typeof window.salesManager.destroy === 'function') {
+                window.salesManager.destroy();
+            } else if (typeof window.salesManager.destroyBarcodeScanner === 'function') {
+                window.salesManager.destroyBarcodeScanner();
+            }
+        }
+        
+        // Limpiar vista de productos
+        if (viewName === 'products' && window.productsManager) {
+            if (typeof window.productsManager.destroy === 'function') {
+                window.productsManager.destroy();
+            }
+        }
+        
+        // Limpiar vista de inventario
+        if (viewName === 'inventory' && window.inventoryManager) {
+            if (typeof window.inventoryManager.destroy === 'function') {
+                window.inventoryManager.destroy();
+            }
+        }
+        
+        console.log(`✅ Vista ${viewName} limpiada`);
+        
+    } catch (error) {
+        console.error(`❌ Error limpiando vista ${viewName}:`, error);
+    }
+},
+
+initializeCurrentView(viewName) {
+    console.log(`🔧 Inicializando vista: ${viewName}`);
+    
+    try {
+        // Reinicializar vista de ventas/salidas
+        if (viewName === 'sales' && window.salesManager) {
+            if (typeof window.salesManager.init === 'function') {
+                window.salesManager.init();
+                console.log('✅ salesManager reinicializado');
+            }
+        }
+        
+        // Reinicializar vista de productos
+        if (viewName === 'products' && window.productsManager) {
+            if (typeof window.productsManager.init === 'function') {
+                window.productsManager.init();
+                console.log('✅ productsManager reinicializado');
+            }
+        }
+        
+        // Reinicializar vista de inventario
+        if (viewName === 'inventory' && window.inventoryManager) {
+            if (typeof window.inventoryManager.init === 'function') {
+                window.inventoryManager.init();
+                console.log('✅ inventoryManager reinicializado');
+            }
+        }
+        
+    } catch (error) {
+        console.error(`❌ Error inicializando vista ${viewName}:`, error);
+    }
+},
 
     // ✅ FUNCIÓN MEJORADA: showAlert con mejor manejo
     showAlert(message, type = 'info', duration = 5000) {
-        try {
-            console.log(`🔔 Mostrando alerta: ${type} - ${message}`);
+    try {
+        console.log(`🔔 Mostrando alerta: ${type} - ${message}`);
 
-            // Eliminar alerta anterior si existe
-            this.clearAlert();
-
-            // Crear nueva alerta
-            const alertElement = document.createElement('div');
-            alertElement.className = `alert alert-${type} alert-dismissible fade show`;
-            alertElement.role = 'alert';
-            alertElement.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-            `;
-
-            // Añadir al contenedor
-            const container = document.getElementById('alert-container');
-            if (!container) {
-                console.error('❌ Contenedor de alertas no encontrado');
-                return;
-            }
-
-            container.appendChild(alertElement);
-
-            // Auto-cerrar después del tiempo especificado
-            if (duration > 0) {
-                this.alertTimeout = setTimeout(() => {
-                    this.fadeOutAlert(alertElement);
-                }, duration);
-            }
-
-            return alertElement;
-
-        } catch (error) {
-            console.error('❌ Error mostrando alerta:', error);
-            // Fallback: alert nativo
-            alert(`${type.toUpperCase()}: ${message}`);
+        // Asegurar que existe el contenedor
+        let container = document.getElementById('alert-container');
+        if (!container) {
+            console.warn('⚠️ Contenedor no existe, creándolo...');
+            this.createAlertContainer();
+            container = document.getElementById('alert-container');
         }
-    },
+
+        // Eliminar alerta anterior si existe
+        this.clearAlert();
+
+        // Mapear tipos de Bootstrap
+        const typeMap = {
+            'success': 'success',
+            'danger': 'danger',
+            'error': 'danger',
+            'warning': 'warning',
+            'info': 'info',
+            'primary': 'primary'
+        };
+        
+        const alertType = typeMap[type] || 'info';
+
+        // Iconos para cada tipo
+        const icons = {
+            'success': '✓',
+            'danger': '✕',
+            'warning': '⚠',
+            'info': 'ℹ',
+            'primary': '●'
+        };
+
+        // Crear nueva alerta
+        const alertElement = document.createElement('div');
+        alertElement.className = `alert alert-${alertType} alert-dismissible fade show shadow`;
+        alertElement.role = 'alert';
+        alertElement.style.cssText = `
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            animation: slideInDown 0.3s ease-out;
+        `;
+        
+        alertElement.innerHTML = `
+            <span style="font-size: 1.2rem; margin-right: 10px;">${icons[alertType]}</span>
+            <span style="flex: 1;">${message}</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        `;
+
+        // Añadir al contenedor
+        container.appendChild(alertElement);
+
+        // Auto-cerrar después del tiempo especificado
+        if (duration > 0) {
+            this.alertTimeout = setTimeout(() => {
+                this.fadeOutAlert(alertElement);
+            }, duration);
+        }
+
+        // Permitir cerrar manualmente
+        const closeBtn = alertElement.querySelector('.btn-close');
+        closeBtn.addEventListener('click', () => {
+            this.fadeOutAlert(alertElement);
+        });
+
+        return alertElement;
+
+    } catch (error) {
+        console.error('❌ Error mostrando alerta:', error);
+        // Fallback: alert nativo
+        alert(`${type.toUpperCase()}: ${message}`);
+    }
+},
 
     // ✅ NUEVA FUNCIÓN: Limpiar alertas existentes
     clearAlert() {

@@ -9,7 +9,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-
 </head>
 
 <body>
@@ -42,7 +41,7 @@
         </div>
     </div>
 
-    <!-- Contenedor Principal de la Aplicación (inicialmente oculto) -->
+    <!-- Contenedor Principal de la Aplicación -->
     <div id="app-container" class="d-none">
         <!-- Barra de Navegación -->
         <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -94,7 +93,6 @@
                     <button class="btn btn-primary" id="add-product-btn">
                         <i class="bi bi-plus-circle me-1"></i>Nuevo Lente
                     </button>
-
                 </div>
 
                 <div class="card shadow">
@@ -119,11 +117,13 @@
                         </div>
                     </div>
                 </div>
+
                 <!-- Modal de confirmación de eliminación -->
                 <div class="modal" id="confirm-delete-modal">
                     <div class="modal-content">
                         <h3 class="modal-title">Confirmar Eliminación</h3>
-                        <p class="modal-message" id="delete-modal-message">¿Está seguro que desea eliminar este producto?</p>
+                        <p class="modal-message" id="delete-modal-message">¿Está seguro que desea eliminar este
+                            producto?</p>
                         <div class="modal-buttons">
                             <button class="modal-btn confirm-btn" id="confirm-delete-btn">Confirmar</button>
                             <button class="modal-btn cancel-modal-btn" id="cancel-delete-btn">Cancelar</button>
@@ -132,20 +132,63 @@
                 </div>
             </div>
 
-            <!-- Otras vistas se cargarán dinámicamente -->
+            <!-- Vista de Salidas (CORREGIDA) -->
             <div id="sales-view" class="view-container d-none">
-                <!-- Contenido de la vista de ventas -->
+                <div class="row">
+                    <!-- Columna izquierda: Productos disponibles -->
+                    <div class="col-md-6">
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h5 class="panel-title">
+                                    <i class="bi bi-box-seam me-2"></i>Productos Disponibles
+                                </h5>
+                            </div>
+                            <div class="panel-body">
+                                <div class="search-container">
+                                    <input type="text" id="sales-product-search" class="search-input"
+                                        placeholder="Buscar producto por nombre, código o categoría...">
+                                </div>
+                                <div class="scrollable-content">
+                                    <div id="available-products-list" class="results-container">
+                                        <!-- Los productos se cargan dinámicamente -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
+                    <!-- Columna derecha: Productos seleccionados -->
+                    <div class="col-md-6">
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h5 class="panel-title">
+                                    <i class="bi bi-cart-check me-2"></i>Productos Seleccionados
+                                </h5>
+                            </div>
+                            <div class="panel-body">
+                                <div class="scrollable-content">
+                                    <div id="selected-products-list" class="selected-container">
+                                        <div class="empty-state">
+                                            <i class="bi bi-cart-x"></i>
+                                            <p>No hay productos seleccionados</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
             </div>
 
+            <!-- Vista de Transacciones -->
             <div id="transactions-view" class="view-container d-none">
                 <!-- Contenido de la vista de transacciones -->
             </div>
 
+            <!-- Vista de Códigos de Barra -->
             <div id="users-view" class="view-container d-none">
-                <li class="nav-item" id="admin-menu-item">
-                <a class="nav-link" href="#" data-view="users">Códigos de barra</a>
-                </li>
+                <!-- Contenido de códigos de barra -->
             </div>
         </div>
 
@@ -160,7 +203,6 @@
                     <div class="modal-body">
                         <form id="product-form">
                             <input type="hidden" id="product-id">
-
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label for="product-name" class="form-label">Nombre</label>
@@ -177,7 +219,6 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div id="prescription-container" class="mb-3 border rounded p-3 bg-light">
                                 <h6>Rango de Fórmula</h6>
                                 <div class="row">
@@ -201,7 +242,6 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label for="product-stock" class="form-label">Stock(Uds)</label>
@@ -257,15 +297,12 @@
                     <div class="modal-body">
                         <form id="stock-form">
                             <input type="hidden" id="stock-product-id">
-
-                            <!-- Información del producto (solo lectura) -->
                             <div class="row mb-3">
                                 <div class="col-12">
                                     <h6 class="text-muted"><i class="bi bi-info-circle me-2"></i>Información del
                                         Producto</h6>
                                 </div>
                             </div>
-
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Nombre:</label>
@@ -276,7 +313,6 @@
                                     <p class="form-control-plaintext" id="stock-product-barcode">-</p>
                                 </div>
                             </div>
-
                             <div class="row mb-3">
                                 <div class="col-md-4">
                                     <label class="form-label">Esfera:</label>
@@ -291,16 +327,12 @@
                                     <p class="form-control-plaintext" id="stock-product-addition">-</p>
                                 </div>
                             </div>
-
                             <hr>
-
-                            <!-- Actualización de stock -->
                             <div class="row mb-3">
                                 <div class="col-12">
                                     <h6 class="text-muted"><i class="bi bi-box me-2"></i>Gestión de Stock</h6>
                                 </div>
                             </div>
-
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Stock Actual:</label>
@@ -313,7 +345,6 @@
                                     <input type="number" class="form-control" id="stock-new-value" min="0" required>
                                 </div>
                             </div>
-
                             <div class="alert alert-info">
                                 <i class="bi bi-info-circle me-2"></i>
                                 Solo se actualizará la cantidad en stock. Los demás datos del producto permanecerán sin

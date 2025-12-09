@@ -1,14 +1,13 @@
-//Script de precarga - Versión corregida y completa
+//Script de precarga - Versión con FACTURAS
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
-    // === AUTENTICACIÓN - CORREGIDO ===
+    // === AUTENTICACIÓN ===
     login: async (credentials) => {
         try {
             const result = await ipcRenderer.invoke('api:login', credentials);
             console.log('✅ Login response recibido en preload:', result);
             
-            // Guardar token inmediatamente
             if (result.token) {
                 await ipcRenderer.invoke('store:set', 'authToken', result.token);
                 console.log('✅ Token guardado en store');
@@ -122,6 +121,106 @@ contextBridge.exposeInMainWorld('api', {
         data: { ...saleData, type: 'sale' }
     }),
 
+    // === REMISIONES ===
+    getRemisiones: (params) => {
+        const queryParams = params ? new URLSearchParams(params).toString() : '';
+        const endpoint = queryParams ? `remisiones?${queryParams}` : 'remisiones';
+        
+        return ipcRenderer.invoke('api:request', {
+            method: 'get',
+            endpoint: endpoint
+        });
+    },
+
+    getRemision: (id) => ipcRenderer.invoke('api:request', {
+        method: 'get',
+        endpoint: `remisiones/${id}`
+    }),
+
+    createRemision: (remisionData) => ipcRenderer.invoke('api:request', {
+        method: 'post',
+        endpoint: 'remisiones',
+        data: remisionData
+    }),
+
+    updateRemision: (id, remisionData) => ipcRenderer.invoke('api:request', {
+        method: 'put',
+        endpoint: `remisiones/${id}`,
+        data: remisionData
+    }),
+
+    deleteRemision: (id) => ipcRenderer.invoke('api:request', {
+        method: 'delete',
+        endpoint: `remisiones/${id}`
+    }),
+
+    // ========================================
+    // 🆕 NUEVO: FACTURAS
+    // ========================================
+    
+    // Obtener todas las facturas
+    getFacturas: (params) => {
+        const queryParams = params ? new URLSearchParams(params).toString() : '';
+        const endpoint = queryParams ? `facturas?${queryParams}` : 'facturas';
+        
+        return ipcRenderer.invoke('api:request', {
+            method: 'get',
+            endpoint: endpoint
+        });
+    },
+
+    // Obtener factura por ID
+    getFactura: (id) => ipcRenderer.invoke('api:request', {
+        method: 'get',
+        endpoint: `facturas/${id}`
+    }),
+
+    // Crear factura
+    createFactura: (facturaData) => ipcRenderer.invoke('api:request', {
+        method: 'post',
+        endpoint: 'facturas',
+        data: facturaData
+    }),
+
+    // Actualizar factura
+    updateFactura: (id, facturaData) => ipcRenderer.invoke('api:request', {
+        method: 'put',
+        endpoint: `facturas/${id}`,
+        data: facturaData
+    }),
+
+    // Anular factura
+    anularFactura: (id) => ipcRenderer.invoke('api:request', {
+        method: 'patch',
+        endpoint: `facturas/${id}/anular`
+    }),
+
+    // Obtener estadísticas de facturas (opcional)
+    getFacturasStats: async () => {
+        try {
+            const response = await ipcRenderer.invoke('api:request', {
+                method: 'get',
+                endpoint: 'facturas'
+            });
+            
+            const facturas = response.facturas || [];
+            const stats = {
+                total: facturas.length,
+                pendientes: facturas.filter(f => f.estado === 'pendiente').length,
+                pagadas: facturas.filter(f => f.estado === 'pagada').length,
+                anuladas: facturas.filter(f => f.estado === 'anulada').length,
+                totalFacturado: facturas
+                    .filter(f => f.estado !== 'anulada')
+                    .reduce((sum, f) => sum + (f.total || 0), 0)
+            };
+            
+            return stats;
+        } catch (error) {
+            console.error('Error obteniendo estadísticas de facturas:', error);
+            throw error;
+        }
+    },
+
     // === HEALTH CHECK ===
     health: () => ipcRenderer.invoke('api:health'),
 
@@ -136,19 +235,14 @@ contextBridge.exposeInMainWorld('api', {
 
 // Exponer métodos de utilidad para el frontend
 contextBridge.exposeInMainWorld('electron', {
-    // Información del sistema
     platform: process.platform,
     versions: process.versions,
-    
-    // Métodos para debugging (solo en desarrollo)
     isDev: process.env.NODE_ENV === 'development',
     
-    // Eventos de ventana
     onWindowClose: (callback) => {
         ipcRenderer.on('window-closing', callback);
     },
     
-    // Remover listeners
     removeAllListeners: (channel) => {
         ipcRenderer.removeAllListeners(channel);
     }
@@ -156,7 +250,6 @@ contextBridge.exposeInMainWorld('electron', {
 
 // Exponer constantes útiles
 contextBridge.exposeInMainWorld('constants', {
-    // Tipos de transacción
     TRANSACTION_TYPES: {
         PURCHASE: 'purchase',
         SALE: 'sale',
@@ -164,14 +257,12 @@ contextBridge.exposeInMainWorld('constants', {
         RETURN: 'return'
     },
     
-    // Estados de usuario
     USER_ROLES: {
         ADMIN: 'admin',
         USER: 'user',
         VIEWER: 'viewer'
     },
     
-    // Configuraciones por defecto
     DEFAULT_CONFIG: {
         itemsPerPage: 50,
         autoSave: true,
