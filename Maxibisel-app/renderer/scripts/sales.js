@@ -1741,6 +1741,7 @@ salesManager.mostrarVistaPrevia = function(factura) {
   const facturaHTML = `
     <div class="factura-tirilla" style="
       width: 300px;
+      max-width: 300px;
       background: white;
       padding: 15px 10px;
       font-family: 'Courier New', monospace;
@@ -1982,28 +1983,50 @@ salesManager.mostrarVistaPrevia = function(factura) {
       </div>
     </div>
     
-    <!-- Estilos de impresión -->
+   <!-- Estilos de impresión para POS 80mm -->
     <style>
       @media print {
+        * {
+          margin: 0;
+          padding: 0;
+        }
+        
+        @page {
+          size: 80mm auto;
+          margin: 0;
+        }
+        
+        body {
+          margin: 0;
+          padding: 0;
+        }
+        
         body * {
           visibility: hidden;
         }
+        
         .factura-tirilla,
         .factura-tirilla * {
           visibility: visible;
         }
+        
         .factura-tirilla {
           position: absolute;
           left: 0;
           top: 0;
-          width: 80mm;
-          margin: 0;
-          padding: 5mm;
+          width: 80mm !important;
+          max-width: 80mm !important;
+          margin: 0 !important;
+          padding: 3mm !important;
+          background: white !important;
+          font-size: 12px !important;
         }
-        #factura-preview-modal > div:first-child {
-          box-shadow: none;
-        }
-        button {
+        
+        #factura-preview-modal,
+        button,
+        .btn,
+        .modal-content > div:first-child,
+        .modal-content > div:last-child {
           display: none !important;
         }
       }

@@ -5,7 +5,7 @@ exports.createFactura = async (req, res) => {
     try {
         console.log('\n💰 [FACTURA] Creando nueva factura...');
         
-        const { empresa, cliente, productos, observaciones, salidaId } = req.body;
+        const { empresa, cliente, productos, observaciones, salidaId, aplicarIVA, tasaIVA } = req.body;
         
         // Validaciones
         if (!cliente || !cliente.nombre) {
@@ -37,8 +37,40 @@ exports.createFactura = async (req, res) => {
         });
         
         const descuento = req.body.descuento || 0;
-        const iva = req.body.iva || (subtotal * 0.19); // IVA del 19% por defecto
+        
+        // ✅ CORRECCIÓN CRÍTICA: Calcular IVA correctamente
+        let iva = 0;
+        
+        // Si aplicarIVA está explícitamente en false, no calcular IVA
+        if (aplicarIVA === false) {
+            iva = 0;
+            console.log('📋 [FACTURA] IVA desactivado explícitamente');
+        } 
+        // Si hay un IVA explícito en el body, usarlo (incluso si es 0)
+        else if (req.body.iva !== undefined && req.body.iva !== null) {
+            iva = parseFloat(req.body.iva) || 0;
+            console.log('📋 [FACTURA] IVA manual:', iva);
+        }
+        // Si hay tasa de IVA, calcularla
+        else if (tasaIVA !== undefined && tasaIVA !== null) {
+            iva = subtotal * (parseFloat(tasaIVA) / 100);
+            console.log('📋 [FACTURA] IVA calculado con tasa:', tasaIVA + '%');
+        }
+        // Por defecto: SIN IVA (cambio de comportamiento)
+        else {
+            iva = 0;
+            console.log('📋 [FACTURA] IVA por defecto: 0 (sin IVA)');
+        }
+        
         const total = subtotal - descuento + iva;
+        
+        console.log('💵 [FACTURA] Totales calculados:', {
+            subtotal,
+            descuento,
+            iva,
+            total,
+            aplicarIVA: aplicarIVA ?? 'no especificado'
+        });
         
         // Crear factura
         const factura = new Factura({
@@ -58,7 +90,7 @@ exports.createFactura = async (req, res) => {
         
         await factura.save();
         
-        console.log('✅ [FACTURA] Factura creada:', numeroFactura);
+        console.log('✅ [FACTURA] Factura creada:', numeroFactura, '- Total:', total);
         
         res.status(201).json({
             success: true,
@@ -190,6 +222,34 @@ exports.anularFactura = async (req, res) => {
     }
 };
 
+// ✅ NUEVO: ELIMINAR FACTURA (para el botón de eliminar del historial)
+exports.deleteFactura = async (req, res) => {
+    try {
+        const factura = await Factura.findByIdAndDelete(req.params.id);
+        
+        if (!factura) {
+            return res.status(404).json({
+                success: false,
+                message: 'Factura no encontrada'
+            });
+        }
+        
+        console.log('🗑️ [FACTURA] Factura eliminada:', factura.numeroFactura);
+        
+        res.json({
+            success: true,
+            message: 'Factura eliminada correctamente',
+            factura
+        });
+    } catch (error) {
+        console.error('💥 [FACTURA] Error al eliminar:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+};
+
 // FUNCIONES AUXILIARES
 async function generarNumeroFactura() {
     const fecha = new Date();
@@ -211,7 +271,6 @@ async function generarNumeroFactura() {
 }
 
 function getEmpresaPorDefecto() {
-
     return {
         nombre: 'MAXI BISEL',
         nit: '1036838690',

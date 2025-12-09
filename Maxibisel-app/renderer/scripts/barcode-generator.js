@@ -8,7 +8,7 @@ export class BarcodeGenerator {
         this.filteredProducts = [];
         this.selectedReference = '';
         this.searchTerm = '';
-        this.BARCODES_PER_PAGE = 50; // 5 columnas x 10 filas
+        this.BARCODES_PER_PAGE = 60; // 5 columnas x 12filas
     }
 
     async init() {
