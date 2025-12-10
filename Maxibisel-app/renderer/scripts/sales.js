@@ -1738,20 +1738,22 @@ salesManager.mostrarVistaPrevia = function(factura) {
     hour12: true
   });
   
+  // ✅ CLAVE: Generar HTML de la factura SIN el modal
   const facturaHTML = `
-    <div class="factura-tirilla" style="
-      width: 300px;
-      max-width: 300px;
+    <div class="factura-tirilla" id="factura-para-imprimir" style="
+      width: 80mm;
+      max-width: 80mm;
       background: white;
-      padding: 15px 10px;
+      padding: 3mm;
       font-family: 'Courier New', monospace;
       font-size: 12px;
       line-height: 1.4;
       color: #000;
       margin: 0 auto;
+      display: none;
     ">
       
-      <!-- LOGO (Placeholder) -->
+      <!-- LOGO -->
       <div style="text-align: center; margin-bottom: 10px; border-bottom: 2px dashed #000; padding-bottom: 10px;">
         <div style="
           width: 80px;
@@ -1830,24 +1832,11 @@ salesManager.mostrarVistaPrevia = function(factura) {
               <div style="text-align: right; font-weight: bold;">$${prod.subtotal.toLocaleString('es-CO')}</div>
             </div>
             ${prod.descripcion ? `
-              <div style="
-                grid-column: 1 / -1;
-                font-size: 9px;
-                color: #333;
-                margin-left: 34px;
-                margin-top: 2px;
-              ">
+              <div style="font-size: 9px; color: #333; margin-left: 34px; margin-top: 2px;">
                 ${prod.descripcion}
               </div>
             ` : ''}
-            <div style="
-              display: grid;
-              grid-template-columns: 30px 1fr 60px;
-              gap: 4px;
-              font-size: 10px;
-              color: #555;
-              margin-top: 2px;
-            ">
+            <div style="display: grid; grid-template-columns: 30px 1fr 60px; gap: 4px; font-size: 10px; color: #555; margin-top: 2px;">
               <div></div>
               <div>@ $${prod.precioUnitario.toLocaleString('es-CO')}</div>
               <div></div>
@@ -1890,6 +1879,12 @@ salesManager.mostrarVistaPrevia = function(factura) {
     </div>
   `;
 
+  // ✅ INSERTAR factura oculta en el DOM
+  const oldFactura = document.getElementById('factura-para-imprimir');
+  if (oldFactura) oldFactura.remove();
+  document.body.insertAdjacentHTML('beforeend', facturaHTML);
+
+  // ✅ CREAR MODAL DE VISTA PREVIA
   const modalHTML = `
     <div class="modal" id="factura-preview-modal" style="
       display: flex;
@@ -1925,7 +1920,7 @@ salesManager.mostrarVistaPrevia = function(factura) {
           border-radius: 8px 8px 0 0;
         ">
           <h3 style="margin: 0; font-size: 1.1rem;">
-            <i class="bi bi-receipt"></i> Factura - POST
+            <i class="bi bi-receipt"></i> Factura - Vista Previa
           </h3>
           <button 
             class="btn-close" 
@@ -1944,7 +1939,7 @@ salesManager.mostrarVistaPrevia = function(factura) {
           justify-content: center;
           align-items: flex-start;
         ">
-          ${facturaHTML}
+          ${facturaHTML.replace('display: none;', 'display: block;')}
         </div>
         
         <!-- Footer -->
@@ -1966,7 +1961,7 @@ salesManager.mostrarVistaPrevia = function(factura) {
           </button>
           <button 
             class="btn btn-success" 
-            onclick="window.print()"
+            onclick="salesManager.imprimirFacturaPOS()"
             style="
               padding: 8px 16px;
               border-radius: 4px;
@@ -1982,61 +1977,73 @@ salesManager.mostrarVistaPrevia = function(factura) {
         
       </div>
     </div>
-    
-   <!-- Estilos de impresión para POS 80mm -->
-    <style>
-      @media print {
-        * {
-          margin: 0;
-          padding: 0;
-        }
-        
-        @page {
-          size: 80mm auto;
-          margin: 0;
-        }
-        
-        body {
-          margin: 0;
-          padding: 0;
-        }
-        
-        body * {
-          visibility: hidden;
-        }
-        
-        .factura-tirilla,
-        .factura-tirilla * {
-          visibility: visible;
-        }
-        
-        .factura-tirilla {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 80mm !important;
-          max-width: 80mm !important;
-          margin: 0 !important;
-          padding: 3mm !important;
-          background: white !important;
-          font-size: 12px !important;
-        }
-        
-        #factura-preview-modal,
-        button,
-        .btn,
-        .modal-content > div:first-child,
-        .modal-content > div:last-child {
-          display: none !important;
-        }
-      }
-    </style>
   `;
 
   const oldModal = document.getElementById('factura-preview-modal');
   if (oldModal) oldModal.remove();
 
   document.body.insertAdjacentHTML('beforeend', modalHTML);
+  
+  // ✅ AGREGAR ESTILOS DE IMPRESIÓN
+  if (!document.getElementById('print-styles-factura')) {
+    const printStyles = document.createElement('style');
+    printStyles.id = 'print-styles-factura';
+    printStyles.textContent = `
+      @media print {
+        @page {
+          size: 80mm auto;
+          margin: 0;
+        }
+        
+        body * {
+          visibility: hidden !important;
+        }
+        
+        #factura-para-imprimir,
+        #factura-para-imprimir * {
+          visibility: visible !important;
+        }
+        
+        #factura-para-imprimir {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 80mm !important;
+          max-width: 80mm !important;
+          margin: 0 !important;
+          padding: 3mm !important;
+          display: block !important;
+        }
+      }
+    `;
+    document.head.appendChild(printStyles);
+  }
+};
+
+// ✅ NUEVA FUNCIÓN: Imprimir con timing correcto
+salesManager.imprimirFacturaPOS = function() {
+  // Ocultar modal temporalmente
+  const modal = document.getElementById('factura-preview-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+  
+  // Mostrar factura oculta
+  const factura = document.getElementById('factura-para-imprimir');
+  if (factura) {
+    factura.style.display = 'block';
+  }
+  
+  // Imprimir después de un pequeño delay
+  setTimeout(() => {
+    window.print();
+    
+    // Restaurar después de imprimir
+    setTimeout(() => {
+      if (factura) factura.style.display = 'none';
+      if (modal) modal.style.display = 'flex';
+    }, 100);
+  }, 300);
 };
 
 salesManager.hideVistaPrevia = function() {

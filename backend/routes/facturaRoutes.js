@@ -17,4 +17,6 @@ router.put('/:id', facturaController.updateFactura);
 // Anular factura
 router.patch('/:id/anular', facturaController.anularFactura);
 
+router.delete('/:id', facturaController.deleteFactura);
+
 module.exports = router;

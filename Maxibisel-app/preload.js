@@ -195,6 +195,12 @@ contextBridge.exposeInMainWorld('api', {
         endpoint: `facturas/${id}/anular`
     }),
 
+    //Eliminar factura 
+    deleteFactura: (id) => ipcRenderer.invoke('api:request', {
+    method: 'delete',
+    endpoint: `facturas/${id}`
+    }),
+
     // Obtener estadísticas de facturas (opcional)
     getFacturasStats: async () => {
         try {
