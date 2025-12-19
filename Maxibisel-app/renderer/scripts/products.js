@@ -277,25 +277,34 @@ export const productManager = {
     },
 
     _setupStockEvents() {
-        const stockInput = document.getElementById('stock-new-value');
-        const stockForm = document.getElementById('stock-form');
-
-        if (stockInput) {
-            stockInput.addEventListener('keypress', (event) => {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    this.updateStock();
-                }
-            });
-        }
-
-        if (stockForm) {
-            stockForm.addEventListener('submit', (event) => {
+    const stockAddInput = document.getElementById('stock-add-quantity');
+    if (stockAddInput) {
+        stockAddInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
                 event.preventDefault();
                 this.updateStock();
-            });
-        }
-    },
+            }
+        });
+    }
+
+    const stockDirectInput = document.getElementById('stock-direct-value');
+    if (stockDirectInput) {
+        stockDirectInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                this.updateStock();
+            }
+        });
+    }
+
+    const stockForm = document.getElementById('stock-form');
+    if (stockForm) {
+        stockForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            this.updateStock();
+        });
+    }
+},
 
     handleDataChange({ action, data, dataType }) {
         console.log(`ProductManager recibió: ${action} en ${dataType}`, data);
@@ -827,78 +836,399 @@ export const productManager = {
     },
 
     async showUpdateStockModal(productId) {
-        console.log('Mostrando modal para actualizar stock:', productId);
+    console.log('Mostrando modal para actualizar stock:', productId);
 
-        try {
-            let product = this.products.find(p => p._id === productId);
+    try {
+        let product = this.products.find(p => p._id === productId);
 
-            if (!product) {
-                console.log('Producto no en cache, obteniendo del servidor...');
-                const response = await window.api.getProduct(productId);
-                product = response.product || response;
-            }
-
-            if (!product) {
-                throw new Error('Producto no encontrado');
-            }
-
-            console.log('Cargando datos para actualizar stock:', product);
-
-            const stockFields = [
-                ['stock-product-id', product._id, 'value'],
-                ['stock-product-name', product.name, 'textContent'],
-                ['stock-product-barcode', product.barcode, 'textContent'],
-                ['stock-product-sphere', product.sphere, 'textContent'],
-                ['stock-product-cylinder', product.cylinder, 'textContent'],
-                ['stock-product-addition', product.addition, 'textContent'],
-                ['stock-current-stock', product.stock || 0, 'textContent'],
-                ['stock-new-value', product.stock || 0, 'value']
-            ];
-
-            stockFields.forEach(([id, value, prop]) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    if (prop === 'textContent') {
-                        element.textContent = value || 'N/A';
-                    } else {
-                        element.value = value || '';
-                    }
-                    console.log(`Campo stock ${id} llenado con: ${value}`);
-                } else {
-                    console.warn(`Campo stock no encontrado: ${id}`);
-                }
-            });
-
-            const currentStockDisplay = document.getElementById('current-stock-display');
-            if (currentStockDisplay) {
-                currentStockDisplay.innerHTML = `
-                    <div class="alert alert-info">
-                        <strong>Stock Actual:</strong> ${product.stock || 0} unidades
-                    </div>
-                `;
-            }
-
-            if (this.stockModal) {
-                this.stockModal.show();
-            }
-
-            setTimeout(() => {
-                const stockInput = document.getElementById('stock-new-value');
-                if (stockInput) {
-                    stockInput.focus();
-                    stockInput.select();
-                }
-            }, 300);
-
-        } catch (error) {
-            console.error('Error al cargar producto para stock:', error);
-            if (uiManager && uiManager.showAlert) {
-                uiManager.showAlert('Error al cargar los datos del producto: ' + error.message, 'danger');
-            } else {
-                alert('Error al cargar los datos del producto: ' + error.message);
-            }
+        if (!product) {
+            console.log('Producto no en cache, obteniendo del servidor...');
+            const response = await window.api.getProduct(productId);
+            product = response.product || response;
         }
-    },
+
+        if (!product) {
+            throw new Error('Producto no encontrado');
+        }
+
+        console.log('Cargando datos para actualizar stock:', product);
+
+        // Llenar campos del producto
+        const stockFields = [
+            ['stock-product-id', product._id, 'value'],
+            ['stock-product-name', product.name, 'textContent'],
+            ['stock-product-barcode', product.barcode, 'textContent'],
+            ['stock-product-sphere', product.sphere, 'textContent'],
+            ['stock-product-cylinder', product.cylinder, 'textContent'],
+            ['stock-product-addition', product.addition, 'textContent'],
+            ['stock-current-stock', product.stock || 0, 'textContent']
+        ];
+
+        stockFields.forEach(([id, value, prop]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                if (prop === 'textContent') {
+                    element.textContent = value || 'N/A';
+                } else {
+                    element.value = value || '';
+                }
+            }
+        });
+
+        // ====================================================================
+        // NUEVO: Inicializar el modo "Agregar" por defecto
+        // ====================================================================
+        
+        // Limpiar campo de entrada
+        const stockAddInput = document.getElementById('stock-add-quantity');
+        if (stockAddInput) {
+            stockAddInput.value = '';
+        }
+
+        // Ocultar campo de actualización directa
+        const directUpdateContainer = document.getElementById('stock-direct-update-container');
+        if (directUpdateContainer) {
+            directUpdateContainer.style.display = 'none';
+        }
+
+        // Mostrar campo de agregar
+        const addStockContainer = document.getElementById('stock-add-container');
+        if (addStockContainer) {
+            addStockContainer.style.display = 'block';
+        }
+
+        // Actualizar botones de modo
+        const btnAddMode = document.getElementById('btn-stock-add-mode');
+        const btnDirectMode = document.getElementById('btn-stock-direct-mode');
+        
+        if (btnAddMode) {
+            btnAddMode.classList.add('active');
+            btnAddMode.classList.remove('btn-outline-primary');
+            btnAddMode.classList.add('btn-primary');
+        }
+        
+        if (btnDirectMode) {
+            btnDirectMode.classList.remove('active');
+            btnDirectMode.classList.add('btn-outline-primary');
+            btnDirectMode.classList.remove('btn-primary');
+        }
+
+        // Limpiar preview
+        const newStockPreview = document.getElementById('new-stock-preview');
+        if (newStockPreview) {
+            newStockPreview.textContent = product.stock || 0;
+        }
+
+        // ====================================================================
+
+        // Mostrar alert con stock actual
+        const currentStockDisplay = document.getElementById('current-stock-display');
+        if (currentStockDisplay) {
+            currentStockDisplay.innerHTML = `
+                <div class="alert alert-info mb-3">
+                    <strong>Stock Actual:</strong> ${product.stock || 0} unidades
+                </div>
+            `;
+        }
+
+        if (this.stockModal) {
+            this.stockModal.show();
+        }
+
+        setTimeout(() => {
+            const stockAddInput = document.getElementById('stock-add-quantity');
+            if (stockAddInput) {
+                stockAddInput.focus();
+            }
+        }, 300);
+
+    } catch (error) {
+        console.error('Error al cargar producto para stock:', error);
+        if (uiManager && uiManager.showAlert) {
+            uiManager.showAlert('Error al cargar los datos del producto: ' + error.message, 'danger');
+        }
+    }
+},
+
+// 2. NUEVA FUNCIÓN: Cambiar entre modos de actualización
+switchStockMode(mode) {
+    const addContainer = document.getElementById('stock-add-container');
+    const directContainer = document.getElementById('stock-direct-update-container');
+    const btnAddMode = document.getElementById('btn-stock-add-mode');
+    const btnDirectMode = document.getElementById('btn-stock-direct-mode');
+
+    if (mode === 'add') {
+        // Mostrar modo agregar
+        if (addContainer) addContainer.style.display = 'block';
+        if (directContainer) directContainer.style.display = 'none';
+        
+        // Actualizar botones
+        if (btnAddMode) {
+            btnAddMode.classList.add('active', 'btn-primary');
+            btnAddMode.classList.remove('btn-outline-primary');
+        }
+        if (btnDirectMode) {
+            btnDirectMode.classList.remove('active', 'btn-primary');
+            btnDirectMode.classList.add('btn-outline-primary');
+        }
+
+        // Limpiar campo de agregar
+        const stockAddInput = document.getElementById('stock-add-quantity');
+        if (stockAddInput) {
+            stockAddInput.value = '';
+            stockAddInput.focus();
+        }
+
+        // Resetear preview
+        this.updateStockPreview();
+
+    } else if (mode === 'direct') {
+        // Mostrar modo actualización directa
+        if (addContainer) addContainer.style.display = 'none';
+        if (directContainer) directContainer.style.display = 'block';
+        
+        // Actualizar botones
+        if (btnAddMode) {
+            btnAddMode.classList.remove('active', 'btn-primary');
+            btnAddMode.classList.add('btn-outline-primary');
+        }
+        if (btnDirectMode) {
+            btnDirectMode.classList.add('active', 'btn-primary');
+            btnDirectMode.classList.remove('btn-outline-primary');
+        }
+
+        // Llenar campo con valor actual
+        const currentStock = document.getElementById('stock-current-stock');
+        const directInput = document.getElementById('stock-direct-value');
+        if (currentStock && directInput) {
+            directInput.value = currentStock.textContent || '0';
+            directInput.focus();
+            directInput.select();
+        }
+    }
+},
+
+// 3. NUEVA FUNCIÓN: Actualizar preview del nuevo stock
+updateStockPreview() {
+    const currentStockEl = document.getElementById('stock-current-stock');
+    const addQuantityInput = document.getElementById('stock-add-quantity');
+    const newStockPreview = document.getElementById('new-stock-preview');
+
+    if (!currentStockEl || !addQuantityInput || !newStockPreview) return;
+
+    const currentStock = parseInt(currentStockEl.textContent) || 0;
+    const addQuantity = parseInt(addQuantityInput.value) || 0;
+    const newStock = currentStock + addQuantity;
+
+    newStockPreview.textContent = newStock;
+
+    // Añadir clase de animación
+    newStockPreview.classList.remove('stock-preview-update');
+    void newStockPreview.offsetWidth; // Trigger reflow
+    newStockPreview.classList.add('stock-preview-update');
+},
+
+// 4. MODIFICAR updateStock para manejar ambos modos
+async updateStock() {
+    try {
+        console.log('Iniciando actualización de stock...');
+
+        const productId = document.getElementById('stock-product-id')?.value;
+        
+        if (!productId) {
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert('Error: ID del producto no encontrado', 'danger');
+            }
+            return;
+        }
+
+        // Determinar qué modo está activo
+        const addContainer = document.getElementById('stock-add-container');
+        const isAddMode = addContainer && addContainer.style.display !== 'none';
+
+        let newStock;
+
+        if (isAddMode) {
+            // MODO AGREGAR: Sumar cantidad al stock actual
+            const currentStockEl = document.getElementById('stock-current-stock');
+            const addQuantityInput = document.getElementById('stock-add-quantity');
+            
+            const currentStock = parseInt(currentStockEl?.textContent) || 0;
+            const addQuantity = parseInt(addQuantityInput?.value);
+
+            if (isNaN(addQuantity) || addQuantity <= 0) {
+                if (uiManager && uiManager.showAlert) {
+                    uiManager.showAlert('Por favor, ingrese una cantidad válida a agregar (mayor a 0)', 'warning');
+                }
+                return;
+            }
+
+            newStock = currentStock + addQuantity;
+            console.log(`Modo AGREGAR: ${currentStock} + ${addQuantity} = ${newStock}`);
+
+        } else {
+            // MODO ACTUALIZAR DIRECTO: Usar el valor ingresado
+            const directValueInput = document.getElementById('stock-direct-value');
+            newStock = parseInt(directValueInput?.value);
+
+            if (isNaN(newStock) || newStock < 0) {
+                if (uiManager && uiManager.showAlert) {
+                    uiManager.showAlert('Por favor, ingrese un valor de stock válido (0 o mayor)', 'warning');
+                }
+                return;
+            }
+
+            console.log(`Modo DIRECTO: Nuevo stock = ${newStock}`);
+        }
+
+        const saveBtn = document.getElementById('save-stock-btn');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Actualizando...';
+        }
+
+        let currentProduct = this.products.find(p => p._id === productId);
+        if (!currentProduct) {
+            console.log('Producto no en cache, obteniendo del servidor...');
+            const response = await window.api.getProduct(productId);
+            currentProduct = response.product || response;
+        }
+
+        if (!currentProduct) {
+            throw new Error('Producto no encontrado');
+        }
+
+        const stockData = {
+            stock: newStock,
+            stock_surtido: currentProduct.stock_surtido || 0
+        };
+
+        console.log('Actualizando stock:', { productId, stockData });
+
+        const response = await window.api.updateProductStock(productId, stockData);
+        const updatedProduct = response.product || response;
+
+        if (!updatedProduct || !updatedProduct._id) {
+            console.error('Respuesta de API inválida:', response);
+            throw new Error('Respuesta del servidor inválida');
+        }
+
+        console.log('Stock actualizado en servidor:', updatedProduct);
+
+        await this._syncStockUpdateImmediate(updatedProduct, productId);
+
+        const modeText = isAddMode ? 'agregadas' : 'actualizado';
+        const quantityText = isAddMode 
+            ? `${newStock - currentProduct.stock} unidades ${modeText}` 
+            : `${updatedProduct.stock} unidades`;
+
+        if (uiManager && uiManager.showAlert) {
+            uiManager.showAlert(
+                `Stock ${isAddMode ? 'incrementado' : 'actualizado'} correctamente: ${quantityText}`, 
+                'success'
+            );
+        }
+
+        if (this.stockModal) {
+            this.stockModal.hide();
+        }
+
+        setTimeout(() => {
+            this._highlightUpdatedProduct(productId);
+        }, 300);
+
+    } catch (error) {
+        console.error('Error al actualizar stock:', error);
+
+        let errorMessage = 'Error al actualizar el stock';
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorMessage = 'Error de conexión. Verifique su conexión a internet';
+        } else {
+            errorMessage = `Error: ${error.message}`;
+        }
+
+        if (uiManager && uiManager.showAlert) {
+            uiManager.showAlert(errorMessage, 'danger');
+        }
+    } finally {
+        const saveBtn = document.getElementById('save-stock-btn');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Actualizar Stock';
+        }
+    }
+},
+
+// 5. MODIFICAR setupEventListeners para incluir los nuevos controles
+setupEventListeners() {
+    console.log('Configurando event listeners...');
+
+    const eventBindings = [
+        { id: 'add-product-btn', event: 'click', handler: this.showAddProductModal.bind(this) },
+        { id: 'save-product-btn', event: 'click', handler: this.saveProduct.bind(this) },
+        { id: 'save-stock-btn', event: 'click', handler: this.updateStock.bind(this) },
+        { id: 'products-table-body', event: 'click', handler: this.handleProductAction.bind(this) },
+        { id: 'generate-barcode-btn', event: 'click', handler: this.generateBarcode.bind(this) },
+        { id: 'barcode-scan-btn', event: 'click', handler: this.showBarcodeScannerModal.bind(this) },
+        { id: 'manual-barcode-btn', event: 'click', handler: this.searchByManualBarcode.bind(this) },
+        { id: 'product-search', event: 'input', handler: this.filterProducts.bind(this) },
+        { id: 'confirm-delete-btn', event: 'click', handler: this.executeDelete.bind(this) },
+        { id: 'cancel-delete-btn', event: 'click', handler: this.hideDeleteModal.bind(this) },
+        
+        // ====================================================================
+        // NUEVOS EVENT LISTENERS PARA EL MODAL DE STOCK
+        // ====================================================================
+        { id: 'btn-stock-add-mode', event: 'click', handler: () => this.switchStockMode('add') },
+        { id: 'btn-stock-direct-mode', event: 'click', handler: () => this.switchStockMode('direct') },
+        { id: 'stock-add-quantity', event: 'input', handler: this.updateStockPreview.bind(this) }
+    ];
+
+    eventBindings.forEach(({ id, event, handler }) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener(event, handler);
+            console.log(`Event listener agregado: ${id} -> ${event}`);
+        } else {
+            console.warn(`Elemento no encontrado: ${id}`);
+        }
+    });
+
+    this._setupStockEvents();
+    this.setupSyncListeners();
+},
+
+// 6. MODIFICAR _setupStockEvents para manejar ambos inputs
+_setupStockEvents() {
+    // Input para agregar cantidad
+    const stockAddInput = document.getElementById('stock-add-quantity');
+    if (stockAddInput) {
+        stockAddInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                this.updateStock();
+            }
+        });
+    }
+
+    // Input para actualización directa
+    const stockDirectInput = document.getElementById('stock-direct-value');
+    if (stockDirectInput) {
+        stockDirectInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                this.updateStock();
+            }
+        });
+    }
+
+    const stockForm = document.getElementById('stock-form');
+    if (stockForm) {
+        stockForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            this.updateStock();
+        });
+    }
+},
 
     async saveProduct() {
         try {
@@ -1049,22 +1379,51 @@ export const productManager = {
     },
 
     async updateStock() {
-        try {
-            console.log('Iniciando actualización de stock...');
+    try {
+        console.log('Iniciando actualización de stock...');
 
-            const productId = document.getElementById('stock-product-id')?.value;
-            const newStockValue = document.getElementById('stock-new-value')?.value;
+        const productId = document.getElementById('stock-product-id')?.value;
+        
+        if (!productId) {
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert('Error: ID del producto no encontrado', 'danger');
+            } else {
+                alert('Error: ID del producto no encontrado');
+            }
+            return;
+        }
 
-            if (!productId) {
+        // Determinar qué modo está activo
+        const addContainer = document.getElementById('stock-add-container');
+        const isAddMode = addContainer && addContainer.style.display !== 'none';
+
+        let newStock;
+
+        if (isAddMode) {
+            // MODO AGREGAR: Sumar cantidad al stock actual
+            const currentStockEl = document.getElementById('stock-current-stock');
+            const addQuantityInput = document.getElementById('stock-add-quantity');
+            
+            const currentStock = parseInt(currentStockEl?.textContent) || 0;
+            const addQuantity = parseInt(addQuantityInput?.value);
+
+            if (isNaN(addQuantity) || addQuantity <= 0) {
                 if (uiManager && uiManager.showAlert) {
-                    uiManager.showAlert('Error: ID del producto no encontrado', 'danger');
+                    uiManager.showAlert('Por favor, ingrese una cantidad válida a agregar (mayor a 0)', 'warning');
                 } else {
-                    alert('Error: ID del producto no encontrado');
+                    alert('Por favor, ingrese una cantidad válida a agregar (mayor a 0)');
                 }
                 return;
             }
 
-            const newStock = parseInt(newStockValue);
+            newStock = currentStock + addQuantity;
+            console.log(`Modo AGREGAR: ${currentStock} + ${addQuantity} = ${newStock}`);
+
+        } else {
+            // MODO ACTUALIZAR DIRECTO: Usar el valor ingresado
+            const directValueInput = document.getElementById('stock-direct-value');
+            newStock = parseInt(directValueInput?.value);
+
             if (isNaN(newStock) || newStock < 0) {
                 if (uiManager && uiManager.showAlert) {
                     uiManager.showAlert('Por favor, ingrese un valor de stock válido (0 o mayor)', 'warning');
@@ -1074,77 +1433,88 @@ export const productManager = {
                 return;
             }
 
-            const saveBtn = document.getElementById('save-stock-btn');
-            if (saveBtn) {
-                saveBtn.disabled = true;
-                saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Actualizando...';
-            }
-
-            let currentProduct = this.products.find(p => p._id === productId);
-            if (!currentProduct) {
-                console.log('Producto no en cache, obteniendo del servidor...');
-                const response = await window.api.getProduct(productId);
-                currentProduct = response.product || response;
-            }
-
-            if (!currentProduct) {
-                throw new Error('Producto no encontrado');
-            }
-
-            const stockData = {
-                stock: newStock,
-                stock_surtido: currentProduct.stock_surtido || 0
-            };
-
-            console.log('Actualizando stock:', { productId, stockData });
-
-            const response = await window.api.updateProductStock(productId, stockData);
-            const updatedProduct = response.product || response;
-
-            if (!updatedProduct || !updatedProduct._id) {
-                console.error('Respuesta de API inválida:', response);
-                throw new Error('Respuesta del servidor inválida');
-            }
-
-            console.log('Stock actualizado en servidor:', updatedProduct);
-
-            await this._syncStockUpdateImmediate(updatedProduct, productId);
-
-            if (uiManager && uiManager.showAlert) {
-                uiManager.showAlert(`Stock actualizado correctamente: ${updatedProduct.stock} unidades`, 'success');
-            }
-
-            if (this.stockModal) {
-                this.stockModal.hide();
-            }
-
-            setTimeout(() => {
-                this._highlightUpdatedProduct(productId);
-            }, 300);
-
-        } catch (error) {
-            console.error('Error al actualizar stock:', error);
-
-            let errorMessage = 'Error al actualizar el stock';
-            if (error.message.includes('network') || error.message.includes('fetch')) {
-                errorMessage = 'Error de conexión. Verifique su conexión a internet';
-            } else {
-                errorMessage = `Error: ${error.message}`;
-            }
-
-            if (uiManager && uiManager.showAlert) {
-                uiManager.showAlert(errorMessage, 'danger');
-            } else {
-                alert(errorMessage);
-            }
-        } finally {
-            const saveBtn = document.getElementById('save-stock-btn');
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Actualizar Stock';
-            }
+            console.log(`Modo DIRECTO: Nuevo stock = ${newStock}`);
         }
-    },
+
+        const saveBtn = document.getElementById('save-stock-btn');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Actualizando...';
+        }
+
+        let currentProduct = this.products.find(p => p._id === productId);
+        if (!currentProduct) {
+            console.log('Producto no en cache, obteniendo del servidor...');
+            const response = await window.api.getProduct(productId);
+            currentProduct = response.product || response;
+        }
+
+        if (!currentProduct) {
+            throw new Error('Producto no encontrado');
+        }
+
+        const stockData = {
+            stock: newStock,
+            stock_surtido: currentProduct.stock_surtido || 0
+        };
+
+        console.log('Actualizando stock:', { productId, stockData });
+
+        const response = await window.api.updateProductStock(productId, stockData);
+        const updatedProduct = response.product || response;
+
+        if (!updatedProduct || !updatedProduct._id) {
+            console.error('Respuesta de API inválida:', response);
+            throw new Error('Respuesta del servidor inválida');
+        }
+
+        console.log('Stock actualizado en servidor:', updatedProduct);
+
+        await this._syncStockUpdateImmediate(updatedProduct, productId);
+
+        const modeText = isAddMode ? 'agregadas' : 'actualizado';
+        const quantityText = isAddMode 
+            ? `${newStock - currentProduct.stock} unidades ${modeText}` 
+            : `${updatedProduct.stock} unidades`;
+
+        if (uiManager && uiManager.showAlert) {
+            uiManager.showAlert(
+                `Stock ${isAddMode ? 'incrementado' : 'actualizado'} correctamente: ${quantityText}`, 
+                'success'
+            );
+        }
+
+        if (this.stockModal) {
+            this.stockModal.hide();
+        }
+
+        setTimeout(() => {
+            this._highlightUpdatedProduct(productId);
+        }, 300);
+
+    } catch (error) {
+        console.error('Error al actualizar stock:', error);
+
+        let errorMessage = 'Error al actualizar el stock';
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorMessage = 'Error de conexión. Verifique su conexión a internet';
+        } else {
+            errorMessage = `Error: ${error.message}`;
+        }
+
+        if (uiManager && uiManager.showAlert) {
+            uiManager.showAlert(errorMessage, 'danger');
+        } else {
+            alert(errorMessage);
+        }
+    } finally {
+        const saveBtn = document.getElementById('save-stock-btn');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Actualizar Stock';
+        }
+    }
+},
 
     async _syncProductUpdateImmediate(updatedProduct, productId) {
         console.log('Sincronizando actualización inmediatamente...', updatedProduct);

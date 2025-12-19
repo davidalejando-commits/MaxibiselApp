@@ -176,7 +176,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                     </div>
                 </div>
             </div>
@@ -287,76 +287,128 @@
         </div>
 
         <!-- Modal para actualizar stock -->
+        <!-- Modal para actualizar stock -->
         <div class="modal fade" id="stock-modal" tabindex="-1">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title">Actualizar Stock</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        <h5 class="modal-title" id="stock-modal-title">
+                            <i class="bi bi-box-seam me-2"></i>Actualizar Stock
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
                     </div>
+
                     <div class="modal-body">
                         <form id="stock-form">
                             <input type="hidden" id="stock-product-id">
-                            <div class="row mb-3">
-                                <div class="col-12">
-                                    <h6 class="text-muted"><i class="bi bi-info-circle me-2"></i>Información del
-                                        Producto</h6>
+
+                            <!-- Información del Producto -->
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-3">Información del Producto</h6>
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <div class="row g-2">
+                                            <div class="col-12">
+                                                <strong>Nombre:</strong>
+                                                <span id="stock-product-name" class="ms-2"></span>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Código:</strong>
+                                                <span id="stock-product-barcode" class="ms-2"></span>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Esfera:</strong>
+                                                <span id="stock-product-sphere" class="ms-2"></span>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Cilindro:</strong>
+                                                <span id="stock-product-cylinder" class="ms-2"></span>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Adición:</strong>
+                                                <span id="stock-product-addition" class="ms-2"></span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Nombre:</label>
-                                    <p class="form-control-plaintext fw-semibold" id="stock-product-name">-</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Código:</label>
-                                    <p class="form-control-plaintext" id="stock-product-barcode">-</p>
-                                </div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-md-4">
-                                    <label class="form-label">Esfera:</label>
-                                    <p class="form-control-plaintext" id="stock-product-sphere">-</p>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Cilindro:</label>
-                                    <p class="form-control-plaintext" id="stock-product-cylinder">-</p>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Adición:</label>
-                                    <p class="form-control-plaintext" id="stock-product-addition">-</p>
+
+                            <!-- Stock Actual -->
+                            <div class="mb-3">
+                                <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-info-circle me-2"></i>
+                                        <strong>Stock Actual:</strong>
+                                    </div>
+                                    <span class="badge bg-primary fs-5" id="stock-current-stock">0</span>
                                 </div>
                             </div>
-                            <hr>
-                            <div class="row mb-3">
-                                <div class="col-12">
-                                    <h6 class="text-muted"><i class="bi bi-box me-2"></i>Gestión de Stock</h6>
+
+                            <!-- Botones para elegir modo -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Modo de Actualización</label>
+                                <div class="btn-group w-100" role="group">
+                                    <button type="button" class="btn btn-primary active" id="btn-stock-add-mode">
+                                        <i class="bi bi-plus-circle me-1"></i>
+                                        Agregar Stock
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" id="btn-stock-direct-mode">
+                                        <i class="bi bi-pencil me-1"></i>
+                                        Actualizar Directo
+                                    </button>
                                 </div>
                             </div>
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Stock Actual:</label>
-                                    <p class="form-control-plaintext fw-bold text-primary fs-5"
-                                        id="stock-current-stock">0</p>
+
+                            <!-- MODO AGREGAR: Sumar cantidad al stock actual -->
+                            <div id="stock-add-container" style="display: block;">
+                                <div class="mb-3">
+                                    <label for="stock-add-quantity" class="form-label fw-bold">
+                                        <i class="bi bi-box-arrow-in-down me-1"></i>
+                                        Cantidad a Agregar
+                                    </label>
+                                    <input type="number" class="form-control form-control-lg" id="stock-add-quantity"
+                                        placeholder="Indique la cantidad de lentes que ingresan" min="0.5" step="0.5">
+                                    <div class="form-text">
+                                        Esta cantidad se <strong>sumará</strong> al stock actual
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="stock-new-value" class="form-label">Nuevo Stock: <span
-                                            class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" id="stock-new-value" min="0" required>
+
+                                <!-- Preview del nuevo stock -->
+                                <div class="alert alert-success d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-calculator me-2"></i>
+                                        <strong>Nuevo Stock:</strong>
+                                    </div>
+                                    <span class="badge bg-success fs-5" id="new-stock-preview">0</span>
                                 </div>
                             </div>
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle me-2"></i>
-                                Solo se actualizará la cantidad en stock. Los demás datos del producto permanecerán sin
-                                cambios.
+
+                            <!-- MODO DIRECTO: Actualizar valor específico -->
+                            <div id="stock-direct-update-container" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="stock-direct-value" class="form-label fw-bold">
+                                        <i class="bi bi-pencil-square me-1"></i>
+                                        Nuevo Valor de Stock
+                                    </label>
+                                    <input type="number" class="form-control form-control-lg" id="stock-direct-value"
+                                        placeholder="Ingrese el valor exacto del stock" min="0" step="1">
+                                    <div class="form-text text-warning">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>
+                                        Este valor <strong>reemplazará</strong> el stock actual
+                                    </div>
+                                </div>
                             </div>
+
                         </form>
                     </div>
+
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-lg me-1"></i>Cancelar
+                        </button>
                         <button type="button" class="btn btn-primary" id="save-stock-btn">
-                            <i class="bi bi-check-lg me-1"></i>
-                            Actualizar Stock
+                            <i class="bi bi-check-lg me-1"></i>Actualizar Stock
                         </button>
                     </div>
                 </div>

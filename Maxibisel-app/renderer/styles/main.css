@@ -348,23 +348,57 @@ body.sale {
 
 .panel-header {
     flex-shrink: 0;
-    padding: 20px;
-    border-radius: 10px;
-    border-bottom: 1px solid #e0e0e0;
-    background: #f8f9fa;
+    padding: 25px 30px;
+    background: linear-gradient(135deg, #667eea 0%, #257cff 100%) !important;
+    color: white !important;
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 4px 15px rgba(88, 118, 253, 0.2);
+    border-bottom: none !important;
+}
+
+/* ✅ Efecto de brillo animado en ambos headers */
+.panel-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+    animation: pulseGlow 4s ease-in-out infinite;
 }
 
 .panel-title {
-    border-radius: 0 0 10px 10px;
-    font-size: 1.2em;
-    margin-bottom: 20px;
-    color: #2c3e50;
-    border-bottom: 2px solid #3498db;
-    padding-bottom: 10px;
     margin: 0 0 15px 0;
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #333;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: white !important; /* ✅ Texto blanco en ambos paneles */
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    border-bottom: none !important;
+    padding-bottom: 0;
+}
+
+.panel-title i {
+    font-size: 1.6rem;
+    animation: floatIcon 3s ease-in-out infinite;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+@keyframes floatIcon {
+    0%, 100% { 
+        transform: translateY(0); 
+    }
+    50% { 
+        transform: translateY(-5px); 
+    }
 }
 
 .panel-footer {
@@ -644,6 +678,44 @@ body.sale {
     color: #343a40;
 }
 
+.selected-counter {
+    display: flex;
+    align-items: center;
+    background: white !important; /* ✅ Fondo blanco para contrastar */
+    color: #667eea !important; /* ✅ Texto azul */
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 1rem;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.25);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.selected-counter:hover {
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+}
+
+.selected-counter i {
+    font-size: 1.2rem;
+    margin-right: 8px;
+    animation: pulse 2s ease-in-out infinite;
+    color: #667eea !important;
+}
+
+#selectedCount {
+    min-width: 25px;
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #667eea 0%, #0011ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+
 /* ========================================
    ESTILOS PARA MODALES BASE
    ======================================== */
@@ -914,14 +986,7 @@ body.sale {
     width: 95%;
 }
 
-.preview-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-    border-bottom: 2px solid #e9ecef;
-    background: #f8f9fa;
-}
+
 
 .preview-body {
     flex: 1;
@@ -2053,14 +2118,7 @@ body.login-page {
   flex-direction: column;
 }
 
-.factura-form .modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 2px solid #e9ecef;
-  background: #f8f9fa;
-}
+
 
 .factura-form .modal-title {
   margin: 0;
@@ -2780,12 +2838,21 @@ body.login-page {
 .panel-header {
     flex-shrink: 0;
     padding: 25px 30px;
-    background: linear-gradient(135deg, #667eea 0%, #257cff 100%);
-    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #257cff 100%) !important;
+    color: white !important;
     position: relative;
     overflow: hidden;
     border-radius: 10px 10px 0 0;
     box-shadow: 0 4px 15px rgba(88, 118, 253, 0.2);
+    border-bottom: none !important; /* ✅ Eliminar borde gris */
+}
+
+/* ✅ NUEVO: Asegurar que NO haya override del background */
+#sales-view .panel-header,
+.container-sale .panel-header {
+    background: linear-gradient(135deg, #667eea 0%, #257cff 100%) !important;
+    color: white !important;
+    border-bottom: none !important;
 }
 
 /* Efecto de brillo animado en el fondo */
@@ -3013,5 +3080,38 @@ body.login-page {
     }
 }
 
+/* ========================================
+   ESTILOS PARA MODAL DE STOCK MEJORADO
+   ======================================== */
+.stock-preview-update {
+    animation: pulse 0.3s ease-in-out;
+}
 
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.btn-group .btn {
+    transition: all 0.2s ease;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.badge.fs-5 {
+    font-size: 1.5rem !important;
+    padding: 0.5rem 1rem;
+}
+
+#stock-add-container,
+#stock-direct-update-container {
+    transition: opacity 0.3s ease;
+}
 
