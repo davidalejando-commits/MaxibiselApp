@@ -1,4 +1,3 @@
-// Manejo de autenticación - VERSIÓN CORREGIDA
 import { eventManager } from './eventManager.js';
 
 export const authManager = {
@@ -25,56 +24,16 @@ export const authManager = {
 
         this.setupEventListeners();
         
-        // Intentar recuperar sesión guardada
-        const hasSession = await this.checkStoredSession();
-        
-        if (hasSession) {
-            console.log('✅ Sesión válida encontrada');
-            await this.initializeApp();
-        } else {
-            console.log('ℹ️ No hay sesión válida');
-            this.showLoginScreen();
-        }
+        // ✅ CAMBIO: Ya NO intentamos recuperar sesión guardada automáticamente
+        // Siempre mostrar login al iniciar
+        console.log('ℹ️ Iniciando en pantalla de login');
+        this.showLoginScreen();
 
         this.isInitialized = true;
         console.log('✅ AuthManager inicializado');
     },
 
-    async checkStoredSession() {
-        try {
-            console.log('🔍 Verificando sesión guardada...');
-            
-            const token = await window.api.store.get('authToken');
-            const user = await window.api.store.get('user');
-
-            if (!token || !user) {
-                console.log('ℹ️ No hay token o usuario guardado');
-                return false;
-            }
-
-            // Verificar que el token sea válido haciendo una petición
-            try {
-                await window.api.health();
-                
-                // Token válido, restaurar sesión
-                this.token = token;
-                this.currentUser = user;
-                this.isLoggedIn = true;
-                
-                console.log('✅ Sesión restaurada:', user.username);
-                return true;
-                
-            } catch (error) {
-                console.warn('⚠️ Token inválido, limpiando sesión');
-                await this.clearStoredSession();
-                return false;
-            }
-            
-        } catch (error) {
-            console.error('❌ Error verificando sesión:', error);
-            return false;
-        }
-    },
+    // ✅ ELIMINADO: checkStoredSession - Ya no necesitamos verificar sesión guardada
 
     async clearStoredSession() {
         await window.api.store.delete('authToken');
@@ -176,26 +135,22 @@ export const authManager = {
             // Realizar login
             const response = await window.api.login({ username, password });
 
+            // ✅ MEJORA: Verificar si hay error en la respuesta
+            if (!response.success && response.success === false) {
+                throw new Error(response.message || 'Error de autenticación');
+            }
+
             if (!response.token) {
                 throw new Error('No se recibió token de autenticación');
             }
 
-            // Guardar en memoria
+            // Guardar en memoria SOLAMENTE (no en store)
             this.token = response.token;
             this.currentUser = response.user;
             this.isLoggedIn = true;
 
             console.log('✅ Login exitoso:', this.currentUser.username);
-
-            // Verificar que el token se guardó
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
-            const tokenSaved = await window.api.store.get('authToken');
-            if (!tokenSaved) {
-                throw new Error('Error al guardar el token');
-            }
-            
-            console.log('✅ Token verificado y guardado');
+            console.log('ℹ️ Sesión guardada SOLO en memoria (no persiste al cerrar)');
 
             // Inicializar aplicación
             await this.initializeApp();
@@ -205,7 +160,28 @@ export const authManager = {
 
         } catch (error) {
             console.error('❌ Error en login:', error);
-            this.showLoginError(error.message || 'Error de autenticación');
+            
+            // ✅ MEJORA: Mensajes de error más específicos en español
+            let errorMessage = 'Error de autenticación';
+            
+            if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            // Traducir mensajes comunes del backend
+            if (error.message?.includes('Usuario o contraseña incorrectos')) {
+                errorMessage = 'Usuario o contraseña incorrectos';
+            } else if (error.message?.includes('User not found')) {
+                errorMessage = 'El usuario no existe';
+            } else if (error.message?.includes('Invalid password') || error.message?.includes('password')) {
+                errorMessage = 'La contraseña es incorrecta';
+            } else if (error.message?.includes('Invalid credentials')) {
+                errorMessage = 'Credenciales inválidas';
+            } else if (error.message?.includes('Network') || error.message?.includes('timeout')) {
+                errorMessage = 'Error de conexión con el servidor';
+            }
+            
+            this.showLoginError(errorMessage);
             await this.clearStoredSession();
         } finally {
             if (submitBtn) {

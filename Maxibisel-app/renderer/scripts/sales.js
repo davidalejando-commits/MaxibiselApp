@@ -2366,41 +2366,41 @@ salesManager.mostrarVistaPrevia = function(factura) {
         ">
           
           <!-- Header -->
-          <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            border-bottom: 2px solid #e9ecef;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 12px 12px 0 0;
-          ">
-            <h3 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;">
-              <i class="bi bi-receipt" style="font-size: 1.5rem;"></i>
-              Vista Previa - Factura
-            </h3>
-            <button 
-              id="btn-cerrar-preview"
-              style="
-                background: rgba(255,255,255,0.2);
-                border: none;
-                color: white;
-                font-size: 1.8rem;
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                transition: all 0.2s;
-                line-height: 1;
-              "
-              onmouseover="this.style.background='rgba(255,255,255,0.3)'"
-              onmouseout="this.style.background='rgba(255,255,255,0.2)'"
-            >×</button>
-          </div>
+        <div style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px;
+          border-bottom: 2px solid #e9ecef;
+          background: linear-gradient(135deg, #667eea 0%, #257cff 100%);
+          border-radius: 12px 12px 0 0;
+        ">
+          <h3 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; color: white;">
+            <i class="bi bi-receipt" style="font-size: 1.5rem;"></i>
+            Vista Previa - Factura
+          </h3>
+          <button 
+            id="btn-cerrar-preview"
+            style="
+              background: rgba(255,255,255,0.15);
+              border: 1px solid rgba(255,255,255,0.3);
+              color: white;
+              font-size: 1.5rem;
+              width: 36px;
+              height: 36px;
+              border-radius: 4px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: all 0.2s;
+              line-height: -1;
+              padding: 0;
+            "
+            onmouseover="this.style.background='rgba(255,255,255,0.25)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.15)'"
+          >×</button>
+        </div>
           
           <!-- Body con factura VISIBLE -->
           <div style="
@@ -2743,19 +2743,6 @@ salesManager.mostrarHistorialFacturas = function(facturas) {
               <i class="bi bi-eye"></i> Ver
             </button>
             <button 
-              class="btn btn-sm btn-success" 
-              onclick="salesManager.reimprimirFactura('${factura._id}')"
-              style="
-                padding: 6px 12px;
-                border-radius: 4px;
-                border: none;
-                cursor: pointer;
-                font-size: 0.85rem;
-              "
-            >
-              <i class="bi bi-printer"></i> Imprimir
-            </button>
-            <button 
               class="btn btn-sm btn-danger" 
               onclick="salesManager.confirmarEliminarFactura('${factura._id}')"
               style="
@@ -2769,7 +2756,6 @@ salesManager.mostrarHistorialFacturas = function(facturas) {
               <i class="bi bi-trash3"></i> Eliminar
             </button>
           </div>
-        </div>
       `;
     }).join('');
   }
@@ -2805,16 +2791,32 @@ salesManager.mostrarHistorialFacturas = function(facturas) {
           align-items: center;
           padding: 20px;
           border-bottom: 2px solid #e9ecef;
-          background: #f8f9fa;
+          background: linear-gradient(135deg, #667eea 0%, #257cff 100%);
           border-radius: 8px 8px 0 0;
         ">
-          <h3 style="margin: 0;">
+          <h3 style="margin: 0; color: white;">
             <i class="bi bi-clock-history"></i> Historial de Facturas
           </h3>
           <button 
-            class="btn-close" 
             onclick="salesManager.hideHistorialFacturas()"
-            style="background: none; border: none; font-size: 1.5rem; cursor: pointer;"
+            style="
+              background: rgba(255,255,255,0.15);
+              border: 1px solid rgba(255,255,255,0.3);
+              color: white;
+              font-size: 1.5rem;
+              width: 36px;
+              height: 36px;
+              border-radius: 4px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: all 0.2s;
+              line-height: -1;
+              padding: 0;
+            "
+            onmouseover="this.style.background='rgba(255,255,255,0.25)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.15)'"
           >×</button>
         </div>
         
@@ -2873,51 +2875,311 @@ salesManager.reimprimirFactura = async function(facturaId) {
 
 // ✅ ELIMINAR FACTURA
 salesManager.confirmarEliminarFactura = function(facturaId) {
-  if (confirm('¿Está seguro que desea ELIMINAR esta factura?\n\nEsta acción no se puede deshacer.')) {
+  console.log('⚠️ Solicitando confirmación para eliminar factura:', facturaId);
+  
+  // Crear modal de confirmación estilizado
+  const modalHTML = `
+    <div class="modal" id="confirmar-eliminar-factura-modal" style="
+      display: flex;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 10001;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    ">
+      <div class="modal-content" style="
+        background: white;
+        border-radius: 12px;
+        max-width: 450px;
+        width: 90%;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        animation: slideUp 0.3s ease;
+        overflow: hidden;
+      ">
+        
+        <!-- Header con ícono de advertencia -->
+        <div style="
+          background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+          color: white;
+          padding: 25px;
+          text-align: center;
+        ">
+          <div style="
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 2rem;
+          ">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+          </div>
+          <h3 style="margin: 0; font-size: 1.5rem; font-weight: 700;">
+            Confirmar Eliminación
+          </h3>
+        </div>
+        
+        <!-- Body -->
+        <div style="padding: 30px; text-align: center;">
+          <p style="
+            font-size: 1.1rem;
+            color: #2c3e50;
+            line-height: 1.6;
+            margin: 0 0 10px 0;
+          ">
+            ¿Está seguro que desea <strong style="color: #e74c3c;">ELIMINAR</strong> esta factura?
+          </p>
+          <p style="
+            font-size: 0.95rem;
+            color: #7f8c8d;
+            margin: 0;
+          ">
+            Esta acción no se puede deshacer.
+          </p>
+        </div>
+        
+        <!-- Footer con botones -->
+        <div style="
+          display: flex;
+          gap: 12px;
+          padding: 0 30px 30px 30px;
+        ">
+          <button 
+            id="btn-cancelar-eliminar"
+            style="
+              flex: 1;
+              padding: 12px;
+              border-radius: 8px;
+              border: 2px solid #95a5a6;
+              background: white;
+              color: #7f8c8d;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s;
+              font-size: 1rem;
+            "
+            onmouseover="this.style.background='#ecf0f1'; this.style.borderColor='#7f8c8d'"
+            onmouseout="this.style.background='white'; this.style.borderColor='#95a5a6'"
+          >
+            <i class="bi bi-x-circle me-1"></i> Cancelar
+          </button>
+          <button 
+            id="btn-confirmar-eliminar"
+            style="
+              flex: 1;
+              padding: 12px;
+              border-radius: 8px;
+              border: none;
+              background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+              color: white;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s;
+              box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+              font-size: 1rem;
+            "
+            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(231, 76, 60, 0.4)'"
+            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(231, 76, 60, 0.3)'"
+          >
+            <i class="bi bi-trash3-fill me-1"></i> Eliminar
+          </button>
+        </div>
+        
+      </div>
+    </div>
+
+    <style>
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideUp {
+        from { transform: translateY(30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+    </style>
+  `;
+
+  // Eliminar modal anterior si existe
+  const oldModal = document.getElementById('confirmar-eliminar-factura-modal');
+  if (oldModal) oldModal.remove();
+
+  // Insertar modal
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+  // Event listeners
+  document.getElementById('btn-cancelar-eliminar').onclick = () => {
+    const modal = document.getElementById('confirmar-eliminar-factura-modal');
+    if (modal) {
+      modal.style.animation = 'fadeOut 0.2s ease';
+      setTimeout(() => modal.remove(), 200);
+    }
+  };
+
+  document.getElementById('btn-confirmar-eliminar').onclick = () => {
+    const modal = document.getElementById('confirmar-eliminar-factura-modal');
+    if (modal) modal.remove();
     this.eliminarFactura(facturaId);
-  }
+  };
+
+  // Cerrar con ESC
+  const escHandler = (e) => {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('confirmar-eliminar-factura-modal');
+      if (modal) {
+        modal.style.animation = 'fadeOut 0.2s ease';
+        setTimeout(() => modal.remove(), 200);
+      }
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
 };
 
 salesManager.eliminarFactura = async function(facturaId) {
   try {
     console.log('🗑️ Eliminando factura:', facturaId);
     
-    // ✅ Si tu backend tiene un endpoint DELETE, úsalo:
+    // Mostrar indicador de carga
+    this.mostrarIndicadorEliminacion();
+    
+    // ✅ CORRECCIÓN: Solo eliminar de SQLite (local)
     const response = await window.api.deleteFactura(facturaId);
     
-    // Si no tienes endpoint DELETE, puedes usar el de anular:
-    // const response = await window.api.anularFactura(facturaId);
+    console.log('📡 Respuesta del servidor:', response);
     
     if (response.success) {
-
+      console.log('✅ Factura eliminada correctamente');
+      
       // ✅ AGREGAR LOG DE ELIMINACIÓN
+      if (response.factura) {
         activityLogger.log({
-        tipo: 'FACTURA',
-        accion: `Factura ${factura.numeroFactura} eliminada`,
-        entidad: 'Factura',
-        entidad_id: facturaId,
-        datos_anteriores: {
-        numero: factura.numeroFactura,
-        cliente: factura.cliente.nombre,
-        total: factura.total
-         }
-      });
-
+          tipo: 'FACTURA',
+          accion: `Factura ${response.factura.numeroFactura} eliminada`,
+          entidad: 'Factura',
+          entidad_id: facturaId,
+          datos_anteriores: {
+            numero: response.factura.numeroFactura,
+            cliente: response.factura.cliente?.nombre || 'N/A',
+            total: response.factura.total || 0
+          }
+        });
+      }
+      
+      // Ocultar indicador
+      this.ocultarIndicadorEliminacion();
+      
+      // Mostrar alerta de éxito
       uiManager.showAlert('Factura eliminada correctamente', 'success');
       
-      // Recargar historial
+      // ✅ CORRECCIÓN: Cerrar historial y recargar después de un breve delay
       this.hideHistorialFacturas();
+      
       setTimeout(() => {
         this.verHistorialFacturas();
-      }, 500);
+      }, 300);
+      
     } else {
       throw new Error(response.message || 'Error al eliminar factura');
     }
+    
   } catch (error) {
     console.error('💥 Error eliminando factura:', error);
-    uiManager.showAlert('Error al eliminar la factura: ' + error.message, 'danger');
+    
+    // Ocultar indicador
+    this.ocultarIndicadorEliminacion();
+    
+    // Mostrar error específico
+    let errorMessage = 'Error al eliminar la factura';
+    
+    if (error.message) {
+      if (error.message.includes('404') || error.message.includes('not found')) {
+        errorMessage = 'Factura no encontrada';
+      } else if (error.message.includes('500') || error.message.includes('servidor')) {
+        errorMessage = 'Error del servidor. Intente nuevamente';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
+    uiManager.showAlert(errorMessage, 'danger');
   }
 };
+
+// ✅ INDICADORES DE CARGA PARA ELIMINACIÓN
+salesManager.mostrarIndicadorEliminacion = function() {
+  const indicatorHTML = `
+    <div id="eliminando-factura-indicator" style="
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 12px;
+      padding: 30px 40px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      z-index: 10002;
+      text-align: center;
+      animation: fadeIn 0.2s ease;
+    ">
+      <div class="spinner-border text-danger mb-3" style="width: 3rem; height: 3rem;" role="status">
+        <span class="visually-hidden">Eliminando...</span>
+      </div>
+      <p style="margin: 0; font-weight: 600; color: #2c3e50; font-size: 1.1rem;">
+        Eliminando factura...
+      </p>
+    </div>
+    
+    <div id="eliminando-factura-overlay" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 10001;
+      animation: fadeIn 0.2s ease;
+    "></div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', indicatorHTML);
+};
+
+salesManager.ocultarIndicadorEliminacion = function() {
+  const indicator = document.getElementById('eliminando-factura-indicator');
+  const overlay = document.getElementById('eliminando-factura-overlay');
+  
+  if (indicator) {
+    indicator.style.animation = 'fadeOut 0.2s ease';
+    setTimeout(() => indicator.remove(), 200);
+  }
+  
+  if (overlay) {
+    overlay.style.animation = 'fadeOut 0.2s ease';
+    setTimeout(() => overlay.remove(), 200);
+  }
+};
+
+// ✅ AGREGAR ESTILOS DE ANIMACIÓN SI NO EXISTEN
+if (!document.getElementById('delete-animation-styles')) {
+  const deleteStyles = document.createElement('style');
+  deleteStyles.id = 'delete-animation-styles';
+  deleteStyles.textContent = `
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+  `;
+  document.head.appendChild(deleteStyles);
+}
 
 salesManager.hideHistorialFacturas = function() {
   const modal = document.getElementById('historial-facturas-modal');

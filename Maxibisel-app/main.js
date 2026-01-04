@@ -508,7 +508,7 @@ function getApiUrl() {
     return `http://127.0.0.1:${backendPort}/api`;
 }
 
-// Función de cierre limpio - CORREGIDA para evitar ciclos infinitos
+// Función de cierre limpio - Evitando ciclos infinitos
 async function cleanShutdown() {
     if (isShuttingDown) {
         console.log('Cierre ya en progreso...');
@@ -519,6 +519,12 @@ async function cleanShutdown() {
     console.log('🔄 Iniciando cierre limpio...');
 
     try {
+        // ✅ NUEVO: Limpiar datos de sesión al cerrar la app
+        console.log('🧹 Limpiando datos de sesión...');
+        store.delete('authToken');
+        store.delete('user');
+        console.log('✅ Sesión limpiada correctamente');
+        
         // Cerrar proceso del backend si existe
         if (backendProcess && !backendProcess.killed) {
             console.log('Cerrando backend process...');
@@ -541,7 +547,7 @@ async function cleanShutdown() {
         // Limpiar puerto por si acaso
         await killProcessOnPort(backendPort);
 
-        // Limpiar datos almacenados
+        // Limpiar datos almacenados del backend
         store.delete('backend_pid');
 
         console.log('✅ Cierre limpio completado');
@@ -604,7 +610,10 @@ function setupIpcHandlers() {
     // Login - CORREGIDO
     ipcMain.handle('api:login', async (event, credentials) => {
         if (!isBackendReady) {
-            throw new Error('Backend no disponible');
+            return {
+                success: false,
+                message: 'Backend no disponible'
+            };
         }
 
         try {
@@ -636,14 +645,25 @@ function setupIpcHandlers() {
             return response.data;
         } catch (error) {
             console.error('❌ Error en login (main):', error.response?.data || error.message);
-            throw new Error(error.response?.data?.message || 'Error de autenticación');
+            
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Error de autenticación'
+            };
         }
     });
 
-    // Solicitudes genéricas a la API - MEJORADO
+    // ✅ CORRECCIÓN CRÍTICA: Handler de API requests
     ipcMain.handle('api:request', async (event, { method, endpoint, data, requiresAuth = true }) => {
+        console.log('\n📡 [MAIN] ========== INICIO REQUEST ==========');
+        console.log(`📡 [MAIN] ${method.toUpperCase()} /${endpoint}`);
+        
         if (!isBackendReady) {
-            throw new Error('Backend no disponible');
+            console.error('❌ [MAIN] Backend no disponible');
+            return {
+                success: false,
+                message: 'Backend no disponible'
+            };
         }
 
         try {
@@ -651,11 +671,15 @@ function setupIpcHandlers() {
             const token = requiresAuth ? store.get('authToken') : null;
 
             if (requiresAuth && !token) {
-                console.error('❌ No hay token disponible para request autenticado');
-                throw new Error('No hay sesión activa. Por favor inicia sesión nuevamente.');
+                console.error('❌ [MAIN] No hay token disponible');
+                return {
+                    success: false,
+                    message: 'No hay sesión activa. Por favor inicia sesión nuevamente.'
+                };
             }
 
-            console.log(`📡 API Request: ${method.toUpperCase()} /${endpoint} (Auth: ${!!token})`);
+            console.log(`📡 [MAIN] URL: ${getApiUrl()}/${endpoint.replace(/^\//, '')}`);
+            console.log(`📡 [MAIN] Auth: ${!!token ? 'YES' : 'NO'}`);
 
             const config = {
                 method: method.toLowerCase(),
@@ -667,30 +691,45 @@ function setupIpcHandlers() {
 
             if (requiresAuth && token) {
                 config.headers['Authorization'] = `Bearer ${token}`;
-                console.log('✅ Token incluido en headers');
+                console.log('✅ [MAIN] Token incluido en headers');
             }
 
             if (data && ['post', 'put', 'patch'].includes(method.toLowerCase())) {
                 config.data = data;
+                console.log('📦 [MAIN] Data incluida:', JSON.stringify(data).substring(0, 100));
             }
 
             const response = await axios(config);
-            console.log(`✅ Response: ${method.toUpperCase()} /${endpoint} - Status: ${response.status}`);
             
+            console.log(`✅ [MAIN] Response Status: ${response.status}`);
+            console.log(`✅ [MAIN] Response Data:`, JSON.stringify(response.data).substring(0, 200));
+            console.log('📡 [MAIN] ========== FIN REQUEST ==========\n');
+            
+            // ✅ CORRECCIÓN: Siempre retornar response.data
             return response.data;
+            
         } catch (error) {
-            console.error(`❌ Error en API request (${method} /${endpoint}):`, 
-                error.response?.data || error.message);
+            console.error('💥 [MAIN] ========== ERROR EN REQUEST ==========');
+            console.error(`💥 [MAIN] Error en ${method.toUpperCase()} /${endpoint}`);
+            console.error('💥 [MAIN] Error status:', error.response?.status);
+            console.error('💥 [MAIN] Error data:', error.response?.data);
+            console.error('💥 [MAIN] Error message:', error.message);
+            console.error('💥 [MAIN] =========================================\n');
 
             // Si es error 401, limpiar token
             if (error.response?.status === 401 && requiresAuth) {
-                console.warn('⚠️ Token inválido, limpiando store...');
+                console.warn('⚠️ [MAIN] Token inválido, limpiando store...');
                 store.delete('authToken');
                 store.delete('user');
-                throw new Error('Sesión expirada. Por favor inicia sesión nuevamente.');
             }
             
-            throw new Error(error.response?.data?.message || 'Error de conexión');
+            // ✅ CORRECCIÓN CRÍTICA: NO lanzar error, retornar objeto con estructura
+            return {
+                success: false,
+                message: error.response?.data?.message || error.message || 'Error de conexión',
+                error: error.response?.data || { message: error.message },
+                status: error.response?.status
+            };
         }
     });
 

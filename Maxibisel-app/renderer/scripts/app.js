@@ -4,7 +4,7 @@ import { productManager } from './products.js';
 import { uiManager } from './ui.js';
 import { eventManager } from './eventManager.js';
 import { BarcodeGenerator } from './barcode-generator.js';
-import { activityLogger } from './activityLogger.js'; // ✅ YA ESTÁ IMPORTADO
+import { activityLogger } from './activityLogger.js';
 
 // ==================== VARIABLES GLOBALES ====================
 let barcodeGenerator = null;
@@ -17,7 +17,7 @@ window.salesManager = salesManager;
 window.transactionManager = transactionManager;
 window.uiManager = uiManager;
 window.eventManager = eventManager;
-window.activityLogger = activityLogger; // ✅ AGREGAR ESTA LÍNEA
+window.activityLogger = activityLogger;
 
 console.log('✅ Managers expuestos globalmente');
 
@@ -50,16 +50,9 @@ async function initialize() {
         // Configurar navegación
         setupNavigation();
 
-        // ✅ SIEMPRE MOSTRAR LOGIN PRIMERO (CORRECCIÓN)
-        const hasSession = await checkSavedSession();
-
-        if (hasSession) {
-            console.log('✅ Sesión válida encontrada');
-            await loadApplication();
-        } else {
-            console.log('ℹ️ No hay sesión, mostrando login');
-            showLogin();
-        }
+        // ✅ SIEMPRE MOSTRAR LOGIN PRIMERO
+        console.log('ℹ️ Mostrando pantalla de login');
+        showLogin();
 
     } catch (error) {
         console.error('💥 Error fatal:', error);
@@ -69,34 +62,6 @@ async function initialize() {
 }
 
 // ==================== GESTIÓN DE SESIÓN ====================
-
-async function checkSavedSession() {
-    try {
-        const token = await window.api.store.get('authToken');
-        const user = await window.api.store.get('user');
-
-        if (!token || !user) {
-            return false;
-        }
-
-        // Verificar que el token funcione
-        try {
-            await window.api.health();
-            currentUser = user;
-            isAuthenticated = true;
-            console.log('✅ Sesión restaurada:', user.username);
-            return true;
-        } catch (error) {
-            console.warn('⚠️ Token inválido');
-            await clearSession();
-            return false;
-        }
-
-    } catch (error) {
-        console.error('❌ Error verificando sesión:', error);
-        return false;
-    }
-}
 
 async function clearSession() {
     currentUser = null;
@@ -136,36 +101,63 @@ function showLogin() {
     }
 }
 
+// ✅ FUNCIÓN MEJORADA: Manejo de errores específicos
 async function handleLogin(e) {
     e.preventDefault();
 
     const username = document.getElementById('username')?.value.trim();
     const password = document.getElementById('password')?.value.trim();
-    const loginBtn = document.getElementById('login-button');
+    const loginBtn = e.target.querySelector('button[type="submit"]');
     const loginError = document.getElementById('login-error');
 
     if (!username || !password) {
-        showError('Completa todos los campos');
+        showError('Por favor, complete todos los campos');
         return;
     }
 
-    const originalText = loginBtn?.textContent || 'Iniciar Sesión';
+    const originalText = loginBtn?.innerHTML || 'Iniciar Sesión';
 
     try {
         // Mostrar loading
         if (loginBtn) {
             loginBtn.disabled = true;
-            loginBtn.textContent = 'Iniciando...';
+            loginBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Iniciando sesión...';
         }
         if (loginError) loginError.classList.add('d-none');
 
         console.log('🔐 Login en proceso...');
 
+        // ✅ VERIFICAR CONEXIÓN PRIMERO
+        try {
+            await window.api.health();
+        } catch (healthError) {
+            throw new Error('No hay conexión con el servidor. Verifica tu conexión a internet.');
+        }
+
         // Hacer login
         const response = await window.api.login({ username, password });
 
-        if (!response.token) {
-            throw new Error('No se recibió token');
+        // ✅ VERIFICAR RESPUESTA COMPLETA
+        console.log('📥 Respuesta recibida:', {
+            hasResponse: !!response,
+            hasToken: !!response?.token,
+            hasUser: !!response?.user,
+            success: response?.success
+        });
+
+        // ✅ MANEJO MEJORADO: Verificar si es un error del servidor
+        if (response && response.success === false) {
+            // El servidor respondió con un error específico
+            throw new Error(response.message || 'Usuario o contraseña incorrectos');
+        }
+
+        if (!response || !response.token) {
+            // No hay respuesta o no hay token = credenciales incorrectas
+            throw new Error('Usuario o contraseña incorrectos');
+        }
+
+        if (!response.user) {
+            throw new Error('Error al obtener información del usuario');
         }
 
         currentUser = response.user;
@@ -174,17 +166,17 @@ async function handleLogin(e) {
         console.log('✅ Login exitoso:', currentUser.username);
 
         // Esperar a que el token se guarde
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 300));
 
-        // Verificar token
+        // Verificar token guardado
         const savedToken = await window.api.store.get('authToken');
         if (!savedToken) {
-            throw new Error('Token no se guardó correctamente');
+            throw new Error('Error al guardar la sesión. Intenta nuevamente.');
         }
 
         console.log('✅ Token guardado y verificado');
 
-        // 🆕 AGREGAR: Registrar login en activity log
+        // Registrar login en activity log
         activityLogger.log({
             tipo: 'USUARIO',
             accion: 'Inicio de sesión exitoso',
@@ -201,12 +193,54 @@ async function handleLogin(e) {
 
     } catch (error) {
         console.error('❌ Error en login:', error);
-        showError(error.message || 'Error de autenticación');
+        
+        // ✅ MENSAJES DE ERROR ESPECÍFICOS Y AMIGABLES
+        let errorMessage = 'Error de autenticación';
+        
+        // Errores de red/conexión
+        if (error.message?.includes('servidor') || 
+            error.message?.includes('conexión') ||
+            error.message?.includes('internet') ||
+            error.message?.includes('Network') ||
+            error.message?.includes('timeout') ||
+            error.message?.includes('ECONNREFUSED') ||
+            error.message?.includes('fetch')) {
+            errorMessage = '🌐 Sin conexión al servidor. Verifica tu conexión a internet.';
+        }
+        // Errores de credenciales del backend (en español)
+        else if (error.message?.includes('usuario no existe')) {
+            errorMessage = '👤 El usuario no existe';
+        }
+        else if (error.message?.includes('contraseña') || 
+                 error.message?.includes('incorrectos') ||
+                 error.message?.includes('incorrecta')) {
+            errorMessage = '🔒 Usuario o contraseña incorrectos';
+        }
+        // Error genérico de credenciales
+        else if (error.message?.includes('No se recibió token') ||
+                 error.message?.includes('Invalid credentials') ||
+                 !error.message) {
+            errorMessage = '🔒 Usuario o contraseña incorrectos';
+        }
+        // Otros errores específicos
+        else if (error.message?.includes('campos')) {
+            errorMessage = '📝 ' + error.message;
+        }
+        else if (error.message?.includes('guardar')) {
+            errorMessage = '💾 ' + error.message;
+        }
+        // Usar el mensaje del error si es descriptivo
+        else if (error.message && error.message.length < 100) {
+            errorMessage = error.message;
+        }
+        
+        showError(errorMessage);
         await clearSession();
+        
     } finally {
         if (loginBtn) {
             loginBtn.disabled = false;
-            loginBtn.textContent = originalText;
+            loginBtn.innerHTML = originalText;
         }
     }
 }
@@ -214,9 +248,10 @@ async function handleLogin(e) {
 function showError(message) {
     const loginError = document.getElementById('login-error');
     if (loginError) {
-        loginError.textContent = message;
+        loginError.innerHTML = message; // Usar innerHTML para permitir emojis
         loginError.classList.remove('d-none');
     }
+    console.error('🚫', message);
 }
 
 // ==================== CARGA DE APLICACIÓN ====================
@@ -248,7 +283,7 @@ async function loadApplication() {
             }
         }
 
-        // 🆕 AGREGAR: Inicializar Activity Logger
+        // Inicializar Activity Logger
         console.log('📊 Inicializando Activity Logger...');
         activityLogger.init();
 
@@ -418,7 +453,7 @@ async function initBarcodeGenerator() {
 async function handleLogout() {
     console.log('👋 Cerrando sesión...');
 
-    // 🆕 AGREGAR: Registrar cierre de sesión
+    // Registrar cierre de sesión
     if (currentUser) {
         activityLogger.log({
             tipo: 'USUARIO',

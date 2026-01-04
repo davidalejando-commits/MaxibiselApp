@@ -1,5 +1,25 @@
-//Script de precarga - Versión con FACTURAS
+//Script de precarga - Versión CORREGIDA para FACTURAS
 const { contextBridge, ipcRenderer } = require('electron');
+
+// ✅ FUNCIÓN MEJORADA: No lanza error si success no está presente
+async function handleApiRequest(config) {
+    try {
+        const response = await ipcRenderer.invoke('api:request', config);
+        
+        // ✅ CORRECCIÓN: Solo lanzar error si success está explícitamente en false
+        // Si success no existe, asumimos que es exitoso
+        if (response && response.success === false) {
+            const error = new Error(response.message || 'Error en la solicitud');
+            error.response = response;
+            throw error;
+        }
+        
+        return response;
+    } catch (error) {
+        console.error('❌ Error en handleApiRequest:', error);
+        throw error;
+    }
+}
 
 contextBridge.exposeInMainWorld('api', {
     // === AUTENTICACIÓN ===
@@ -26,68 +46,68 @@ contextBridge.exposeInMainWorld('api', {
     }),
 
     // === PRODUCTOS ===
-    getProducts: () => ipcRenderer.invoke('api:request', {
+    getProducts: () => handleApiRequest({
         method: 'get',
         endpoint: 'products'
     }),
     
-    getProduct: (id) => ipcRenderer.invoke('api:request', {
+    getProduct: (id) => handleApiRequest({
         method: 'get',
         endpoint: `products/${id}`
     }),
     
-    createProduct: (productData) => ipcRenderer.invoke('api:request', {
+    createProduct: (productData) => handleApiRequest({
         method: 'post',
         endpoint: 'products',
         data: productData
     }),
     
-    updateProduct: (id, productData) => ipcRenderer.invoke('api:request', {
+    updateProduct: (id, productData) => handleApiRequest({
         method: 'put',
         endpoint: `products/${id}`,
         data: productData
     }),
     
-    deleteProduct: (id) => ipcRenderer.invoke('api:request', {
+    deleteProduct: (id) => handleApiRequest({
         method: 'delete',
         endpoint: `products/${id}`
     }),
     
-    getProductByBarcode: (barcode) => ipcRenderer.invoke('api:request', {
+    getProductByBarcode: (barcode) => handleApiRequest({
         method: 'get',
         endpoint: `products/barcode/${barcode}`
     }),
     
-    updateProductStock: (productId, stockData) => ipcRenderer.invoke('api:request', {
+    updateProductStock: (productId, stockData) => handleApiRequest({
         method: 'patch',
         endpoint: `products/${productId}/stock`,
         data: stockData
     }),
 
     // === USUARIOS ===
-    getUsers: () => ipcRenderer.invoke('api:request', {
+    getUsers: () => handleApiRequest({
         method: 'get',
         endpoint: 'users'
     }),
     
-    getUser: (id) => ipcRenderer.invoke('api:request', {
+    getUser: (id) => handleApiRequest({
         method: 'get',
         endpoint: `users/${id}`
     }),
     
-    createUser: (userData) => ipcRenderer.invoke('api:request', {
+    createUser: (userData) => handleApiRequest({
         method: 'post',
         endpoint: 'users',
         data: userData
     }),
     
-    updateUser: (id, userData) => ipcRenderer.invoke('api:request', {
+    updateUser: (id, userData) => handleApiRequest({
         method: 'put',
         endpoint: `users/${id}`,
         data: userData
     }),
     
-    deleteUser: (id) => ipcRenderer.invoke('api:request', {
+    deleteUser: (id) => handleApiRequest({
         method: 'delete',
         endpoint: `users/${id}`
     }),
@@ -97,25 +117,25 @@ contextBridge.exposeInMainWorld('api', {
         const queryParams = params ? new URLSearchParams(params).toString() : '';
         const endpoint = queryParams ? `transactions?${queryParams}` : 'transactions';
         
-        return ipcRenderer.invoke('api:request', {
+        return handleApiRequest({
             method: 'get',
             endpoint: endpoint
         });
     },
     
-    getTransaction: (id) => ipcRenderer.invoke('api:request', {
+    getTransaction: (id) => handleApiRequest({
         method: 'get',
         endpoint: `transactions/${id}`
     }),
     
-    createTransaction: (transactionData) => ipcRenderer.invoke('api:request', {
+    createTransaction: (transactionData) => handleApiRequest({
         method: 'post',
         endpoint: 'transactions',
         data: transactionData
     }),
 
     // === VENTAS ===
-    createSale: (saleData) => ipcRenderer.invoke('api:request', {
+    createSale: (saleData) => handleApiRequest({
         method: 'post',
         endpoint: 'transactions',
         data: { ...saleData, type: 'sale' }
@@ -126,90 +146,106 @@ contextBridge.exposeInMainWorld('api', {
         const queryParams = params ? new URLSearchParams(params).toString() : '';
         const endpoint = queryParams ? `remisiones?${queryParams}` : 'remisiones';
         
-        return ipcRenderer.invoke('api:request', {
+        return handleApiRequest({
             method: 'get',
             endpoint: endpoint
         });
     },
 
-    getRemision: (id) => ipcRenderer.invoke('api:request', {
+    getRemision: (id) => handleApiRequest({
         method: 'get',
         endpoint: `remisiones/${id}`
     }),
 
-    createRemision: (remisionData) => ipcRenderer.invoke('api:request', {
+    createRemision: (remisionData) => handleApiRequest({
         method: 'post',
         endpoint: 'remisiones',
         data: remisionData
     }),
 
-    updateRemision: (id, remisionData) => ipcRenderer.invoke('api:request', {
+    updateRemision: (id, remisionData) => handleApiRequest({
         method: 'put',
         endpoint: `remisiones/${id}`,
         data: remisionData
     }),
 
-    deleteRemision: (id) => ipcRenderer.invoke('api:request', {
+    deleteRemision: (id) => handleApiRequest({
         method: 'delete',
         endpoint: `remisiones/${id}`
     }),
-
-    // ========================================
-    // 🆕 NUEVO: FACTURAS
-    // ========================================
     
-    // Obtener todas las facturas
+    // === FACTURAS - VERSIÓN CORREGIDA ===
+    
+    // ✅ Obtener todas las facturas (CORREGIDO)
     getFacturas: (params) => {
         const queryParams = params ? new URLSearchParams(params).toString() : '';
         const endpoint = queryParams ? `facturas?${queryParams}` : 'facturas';
         
-        return ipcRenderer.invoke('api:request', {
+        console.log('📋 [PRELOAD] Solicitando facturas...');
+        return handleApiRequest({
             method: 'get',
             endpoint: endpoint
         });
     },
 
-    // Obtener factura por ID
-    getFactura: (id) => ipcRenderer.invoke('api:request', {
-        method: 'get',
-        endpoint: `facturas/${id}`
-    }),
+    // ✅ Obtener factura por ID (CORREGIDO)
+    getFactura: (id) => {
+        console.log('📄 [PRELOAD] Solicitando factura:', id);
+        return handleApiRequest({
+            method: 'get',
+            endpoint: `facturas/${id}`
+        });
+    },
 
-    // Crear factura
-    createFactura: (facturaData) => ipcRenderer.invoke('api:request', {
-        method: 'post',
-        endpoint: 'facturas',
-        data: facturaData
-    }),
+    // ✅ Crear factura (CORREGIDO)
+    createFactura: (facturaData) => {
+        console.log('💰 [PRELOAD] Creando factura...');
+        return handleApiRequest({
+            method: 'post',
+            endpoint: 'facturas',
+            data: facturaData
+        });
+    },
 
-    // Actualizar factura
-    updateFactura: (id, facturaData) => ipcRenderer.invoke('api:request', {
-        method: 'put',
-        endpoint: `facturas/${id}`,
-        data: facturaData
-    }),
+    // ✅ Actualizar factura (CORREGIDO)
+    updateFactura: (id, facturaData) => {
+        console.log('✏️ [PRELOAD] Actualizando factura:', id);
+        return handleApiRequest({
+            method: 'put',
+            endpoint: `facturas/${id}`,
+            data: facturaData
+        });
+    },
 
-    // Anular factura
-    anularFactura: (id) => ipcRenderer.invoke('api:request', {
-        method: 'patch',
-        endpoint: `facturas/${id}/anular`
-    }),
+    // ✅ Anular factura (CORREGIDO)
+    anularFactura: (id) => {
+        console.log('🚫 [PRELOAD] Anulando factura:', id);
+        return handleApiRequest({
+            method: 'patch',
+            endpoint: `facturas/${id}/anular`
+        });
+    },
 
-    //Eliminar factura 
-    deleteFactura: (id) => ipcRenderer.invoke('api:request', {
-    method: 'delete',
-    endpoint: `facturas/${id}`
-    }),
+    // ✅ Eliminar factura (CORREGIDO)
+    deleteFactura: (id) => {
+        console.log('🗑️ [PRELOAD] Eliminando factura:', id);
+        return handleApiRequest({
+            method: 'delete',
+            endpoint: `facturas/${id}`
+        });
+    },
 
-    // Obtener estadísticas de facturas (opcional)
+    // ✅ Obtener estadísticas de facturas (CORREGIDO)
     getFacturasStats: async () => {
         try {
-            const response = await ipcRenderer.invoke('api:request', {
+            console.log('📊 [PRELOAD] Solicitando estadísticas de facturas...');
+            const response = await handleApiRequest({
                 method: 'get',
                 endpoint: 'facturas'
             });
             
-            const facturas = response.facturas || [];
+            const facturas = response.facturas || response || [];
+            
             const stats = {
                 total: facturas.length,
                 pendientes: facturas.filter(f => f.estado === 'pendiente').length,
@@ -220,9 +256,10 @@ contextBridge.exposeInMainWorld('api', {
                     .reduce((sum, f) => sum + (f.total || 0), 0)
             };
             
+            console.log('✅ [PRELOAD] Estadísticas calculadas:', stats);
             return stats;
         } catch (error) {
-            console.error('Error obteniendo estadísticas de facturas:', error);
+            console.error('❌ [PRELOAD] Error obteniendo estadísticas de facturas:', error);
             throw error;
         }
     },
@@ -287,9 +324,11 @@ if (process.env.NODE_ENV === 'development') {
 
 // Manejo de errores no capturados en preload
 process.on('uncaughtException', (error) => {
-    console.error('Error no capturado en preload:', error);
+    console.error('❌ Error no capturado en preload:', error);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Promise rechazada en preload:', reason);
+    console.error('❌ Promise rechazada en preload:', reason);
 });
+
+console.log('✅ Preload.js cargado correctamente - Versión con facturas corregida');

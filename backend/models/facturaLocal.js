@@ -1,261 +1,412 @@
-// backend/models/facturaLocal.js
 const dbManager = require('../config/database');
 
 class FacturaLocal {
-  // CREAR FACTURA
-  static async create(facturaData) {
-    const db = dbManager.getSQLite();
-    
+  // ✅ OBTENER CONEXIÓN SQLite
+  static getDB() {
+    return dbManager.getSQLite();
+  }
+
+  // ✅ GENERAR NÚMERO CONSECUTIVO
+  static async generarNumero() {
     try {
-      await db.run('BEGIN TRANSACTION');
+      console.log('🔢 [FacturaLocal] Generando número de factura...');
+      
+      const db = this.getDB();
+      const sql = `
+        SELECT numero_factura 
+        FROM facturas 
+        ORDER BY CAST(SUBSTR(numero_factura, 4) AS INTEGER) DESC 
+        LIMIT 1
+      `;
 
-      // Insertar factura principal
-      const result = await db.run(`
-        INSERT INTO facturas (
-          numero_factura, empresa_nombre, empresa_nit, empresa_direccion,
-          empresa_telefono, empresa_email, cliente_nombre, cliente_documento,
-          cliente_telefono, cliente_direccion, cliente_email,
-          subtotal, descuento, iva, total, observaciones,
-          fecha_emision, creado_por, estado, salida_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        facturaData.numeroFactura,
-        facturaData.empresa.nombre,
-        facturaData.empresa.nit,
-        facturaData.empresa.direccion || null,
-        facturaData.empresa.telefono || null,
-        facturaData.empresa.email || null,
-        facturaData.cliente.nombre,
-        facturaData.cliente.documento || null,
-        facturaData.cliente.telefono || null,
-        facturaData.cliente.direccion || null,
-        facturaData.cliente.email || null,
-        facturaData.subtotal,
-        facturaData.descuento || 0,
-        facturaData.iva || 0,
-        facturaData.total,
-        facturaData.observaciones || null,
-        facturaData.fechaEmision || new Date().toISOString(),
-        facturaData.creadoPor || null,
-        facturaData.estado || 'pendiente',
-        facturaData.salidaId || null
-      ]);
+      const row = await db.get(sql);
 
-      const facturaId = result.lastID;
-
-      // Insertar productos
-      for (const producto of facturaData.productos) {
-        await db.run(`
-          INSERT INTO factura_productos (
-            factura_id, product_id, nombre, descripcion,
-            esfera, cilindro, adicion, cantidad, precio_unitario, subtotal
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-          facturaId,
-          producto.productId || null,
-          producto.nombre,
-          producto.descripcion || null,
-          producto.esfera || null,
-          producto.cilindro || null,
-          producto.adicion || null,
-          producto.cantidad,
-          producto.precioUnitario,
-          producto.subtotal
-        ]);
+      let numero = 1;
+      if (row && row.numero_factura) {
+        const match = row.numero_factura.match(/FAC(\d+)/);
+        if (match) {
+          numero = parseInt(match[1]) + 1;
+        }
       }
 
-      await db.run('COMMIT');
-
-      // Retornar factura completa
-      return await this.getById(facturaId);
+      const numeroFactura = `FAC${numero.toString().padStart(6, '0')}`;
+      console.log('✅ [FacturaLocal] Número generado:', numeroFactura);
+      return numeroFactura;
     } catch (error) {
-      await db.run('ROLLBACK');
+      console.error('❌ [FacturaLocal] Error generando número:', error);
       throw error;
     }
   }
 
-  // OBTENER POR ID
+  // ✅ CREAR FACTURA
+  static async create(data) {
+    try {
+      console.log('💾 [FacturaLocal] Creando factura...');
+      
+      const db = this.getDB();
+      const now = new Date().toISOString();
+
+      // Iniciar transacción
+      await db.run('BEGIN TRANSACTION');
+
+      try {
+        // Insertar factura principal
+        const facturaSQL = `
+          INSERT INTO facturas (
+            numero_factura,
+            empresa_nombre, empresa_nit, empresa_direccion, empresa_telefono, empresa_email,
+            cliente_nombre, cliente_documento, cliente_telefono, cliente_direccion, cliente_email,
+            subtotal, descuento, iva, total,
+            observaciones, fecha_emision, creado_por, estado, salida_id,
+            created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const empresa = data.empresa || {};
+        const cliente = data.cliente || {};
+
+        const facturaValues = [
+          data.numeroFactura,
+          empresa.nombre || 'MAXI BISEL',
+          empresa.nit || '',
+          empresa.direccion || '',
+          empresa.telefono || '',
+          empresa.email || '',
+          cliente.nombre || '',
+          cliente.documento || '',
+          cliente.telefono || '',
+          cliente.direccion || '',
+          cliente.email || '',
+          data.subtotal,
+          data.descuento || 0,
+          data.iva || 0,
+          data.total,
+          data.observaciones || null,
+          now,
+          data.creadoPor || 'Sistema',
+          data.estado || 'pendiente',
+          data.salidaId || null,
+          now,
+          now
+        ];
+
+        const result = await db.run(facturaSQL, facturaValues);
+        const facturaId = result.lastID;
+
+        console.log('✅ [FacturaLocal] Factura insertada con ID:', facturaId);
+
+        // Insertar productos
+        if (data.productos && data.productos.length > 0) {
+          const productoSQL = `
+            INSERT INTO factura_productos (
+              factura_id, product_id, nombre, descripcion,
+              esfera, cilindro, adicion,
+              cantidad, precio_unitario, subtotal
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `;
+
+          for (const prod of data.productos) {
+            await db.run(productoSQL, [
+              facturaId,
+              prod.productId || prod._id || null,
+              prod.nombre || '',
+              prod.descripcion || '',
+              prod.esfera || null,
+              prod.cilindro || null,
+              prod.adicion || null,
+              prod.cantidad,
+              prod.precioUnitario,
+              prod.subtotal
+            ]);
+          }
+
+          console.log(`✅ [FacturaLocal] ${data.productos.length} productos insertados`);
+        }
+
+        // Commit transacción
+        await db.run('COMMIT');
+
+        // Obtener factura completa
+        const factura = await this.getById(facturaId);
+        return factura;
+
+      } catch (error) {
+        // Rollback en caso de error
+        await db.run('ROLLBACK');
+        throw error;
+      }
+    } catch (error) {
+      console.error('❌ [FacturaLocal] Error creando factura:', error);
+      throw error;
+    }
+  }
+
+  // ✅ OBTENER TODAS LAS FACTURAS
+  static async getAll(options = {}) {
+    try {
+      console.log('\n📦 [FacturaLocal] ========== OBTENIENDO FACTURAS ==========');
+      console.log('📦 [FacturaLocal] Opciones:', options);
+      
+      const db = this.getDB();
+      
+      let sql = 'SELECT * FROM facturas WHERE 1=1';
+      const params = [];
+
+      if (options.estado) {
+        sql += ' AND estado = ?';
+        params.push(options.estado);
+      }
+
+      if (options.cliente) {
+        sql += ' AND cliente_nombre LIKE ?';
+        params.push(`%${options.cliente}%`);
+      }
+
+      sql += ' ORDER BY fecha_emision DESC';
+
+      if (options.limit) {
+        sql += ' LIMIT ?';
+        params.push(options.limit);
+      }
+
+      if (options.skip) {
+        sql += ' OFFSET ?';
+        params.push(options.skip);
+      }
+
+      console.log('📦 [FacturaLocal] SQL:', sql);
+      console.log('📦 [FacturaLocal] Params:', params);
+
+      const rows = await db.all(sql, params);
+
+      console.log('✅ [FacturaLocal] Rows obtenidas:', rows ? rows.length : 0);
+
+      if (!rows || !Array.isArray(rows)) {
+        console.warn('⚠️ [FacturaLocal] No se obtuvieron rows válidas');
+        return [];
+      }
+
+      // Parsear cada factura y obtener sus productos
+      const facturas = await Promise.all(
+        rows.map(async (row) => {
+          const productos = await this.getProductosByFacturaId(row.id);
+          return this.parseRow(row, productos);
+        })
+      );
+
+      console.log('✅ [FacturaLocal] Facturas parseadas:', facturas.length);
+      console.log('📦 [FacturaLocal] ========== FIN ==========\n');
+      
+      return facturas;
+
+    } catch (error) {
+      console.error('💥 [FacturaLocal] Error obteniendo facturas:', error);
+      throw error;
+    }
+  }
+
+  // ✅ OBTENER FACTURA POR ID
   static async getById(id) {
-    const db = dbManager.getSQLite();
+    try {
+      console.log('🔍 [FacturaLocal] Buscando factura por ID:', id);
+      
+      const db = this.getDB();
+      const sql = 'SELECT * FROM facturas WHERE id = ?';
+      const row = await db.get(sql, [id]);
 
-    const factura = await db.get(`
-      SELECT * FROM facturas WHERE id = ?
-    `, [id]);
+      if (!row) {
+        console.log('⚠️ [FacturaLocal] Factura no encontrada');
+        return null;
+      }
 
-    if (!factura) return null;
+      const productos = await this.getProductosByFacturaId(id);
+      const factura = this.parseRow(row, productos);
+      
+      console.log('✅ [FacturaLocal] Factura encontrada:', factura.numeroFactura);
+      return factura;
 
-    const productos = await db.all(`
-      SELECT * FROM factura_productos WHERE factura_id = ?
-    `, [id]);
-
-    if (!factura && typeof id === 'string') {
-      factura = await db.get(`
-        SELECT * FROM facturas WHERE numero_factura = ?
-      `, [id]);
+    } catch (error) {
+      console.error('❌ [FacturaLocal] Error obteniendo factura:', error);
+      throw error;
     }
-
-    return this.formatFactura(factura, productos);
   }
 
-  // LISTAR TODAS
-  static async getAll(filters = {}) {
-    const db = dbManager.getSQLite();
-
-    let query = 'SELECT * FROM facturas WHERE 1=1';
-    const params = [];
-
-    if (filters.estado) {
-      query += ' AND estado = ?';
-      params.push(filters.estado);
+  // ✅ OBTENER PRODUCTOS DE UNA FACTURA
+  static async getProductosByFacturaId(facturaId) {
+    try {
+      const db = this.getDB();
+      const sql = 'SELECT * FROM factura_productos WHERE factura_id = ?';
+      const rows = await db.all(sql, [facturaId]);
+      
+      return (rows || []).map(row => ({
+        productId: row.product_id,
+        nombre: row.nombre,
+        descripcion: row.descripcion,
+        esfera: row.esfera,
+        cilindro: row.cilindro,
+        adicion: row.adicion,
+        cantidad: row.cantidad,
+        precioUnitario: row.precio_unitario,
+        subtotal: row.subtotal
+      }));
+    } catch (error) {
+      console.error('❌ [FacturaLocal] Error obteniendo productos:', error);
+      return [];
     }
-
-    if (filters.cliente) {
-      query += ' AND cliente_nombre LIKE ?';
-      params.push(`%${filters.cliente}%`);
-    }
-
-    if (filters.fechaDesde) {
-      query += ' AND fecha_emision >= ?';
-      params.push(filters.fechaDesde);
-    }
-
-    if (filters.fechaHasta) {
-      query += ' AND fecha_emision <= ?';
-      params.push(filters.fechaHasta);
-    }
-
-    query += ' ORDER BY fecha_emision DESC';
-
-    if (filters.limit) {
-      query += ' LIMIT ?';
-      params.push(filters.limit);
-    }
-
-    if (filters.skip) {
-      query += ' OFFSET ?';
-      params.push(filters.skip);
-    }
-
-    const facturas = await db.all(query, params);
-
-    // Cargar productos para cada factura
-    const facturasCompletas = await Promise.all(
-      facturas.map(async (factura) => {
-        const productos = await db.all(`
-          SELECT * FROM factura_productos WHERE factura_id = ?
-        `, [factura.id]);
-        return this.formatFactura(factura, productos);
-      })
-    );
-
-    return facturasCompletas;
   }
 
-  // ACTUALIZAR
-  static async update(id, updateData) {
-    const db = dbManager.getSQLite();
+  // ✅ ACTUALIZAR FACTURA
+  static async update(id, data) {
+    try {
+      console.log('✏️ [FacturaLocal] Actualizando factura:', id);
+      
+      const db = this.getDB();
+      const fields = [];
+      const values = [];
 
-    const campos = [];
-    const valores = [];
+      if (data.estado !== undefined) {
+        fields.push('estado = ?');
+        values.push(data.estado);
+      }
 
-    if (updateData.estado) {
-      campos.push('estado = ?');
-      valores.push(updateData.estado);
+      if (data.observaciones !== undefined) {
+        fields.push('observaciones = ?');
+        values.push(data.observaciones);
+      }
+
+      if (data.cliente && data.cliente.nombre !== undefined) {
+        fields.push('cliente_nombre = ?');
+        values.push(data.cliente.nombre);
+      }
+
+      if (fields.length === 0) {
+        throw new Error('No hay campos para actualizar');
+      }
+
+      fields.push('updated_at = ?');
+      values.push(new Date().toISOString());
+      values.push(id);
+
+      const sql = `UPDATE facturas SET ${fields.join(', ')} WHERE id = ?`;
+      const result = await db.run(sql, values);
+
+      if (result.changes === 0) {
+        return null;
+      }
+
+      console.log('✅ [FacturaLocal] Factura actualizada');
+      return await this.getById(id);
+
+    } catch (error) {
+      console.error('❌ [FacturaLocal] Error actualizando factura:', error);
+      throw error;
     }
-
-    if (updateData.observaciones !== undefined) {
-      campos.push('observaciones = ?');
-      valores.push(updateData.observaciones);
-    }
-
-    campos.push('updated_at = CURRENT_TIMESTAMP');
-    valores.push(id);
-
-    await db.run(`
-      UPDATE facturas SET ${campos.join(', ')} WHERE id = ?
-    `, valores);
-
-    return await this.getById(id);
   }
 
-  // ANULAR
+  // ✅ ANULAR FACTURA
   static async anular(id) {
-    return await this.update(id, { estado: 'anulada' });
+    try {
+      console.log('🚫 [FacturaLocal] Anulando factura:', id);
+      
+      const db = this.getDB();
+      const sql = 'UPDATE facturas SET estado = ?, updated_at = ? WHERE id = ?';
+      const values = ['anulada', new Date().toISOString(), id];
+
+      const result = await db.run(sql, values);
+
+      if (result.changes === 0) {
+        return null;
+      }
+
+      console.log('✅ [FacturaLocal] Factura anulada');
+      return await this.getById(id);
+
+    } catch (error) {
+      console.error('❌ [FacturaLocal] Error anulando factura:', error);
+      throw error;
+    }
   }
 
-  // ELIMINAR
+  // ✅ ELIMINAR FACTURA
   static async delete(id) {
-    const db = dbManager.getSQLite();
-    await db.run('DELETE FROM facturas WHERE id = ?', [id]);
+    try {
+      console.log('🗑️ [FacturaLocal] Eliminando factura ID:', id);
+
+      const db = this.getDB();
+      
+      // Obtener factura antes de eliminar
+      const factura = await this.getById(id);
+      
+      if (!factura) {
+        console.log('⚠️ [FacturaLocal] Factura no encontrada');
+        return false;
+      }
+
+      console.log('✅ [FacturaLocal] Factura encontrada:', factura.numeroFactura);
+
+      // Eliminar (los productos se eliminan automáticamente por CASCADE)
+      const sql = 'DELETE FROM facturas WHERE id = ?';
+      const result = await db.run(sql, [id]);
+
+      if (result.changes === 0) {
+        console.log('⚠️ [FacturaLocal] No se eliminó ninguna factura');
+        return false;
+      }
+
+      console.log('✅ [FacturaLocal] Factura eliminada correctamente');
+      return true;
+
+    } catch (error) {
+      console.error('❌ [FacturaLocal] Error eliminando factura:', error);
+      throw error;
+    }
   }
 
-  // FORMATEAR FACTURA
-  static formatFactura(factura, productos) {
-    return {
-      _id: factura.id,
-      numeroFactura: factura.numero_factura,
-      empresa: {
-        nombre: factura.empresa_nombre,
-        nit: factura.empresa_nit,
-        direccion: factura.empresa_direccion,
-        telefono: factura.empresa_telefono,
-        email: factura.empresa_email
-      },
-      cliente: {
-        nombre: factura.cliente_nombre,
-        documento: factura.cliente_documento,
-        telefono: factura.cliente_telefono,
-        direccion: factura.cliente_direccion,
-        email: factura.cliente_email
-      },
-      productos: productos.map(p => ({
-        productId: p.product_id,
-        nombre: p.nombre,
-        descripcion: p.descripcion,
-        esfera: p.esfera,
-        cilindro: p.cilindro,
-        adicion: p.adicion,
-        cantidad: p.cantidad,
-        precioUnitario: p.precio_unitario,
-        subtotal: p.subtotal
-      })),
-      subtotal: factura.subtotal,
-      descuento: factura.descuento,
-      iva: factura.iva,
-      total: factura.total,
-      observaciones: factura.observaciones,
-      fechaEmision: factura.fecha_emision,
-      creadoPor: factura.creado_por,
-      estado: factura.estado,
-      salidaId: factura.salida_id,
-      createdAt: factura.created_at,
-      updatedAt: factura.updated_at
-    };
-  }
-
-  // GENERAR NÚMERO DE FACTURA
-  static async generarNumero() {
-    const db = dbManager.getSQLite();
-    const fecha = new Date();
-    const año = fecha.getFullYear();
-    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-
-    const ultimaFactura = await db.get(`
-      SELECT numero_factura 
-      FROM facturas 
-      WHERE numero_factura LIKE ?
-      ORDER BY numero_factura DESC 
-      LIMIT 1
-    `, [`FAC-${año}${mes}%`]);
-
-    let consecutivo = 1;
-    if (ultimaFactura) {
-      const ultimoConsecutivo = parseInt(ultimaFactura.numero_factura.slice(-5));
-      consecutivo = ultimoConsecutivo + 1;
+  // ✅ PARSEAR FILA DE BASE DE DATOS
+  static parseRow(row, productos = []) {
+    if (!row) {
+      console.warn('⚠️ [FacturaLocal] Intento de parsear row nulo');
+      return null;
     }
 
-    return `FAC-${año}${mes}${String(consecutivo).padStart(5, '0')}`;
+    try {
+      return {
+        _id: row.id,
+        empresa: {
+          nombre: row.empresa_nombre,
+          nit: row.empresa_nit,
+          direccion: row.empresa_direccion,
+          telefono: row.empresa_telefono,
+          email: row.empresa_email
+        },
+        numeroFactura: row.numero_factura,
+        cliente: {
+          nombre: row.cliente_nombre,
+          documento: row.cliente_documento,
+          telefono: row.cliente_telefono,
+          direccion: row.cliente_direccion,
+          email: row.cliente_email
+        },
+        productos: productos,
+        subtotal: row.subtotal,
+        descuento: row.descuento,
+        iva: row.iva,
+        total: row.total,
+        observaciones: row.observaciones,
+        salidaId: row.salida_id,
+        creadoPor: row.creado_por,
+        estado: row.estado,
+        fechaEmision: row.fecha_emision,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+    } catch (error) {
+      console.error('❌ [FacturaLocal] Error parseando row:', error);
+      throw error;
+    }
   }
 }
 
 module.exports = FacturaLocal;
+
+console.log('✅ [FacturaLocal] Modelo cargado correctamente - Compatible con estructura SQLite');
