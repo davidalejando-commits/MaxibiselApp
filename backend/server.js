@@ -8,6 +8,7 @@ require('dotenv').config();
 
 // ✅ NUEVO: Importar database manager
 const dbManager = require('./config/database');
+const ActivityLog = require('./models/activityLog');
 
 // Inicialización de la aplicación
 const app = express();
@@ -19,6 +20,44 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
 
+// ===== LIMPIEZA AUTOMÁTICA DE LOGS =====
+const setupLogCleanup = () => {
+    const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 horas
+    const CLEANUP_HOUR = 3; // 3:00 AM
+    const DAYS_TO_KEEP = 90; // Mantener logs de últimos 90 días
+    
+    const runCleanup = async () => {
+        try {
+            const now = new Date();
+            const hour = now.getHours();
+            
+            // Solo ejecutar entre las 3:00 AM y 4:00 AM
+            if (hour !== CLEANUP_HOUR) return;
+            
+            console.log('🧹 Iniciando limpieza automática de logs...');
+            
+            // Eliminar logs antiguos
+            const deleted = await ActivityLog.deleteOld(DAYS_TO_KEEP);
+            
+            if (deleted > 0) {
+                console.log(`✅ Limpieza completada: ${deleted} logs eliminados (>${DAYS_TO_KEEP} días)`);
+            } else {
+                console.log('✅ No hay logs antiguos para eliminar');
+            }
+        } catch (error) {
+            console.error('❌ Error en limpieza automática:', error);
+        }
+    };
+    
+    // Ejecutar cada 24 horas
+    setInterval(runCleanup, CLEANUP_INTERVAL);
+    
+    // Ejecutar inmediatamente al iniciar (si es la hora correcta)
+    runCleanup();
+    
+    console.log(`✅ Tarea de limpieza programada (diaria a las ${CLEANUP_HOUR}:00 AM, mantener últimos ${DAYS_TO_KEEP} días)`);
+};
+
 // ===== FUNCIÓN PARA INICIALIZAR BASES DE DATOS =====
 async function initializeDatabases() {
     try {
@@ -29,6 +68,9 @@ async function initializeDatabases() {
         
         // Conectar SQLite (para facturas y logs)
         await dbManager.connectSQLite();
+        
+        // ✅ NUEVO: Iniciar limpieza automática de logs
+        setupLogCleanup();
         
         console.log('✅ Todas las bases de datos conectadas correctamente\n');
     } catch (error) {
@@ -72,6 +114,7 @@ const userRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const facturaRoutes = require('./routes/facturaRoutes');
+const logRoutes = require('./routes/logs');
 
 // Usar rutas (CON autenticación)
 app.use('/api/products', authenticateToken, productRoutes);
@@ -79,6 +122,7 @@ app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/auth', authRoutes); // Auth no necesita token
 app.use('/api/transactions', authenticateToken, transactionRoutes);
 app.use('/api/facturas', authenticateToken, facturaRoutes);
+app.use('/api/logs', authenticateToken, logRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {

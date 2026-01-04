@@ -832,8 +832,12 @@ export const salesManager = {
           productos_count: this.state.selectedLenses.length,
           cantidad_total: totalProductsUpdated,
           modo_bodega: this.state.useWarehouseStock,
-          productos_detalle: productosDetalle,
-          resumen: resumenProductos
+          productos_detalle: this.state.selectedLenses.map(lens => ({
+            id: lens._id,
+            nombre: lens.name,
+            cantidad: lens.quantity,
+            especificaciones: formatLensSpecs(lens)
+            }))
         }
       });
       
@@ -2641,121 +2645,127 @@ salesManager.mostrarHistorialFacturas = function(facturas) {
     
     contenidoHTML = facturasOrdenadas.map(factura => {
       const fecha = new Date(factura.fechaEmision);
-      const fechaStr = fecha.toLocaleDateString('es-CO');
-      const horaStr = fecha.toLocaleTimeString('es-CO', {
+      const fechaStr = fecha.toLocaleString('es-CO', {
+        day: '2-digit',
+        month: 'short',
         hour: '2-digit',
         minute: '2-digit'
       });
       
-      const estadoConfig = {
-        'pagada': { color: 'success', icon: 'check-circle', texto: 'PAGADA' },
-        'pendiente': { color: 'warning', icon: 'clock', texto: 'PENDIENTE' },
-        'anulada': { color: 'danger', icon: 'x-circle', texto: 'ANULADA' }
-      };
-      
-      const config = estadoConfig[factura.estado] || estadoConfig['pendiente'];
-      
       return `
-        <div style="
-          background: white;
-          border: 1px solid #dee2e6;
-          border-radius: 8px;
-          padding: 20px;
-          margin-bottom: 15px;
-          transition: box-shadow 0.2s;
+        <div class="log-item" style="
+          background: white; 
+          border: 1px solid #e9ecef; 
+          border-left: 4px solid #3498db; 
+          border-radius: 8px; 
+          padding: 16px; 
+          margin-bottom: 12px; 
+          transition: all 0.2s;
         " 
         onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'"
-        onmouseout="this.style.boxShadow='none'"
-        >
-          <!-- Encabezado -->
-          <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #e9ecef;
-          ">
-            <h5 style="margin: 0; color: #2c3e50; font-size: 1.2rem;">
-              ${factura.numeroFactura}
-            </h5>
-          </div>
+        onmouseout="this.style.boxShadow='none'">
           
-          <!-- Información -->
-          <div style="margin-bottom: 15px;">
+          <div style="display: flex; align-items: start; gap: 12px;">
+            <!-- Ícono -->
             <div style="
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 12px;
-              font-size: 0.9rem;
+              width: 40px; 
+              height: 40px; 
+              border-radius: 8px; 
+              background: #e5f6f9; 
+              color: #3498db; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              flex-shrink: 0;
             ">
-              <div>
-                <div style="color: #6c757d; font-size: 0.8rem; margin-bottom: 2px;">
-                  Cliente
+              <i class="bi bi-receipt" style="font-size: 1.2rem;"></i>
+            </div>
+
+            <!-- Contenido -->
+            <div style="flex: 1;">
+              <!-- Header: Badge y Número -->
+              <div style="
+                display: flex; 
+                justify-content: space-between; 
+                align-items: start; 
+                margin-bottom: 4px;
+              ">
+                <div>
+                  <span class="badge" style="
+                    background: #e5f6f9; 
+                    color: #3498db; 
+                    font-size: 0.7rem; 
+                    padding: 4px 8px; 
+                    border-radius: 4px; 
+                    margin-right: 8px;
+                  ">FACTURA</span>
+                  <strong style="color: #2c3e50; font-size: 0.95rem;">${factura.numeroFactura}</strong>
                 </div>
-                <div style="font-weight: 600; color: #333;">
-                  ${factura.cliente.nombre}
-                </div>
+                <span style="color: #6c757d; font-size: 0.85rem; white-space: nowrap;">
+                  <i class="bi bi-clock me-1"></i>${fechaStr}
+                </span>
               </div>
-              
-              <div>
-                <div style="color: #6c757d; font-size: 0.8rem; margin-bottom: 2px;">
-                  Fecha y Hora
-                </div>
-                <div style="font-weight: 600; color: #333;">
-                  ${fechaStr} ${horaStr}
-                </div>
+
+              <!-- Info del cliente -->
+              <div style="color: #6c757d; font-size: 0.9rem; margin-top: 4px;">
+                <i class="bi bi-person me-1"></i>${factura.cliente.nombre}
+                <span class="mx-2">•</span>
+                <i class="bi bi-box-seam me-1"></i>${factura.productos.length} producto${factura.productos.length !== 1 ? 's' : ''}
               </div>
-              
-              <div>
-                <div style="color: #6c757d; font-size: 0.8rem; margin-bottom: 2px;">
-                  Productos
-                </div>
-                <div style="font-weight: 600; color: #333;">
-                  ${factura.productos.length} item${factura.productos.length !== 1 ? 's' : ''}
-                </div>
-              </div>
-              
-              <div>
-                <div style="color: #6c757d; font-size: 0.8rem; margin-bottom: 2px;">
-                  Total
-                </div>
-                <div style="font-weight: 700; color: #3498db; font-size: 1.1rem;">
-                  $${factura.total.toLocaleString('es-CO')}
-                </div>
+
+              <!-- Detalles de productos (similar a logs) -->
+              ${this.generateFacturaDetallesEstiloLog(factura)}
+
+              <!-- Botones de acción -->
+              <div style="
+                margin-top: 12px; 
+                padding-top: 12px; 
+                border-top: 1px solid #f0f0f0; 
+                display: flex; 
+                gap: 8px;
+              ">
+                <button 
+                  class="btn btn-sm btn-primary" 
+                  onclick="salesManager.verDetalleFactura('${factura._id}')"
+                  style="
+                    flex: 1;
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                    background: #3498db;
+                    color: white;
+                    transition: all 0.2s;
+                  "
+                  onmouseover="this.style.background='#2980b9'; this.style.transform='translateY(-1px)'"
+                  onmouseout="this.style.background='#3498db'; this.style.transform='translateY(0)'"
+                >
+                  <i class="bi bi-eye"></i> Ver
+                </button>
+                <button 
+                  class="btn btn-sm btn-danger" 
+                  onclick="salesManager.confirmarEliminarFactura('${factura._id}')"
+                  style="
+                    flex: 1;
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                    background: #e74c3c;
+                    color: white;
+                    transition: all 0.2s;
+                  "
+                  onmouseover="this.style.background='#c0392b'; this.style.transform='translateY(-1px)'"
+                  onmouseout="this.style.background='#e74c3c'; this.style.transform='translateY(0)'"
+                >
+                  <i class="bi bi-trash3"></i> Eliminar
+                </button>
               </div>
             </div>
           </div>
-          
-          <!-- Acciones -->
-          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button 
-              class="btn btn-sm btn-primary" 
-              onclick="salesManager.verDetalleFactura('${factura._id}')"
-              style="
-                padding: 6px 12px;
-                border-radius: 4px;
-                border: none;
-                cursor: pointer;
-                font-size: 0.85rem;
-              "
-            >
-              <i class="bi bi-eye"></i> Ver
-            </button>
-            <button 
-              class="btn btn-sm btn-danger" 
-              onclick="salesManager.confirmarEliminarFactura('${factura._id}')"
-              style="
-                padding: 6px 12px;
-                border-radius: 4px;
-                border: none;
-                cursor: pointer;
-                font-size: 0.85rem;
-              "
-            >
-              <i class="bi bi-trash3"></i> Eliminar
-            </button>
-          </div>
+        </div>
       `;
     }).join('');
   }
@@ -2775,7 +2785,7 @@ salesManager.mostrarHistorialFacturas = function(facturas) {
     ">
       <div class="modal-content" style="
         background: white;
-        border-radius: 8px;
+        border-radius: 12px;
         max-width: 900px;
         width: 95%;
         max-height: 90vh;
@@ -2791,41 +2801,25 @@ salesManager.mostrarHistorialFacturas = function(facturas) {
           align-items: center;
           padding: 20px;
           border-bottom: 2px solid #e9ecef;
-          background: linear-gradient(135deg, #667eea 0%, #257cff 100%);
-          border-radius: 8px 8px 0 0;
+          background: linear-gradient(135deg, #1582ffff 0%, #2487ffff 100%);
+          border-radius: 12px 12px 0 0;
         ">
-          <h3 style="margin: 0; color: white;">
-            <i class="bi bi-clock-history"></i> Historial de Facturas
+          <h3 style="margin: 0; color: white; font-size: 1.3rem; font-weight: 600;">
+            <i class="bi bi-clock-history me-2"></i>Historial de Facturas
           </h3>
           <button 
+            class="btn-close btn-close-white"
             onclick="salesManager.hideHistorialFacturas()"
-            style="
-              background: rgba(255,255,255,0.15);
-              border: 1px solid rgba(255,255,255,0.3);
-              color: white;
-              font-size: 1.5rem;
-              width: 36px;
-              height: 36px;
-              border-radius: 4px;
-              cursor: pointer;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: all 0.2s;
-              line-height: -1;
-              padding: 0;
-            "
-            onmouseover="this.style.background='rgba(255,255,255,0.25)'"
-            onmouseout="this.style.background='rgba(255,255,255,0.15)'"
-          >×</button>
+            style="filter: brightness(0) invert(1);"
+          ></button>
         </div>
         
         <!-- Body con scroll -->
-        <div style="
+        <div id="logs-container" style="
           flex: 1;
+          max-height: 500px;
           overflow-y: auto;
-          padding: 20px;
-          background: #f8f9fa;
+          padding: 20px 24px;
         ">
           ${contenidoHTML}
         </div>
@@ -2834,12 +2828,16 @@ salesManager.mostrarHistorialFacturas = function(facturas) {
         <div style="
           display: flex;
           gap: 10px;
-          justify-content: flex-end;
-          padding: 20px;
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px 24px;
           border-top: 1px solid #e9ecef;
           background: #f8f9fa;
-          border-radius: 0 0 8px 8px;
+          border-radius: 0 0 12px 12px;
         ">
+          <span style="color: #6c757d; font-size: 0.9rem;">
+            <i class="bi bi-info-circle me-1"></i>Total de facturas: <strong>${facturas.length}</strong>
+          </span>
           <button 
             class="btn btn-secondary" 
             onclick="salesManager.hideHistorialFacturas()"
@@ -2857,6 +2855,86 @@ salesManager.mostrarHistorialFacturas = function(facturas) {
   if (oldModal) oldModal.remove();
 
   document.body.insertAdjacentHTML('beforeend', modalHTML);
+};
+
+// Función auxiliar para generar detalles de factura estilo log
+salesManager.generateFacturaDetallesEstiloLog = function(factura) {
+  if (!factura.productos || factura.productos.length === 0) {
+    return `
+      <div style="
+        margin-top: 12px; 
+        padding: 12px; 
+        background: #f0f8ff; 
+        border-radius: 6px; 
+        border: 1px solid #cfe2ff;
+      ">
+        <div style="
+          display: flex; 
+          justify-content: space-between; 
+          font-size: 1rem;
+        ">
+          <strong style="color: #2c3e50;">TOTAL:</strong>
+          <strong style="color: #3498db; font-size: 1.1rem;">$${factura.total.toLocaleString('es-CO')}</strong>
+        </div>
+      </div>
+    `;
+  }
+
+  const productosHTML = factura.productos.map(prod => `
+    <div style="
+      background: white; 
+      padding: 8px 12px; 
+      border-radius: 4px; 
+      border: 1px solid #cfe2ff; 
+      margin-bottom: 6px;
+    ">
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div style="flex: 1;">
+          <div style="font-weight: 600; color: #2c3e50; font-size: 0.9rem;">${prod.nombre}</div>
+          ${prod.descripcion ? `<div style="font-size: 0.8rem; color: #6c757d; margin-top: 2px;">${prod.descripcion}</div>` : ''}
+          <div style="font-size: 0.8rem; color: #6c757d; margin-top: 4px;">Cantidad: ${prod.cantidad}</div>
+        </div>
+        <div style="text-align: right; white-space: nowrap; margin-left: 10px;">
+          <div style="font-weight: 700; color: #3498db; font-size: 0.95rem;">$${prod.subtotal.toLocaleString('es-CO')}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  return `
+    <div style="
+      margin-top: 12px; 
+      padding: 12px; 
+      background: #f0f8ff; 
+      border-radius: 6px; 
+      border: 1px solid #cfe2ff;
+    ">
+      <div style="
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        margin-bottom: 10px; 
+        padding-bottom: 8px; 
+        border-bottom: 1px solid #cfe2ff;
+      ">
+        <strong style="color: #3498db; font-size: 0.9rem;">
+          <i class="bi bi-box-seam me-1"></i>Productos (${factura.productos.length})
+        </strong>
+      </div>
+      ${productosHTML}
+      <div style="
+        margin-top: 10px; 
+        padding-top: 10px; 
+        border-top: 2px solid #3498db; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+      ">
+        <strong style="color: #2c3e50; font-size: 1rem;">TOTAL:</strong>
+        <strong style="color: #3498db; font-size: 1.1rem;">$${factura.total.toLocaleString('es-CO')}</strong>
+      </div>
+    </div>
+  `;
 };
 
 // 3. REIMPRIMIR FACTURA
