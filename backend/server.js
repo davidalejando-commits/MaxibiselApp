@@ -1,4 +1,3 @@
-// Configuración del servidor Express
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -6,6 +5,9 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+
+// ✅ NUEVO: Importar database manager
+const dbManager = require('./config/database');
 
 // Inicialización de la aplicación
 const app = express();
@@ -17,10 +19,23 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Conexión a MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('Conectado a MongoDB'))
-    .catch(err => console.error('Error conectando a MongoDB:', err));
+// ===== FUNCIÓN PARA INICIALIZAR BASES DE DATOS =====
+async function initializeDatabases() {
+    try {
+        console.log('🔄 Inicializando bases de datos...');
+        
+        // Conectar MongoDB (usa la conexión existente de Mongoose)
+        await dbManager.connectMongoDB();
+        
+        // Conectar SQLite (para facturas y logs)
+        await dbManager.connectSQLite();
+        
+        console.log('✅ Todas las bases de datos conectadas correctamente\n');
+    } catch (error) {
+        console.error('💥 Error crítico inicializando bases de datos:', error);
+        process.exit(1);
+    }
+}
 
 // Middleware de autenticación
 const authenticateToken = (req, res, next) => {
@@ -36,14 +51,17 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// NUEVA RUTA: Health check (SIN autenticación - debe ir antes de las rutas autenticadas)
+// NUEVA RUTA: Health check (SIN autenticación)
 app.get('/api/health', (req, res) => {
     res.status(200).json({ 
         status: 'OK',
         message: 'Backend funcionando correctamente',
         timestamp: new Date().toISOString(),
         port: PORT,
-        mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+        databases: {
+            mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+            sqlite: dbManager.sqliteConnection ? 'Connected' : 'Disconnected'
+        },
         uptime: process.uptime()
     });
 });
@@ -61,6 +79,7 @@ app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/auth', authRoutes); // Auth no necesita token
 app.use('/api/transactions', authenticateToken, transactionRoutes);
 app.use('/api/facturas', authenticateToken, facturaRoutes);
+
 // Ruta de prueba
 app.get('/', (req, res) => {
     res.send('API del Sistema de Inventario Óptico funcionando correctamente');
@@ -84,7 +103,37 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Iniciar el servidor
-app.listen(PORT, () => {
-    console.log(`Servidor corriendo en el puerto ${PORT}`);
+// ===== MANEJO DE CIERRE GRACIOSO =====
+process.on('SIGINT', async () => {
+    console.log('\n🛑 Cerrando servidor...');
+    await dbManager.closeAll();
+    process.exit(0);
 });
+
+process.on('SIGTERM', async () => {
+    console.log('\n🛑 Cerrando servidor...');
+    await dbManager.closeAll();
+    process.exit(0);
+});
+
+// ===== INICIAR EL SERVIDOR =====
+async function startServer() {
+    try {
+        // Inicializar bases de datos primero
+        await initializeDatabases();
+        
+        // Iniciar servidor Express
+        app.listen(PORT, () => {
+            console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
+            console.log(`📊 MongoDB: Inventario de productos`);
+            console.log(`💾 SQLite: Facturas y logs locales`);
+            console.log(`🔗 Health check: http://localhost:${PORT}/api/health\n`);
+        });
+    } catch (error) {
+        console.error('💥 Error iniciando servidor:', error);
+        process.exit(1);
+    }
+}
+
+// Ejecutar servidor
+startServer();

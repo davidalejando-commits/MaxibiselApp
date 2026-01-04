@@ -3115,3 +3115,30 @@ body.login-page {
     transition: opacity 0.3s ease;
 }
 
+
+/* Activity Logger Styles */
+.log-item {
+  transition: all 0.2s ease;
+}
+
+.log-item:hover {
+  transform: translateX(4px);
+}
+
+#activity-log-modal .modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+#activity-log-modal .modal-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+#activity-log-modal .modal-body::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+#activity-log-modal .modal-body::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

@@ -67,8 +67,14 @@
                             <a class="nav-link" href="#" data-view="users">Códigos de barra</a>
                         </li>
                     </ul>
-                    <div class="d-flex">
+                    <div class="d-flex align-items-center gap-3">
                         <span class="navbar-text me-3" id="user-display"></span>
+
+                        <button id="activity-log-btn" class="btn btn-outline-light position-relative" title="Registro de Actividad">
+                        <i class="bi bi-clock-history"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="log-badge">
+                         </span>
+                        </button>
                         <button id="logout-btn" class="btn btn-outline-light">Cerrar Sesión</button>
                     </div>
                 </div>
@@ -91,7 +97,7 @@
                         </div>
                     </div>
                     <button class="btn btn-primary" id="add-product-btn">
-                        <i class="bi bi-plus-circle me-1"></i>Nuevo Lente
+                        <i class="bi bi-plus-circle me-1"></i>Nuevo Producto
                     </button>
                 </div>
 
@@ -197,7 +203,7 @@
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title" id="product-modal-title">Nuevo Lente</h5>
+                        <h5 class="modal-title" id="product-modal-title" style="color: white;">Nuevo Producto</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">

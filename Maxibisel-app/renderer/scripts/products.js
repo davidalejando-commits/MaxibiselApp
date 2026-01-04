@@ -758,7 +758,7 @@ export const productManager = {
         if (productId) productId.value = '';
 
         const modalTitle = document.getElementById('product-modal-title');
-        if (modalTitle) modalTitle.textContent = 'Nuevo Lente';
+        if (modalTitle) modalTitle.textContent = 'Nuevo Producto';
 
         if (this.productModal) {
             this.productModal.show();

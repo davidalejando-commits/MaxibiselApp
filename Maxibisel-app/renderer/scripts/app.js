@@ -1,11 +1,10 @@
-// app.js - VERSIÓN FINAL SIMPLIFICADA Y FUNCIONAL
-
 import { salesManager } from './sales.js';
 import { transactionManager } from './transactions.js';
 import { productManager } from './products.js';
 import { uiManager } from './ui.js';
 import { eventManager } from './eventManager.js';
 import { BarcodeGenerator } from './barcode-generator.js';
+import { activityLogger } from './activityLogger.js'; // ✅ YA ESTÁ IMPORTADO
 
 // ==================== VARIABLES GLOBALES ====================
 let barcodeGenerator = null;
@@ -18,6 +17,7 @@ window.salesManager = salesManager;
 window.transactionManager = transactionManager;
 window.uiManager = uiManager;
 window.eventManager = eventManager;
+window.activityLogger = activityLogger; // ✅ AGREGAR ESTA LÍNEA
 
 console.log('✅ Managers expuestos globalmente');
 
@@ -50,7 +50,7 @@ async function initialize() {
         // Configurar navegación
         setupNavigation();
 
-        // Verificar sesión guardada
+        // ✅ SIEMPRE MOSTRAR LOGIN PRIMERO (CORRECCIÓN)
         const hasSession = await checkSavedSession();
 
         if (hasSession) {
@@ -184,6 +184,14 @@ async function handleLogin(e) {
 
         console.log('✅ Token guardado y verificado');
 
+        // 🆕 AGREGAR: Registrar login en activity log
+        activityLogger.log({
+            tipo: 'USUARIO',
+            accion: 'Inicio de sesión exitoso',
+            usuario: currentUser.username || currentUser.fullName,
+            entidad: 'Sesión'
+        });
+
         // Limpiar formulario
         document.getElementById('username').value = '';
         document.getElementById('password').value = '';
@@ -239,6 +247,10 @@ async function loadApplication() {
                 adminMenu.classList.add('d-none');
             }
         }
+
+        // 🆕 AGREGAR: Inicializar Activity Logger
+        console.log('📊 Inicializando Activity Logger...');
+        activityLogger.init();
 
         console.log('⏳ Esperando antes de cargar datos...');
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -363,7 +375,6 @@ function showView(viewName) {
 }
 
 // ==================== INICIALIZACIÓN DE VISTAS ====================
-// 🆕 MODIFICADO: Agregada inicialización del generador de códigos de barra
 
 function initView(viewName) {
     switch (viewName) {
@@ -377,26 +388,22 @@ function initView(viewName) {
             if (transactionManager?.init) transactionManager.init();
             break;
         case 'users':
-            // 🆕 NUEVO: Inicializar generador de códigos de barra
             initBarcodeGenerator();
             break;
     }
 }
 
 // ==================== GENERADOR DE CÓDIGOS DE BARRA ====================
-// 🆕 NUEVO: Función para inicializar el generador
 
 async function initBarcodeGenerator() {
     console.log('📊 Inicializando generador de códigos de barra...');
     
     try {
-        // Crear instancia si no existe
         if (!barcodeGenerator) {
             barcodeGenerator = new BarcodeGenerator();
             console.log('✅ Generador de códigos creado');
         }
         
-        // Inicializar
         await barcodeGenerator.init();
         console.log('✅ Generador de códigos inicializado');
         
@@ -411,6 +418,16 @@ async function initBarcodeGenerator() {
 async function handleLogout() {
     console.log('👋 Cerrando sesión...');
 
+    // 🆕 AGREGAR: Registrar cierre de sesión
+    if (currentUser) {
+        activityLogger.log({
+            tipo: 'USUARIO',
+            accion: 'Cierre de sesión',
+            usuario: currentUser.username || currentUser.fullName,
+            entidad: 'Sesión'
+        });
+    }
+
     try {
         await window.api.logout();
     } catch (error) {
@@ -423,7 +440,6 @@ async function handleLogout() {
     if (productManager?.reset) productManager.reset();
     if (salesManager?.reset) salesManager.reset();
     
-    // 🆕 NUEVO: Resetear generador de códigos
     if (barcodeGenerator) {
         barcodeGenerator = null;
         console.log('🗑️ Generador de códigos reseteado');

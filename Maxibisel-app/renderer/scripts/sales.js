@@ -3,6 +3,7 @@ import { dataSync } from "./dataSync.js";
 import { eventManager } from "./eventManager.js";
 import { syncHelper } from "./sync-helper.js";
 import { uiManager } from "./ui.js";
+import { activityLogger } from './activityLogger.js';
 
 export const sales = {
   sales: [],
@@ -794,43 +795,93 @@ export const salesManager = {
   },
 
   async finalizeSale() {
-    try {
-      // ✅ Mostrar loader
-      this.showProcessingLoader(true);
-      
-      const updateResult = await this.updateInventoryIntelligently();
+  try {
+    this.showProcessingLoader(true);
+    
+    const updateResult = await this.updateInventoryIntelligently();
 
-      if (updateResult) {
-        // ✅ Calcular total de productos actualizados
-        const totalProductsUpdated = this.state.selectedLenses.reduce(
-          (sum, lens) => sum + (lens.quantity || 0),
-          0
-        );
-        
-        // ✅ Ocultar loader
-        this.showProcessingLoader(false);
-        
-        uiManager.showAlert(
-          `Registro exitoso. ${totalProductsUpdated} producto${totalProductsUpdated !== 1 ? 's' : ''} actualizado${totalProductsUpdated !== 1 ? 's' : ''}`,
-          "success"
-        );
-        this.resetSale();
-        return true;
-      } else {
-        throw new Error("No se pudo actualizar el inventario");
-      }
-    } catch (error) {
-      // ✅ Ocultar loader en caso de error
+    if (updateResult) {
+      // ✅ CALCULAR TOTALES
+      const totalProductsUpdated = this.state.selectedLenses.reduce(
+        (sum, lens) => sum + (lens.quantity || 0),
+        0
+      );
+
+      // ✅ CREAR DESCRIPCIÓN DETALLADA DE PRODUCTOS
+      const productosDetalle = this.state.selectedLenses.map(lens => {
+        const specs = this.formatLensSpecsForLog(lens);
+        return {
+          nombre: lens.name || 'Producto sin nombre',
+          cantidad: lens.quantity,
+          especificaciones: specs,
+          id: lens._id
+        };
+      });
+
+      // ✅ CREAR RESUMEN LEGIBLE
+      const resumenProductos = productosDetalle.map(p => 
+        `${p.nombre} ${p.especificaciones ? `(${p.especificaciones})` : ''} x${p.cantidad}`
+      ).join(', ');
+
+      // ✅ LOG ENRIQUECIDO CON TODA LA INFORMACIÓN
+      activityLogger.log({
+        tipo: 'SALIDA',
+        accion: 'Salida registrada',
+        entidad: 'Salida',
+        datos_nuevos: {
+          productos_count: this.state.selectedLenses.length,
+          cantidad_total: totalProductsUpdated,
+          modo_bodega: this.state.useWarehouseStock,
+          productos_detalle: productosDetalle,
+          resumen: resumenProductos
+        }
+      });
+      
       this.showProcessingLoader(false);
       
-      console.error("Error al finalizar el registro:", error);
       uiManager.showAlert(
-        "Error al realizar los cambios: " + error.message,
-        "danger"
+        `Registro exitoso. ${totalProductsUpdated} producto${totalProductsUpdated !== 1 ? 's' : ''} actualizado${totalProductsUpdated !== 1 ? 's' : ''}`,
+        "success"
       );
-      return false;
+      this.resetSale();
+      return true;
+    } else {
+      throw new Error("No se pudo actualizar el inventario");
     }
-  },
+  } catch (error) {
+    this.showProcessingLoader(false);
+    console.error("Error al finalizar el registro:", error);
+    uiManager.showAlert(
+      "Error al realizar los cambios: " + error.message,
+      "danger"
+    );
+    return false;
+  }
+},
+
+formatLensSpecsForLog(lens) {
+  if (!lens) return "";
+  
+  const parts = [];
+  
+  // Agregar esfera si existe
+  if (lens.sphere && lens.sphere !== "N/A" && lens.sphere !== "" && lens.sphere !== "N") {
+    parts.push(`Esf: ${lens.sphere}`);
+  }
+  
+  // Agregar cilindro si existe
+  if (lens.cylinder && lens.cylinder !== "N/A" && lens.cylinder !== "" && lens.cylinder !== "-") {
+    parts.push(`Cil: ${lens.cylinder}`);
+  }
+  
+  // Agregar adición si existe
+  if (lens.addition && lens.addition !== "N/A" && lens.addition !== "" && lens.addition !== "-") {
+    parts.push(`Add: ${lens.addition}`);
+  }
+  
+  return parts.length > 0 ? parts.join(", ") : "";
+},
+
 
   // ✅ FUNCIÓN CORREGIDA CON SINCRONIZACIÓN Y VALIDACIONES
   async updateInventoryIntelligently() {
@@ -1994,6 +2045,29 @@ salesManager.crearFactura = async function() {
       const factura = response.factura || response;
       this.state.facturaData = factura;
       
+      // ✅ AGREGAR LOG DE FACTURA
+        activityLogger.log({
+        tipo: 'FACTURA',
+        accion: `Factura ${factura.numeroFactura} generada`,
+        entidad: 'Factura',
+        entidad_id: factura._id || factura.numeroFactura,
+        datos_nuevos: {
+        numero: factura.numeroFactura,
+        cliente: factura.cliente.nombre,
+        total: factura.total,
+        productos_count: factura.productos.length,
+        productos_detalle: factura.productos.map(p => ({
+        nombre: p.nombre,
+        cantidad: p.cantidad,
+        descripcion: p.descripcion,
+        subtotal: p.subtotal
+        })),
+        resumen: factura.productos.map(p => 
+          `${p.nombre} ${p.descripcion ? `(${p.descripcion})` : ''} x${p.cantidad} = $${p.subtotal.toLocaleString('es-CO')}`
+         ).join(', ')
+        }
+      }); 
+      
       // Cerrar formulario
       this.hideFormularioFactura();
       
@@ -2815,6 +2889,20 @@ salesManager.eliminarFactura = async function(facturaId) {
     // const response = await window.api.anularFactura(facturaId);
     
     if (response.success) {
+
+      // ✅ AGREGAR LOG DE ELIMINACIÓN
+        activityLogger.log({
+        tipo: 'FACTURA',
+        accion: `Factura ${factura.numeroFactura} eliminada`,
+        entidad: 'Factura',
+        entidad_id: facturaId,
+        datos_anteriores: {
+        numero: factura.numeroFactura,
+        cliente: factura.cliente.nombre,
+        total: factura.total
+         }
+      });
+
       uiManager.showAlert('Factura eliminada correctamente', 'success');
       
       // Recargar historial
