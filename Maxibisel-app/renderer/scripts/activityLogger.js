@@ -542,27 +542,89 @@ export const activityLogger = {
   generateProductoDetails(datosNuevos, datosAnteriores) {
     const items = [];
     
+    // Nombre del producto
     if (datosNuevos?.nombre) {
-      items.push(`<div style="font-size: 0.85rem;"><strong>Nombre:</strong> ${datosNuevos.nombre}</div>`);
+        items.push(`
+            <div style="font-size: 0.85rem; margin-bottom: 6px;">
+                <strong style="color: #9b59b6;">📦 Producto:</strong> ${datosNuevos.nombre}
+            </div>
+        `);
     }
     
+    // ====================================================================
+    // 🔬 FÓRMULA DEL PRODUCTO EN ESPAÑOL
+    // ====================================================================
+    if (datosNuevos?.formula) {
+        const formula = datosNuevos.formula;
+        const hasFormula = formula.sphere !== 'N/A' || formula.cylinder !== 'N/A' || formula.addition !== 'N/A';
+        
+        if (hasFormula) {
+            items.push(`
+                <div style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); padding: 10px 12px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e9d5ff;">
+                    <div style="font-weight: 600; color: #7c3aed; font-size: 0.8rem; margin-bottom: 6px; display: flex; align-items: center;">
+                        <i class="bi bi-diagram-3 me-2"></i>Fórmula del Producto
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                        <div style="background: white; padding: 6px 8px; border-radius: 4px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #6c757d; margin-bottom: 2px;">Esfera</div>
+                            <div style="font-weight: 600; color: #7c3aed;">${formula.sphere}</div>
+                        </div>
+                        <div style="background: white; padding: 6px 8px; border-radius: 4px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #6c757d; margin-bottom: 2px;">Cilindro</div>
+                            <div style="font-weight: 600; color: #7c3aed;">${formula.cylinder}</div>
+                        </div>
+                        <div style="background: white; padding: 6px 8px; border-radius: 4px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: #6c757d; margin-bottom: 2px;">Adición</div>
+                            <div style="font-weight: 600; color: #7c3aed;">${formula.addition}</div>
+                        </div>
+                    </div>
+                </div>
+            `);
+        }
+    }
+    
+    // Stock con comparación
     if (datosNuevos?.stock !== undefined) {
-      const cambio = datosAnteriores?.stock !== undefined ? datosNuevos.stock - datosAnteriores.stock : null;
-      items.push(`
-        <div style="font-size: 0.85rem;">
-          <strong>Stock:</strong> ${datosNuevos.stock}
-          ${cambio !== null ? `<span style="color: ${cambio >= 0 ? '#28a745' : '#dc3545'}; margin-left: 8px;">(${cambio >= 0 ? '+' : ''}${cambio})</span>` : ''}
-        </div>
-      `);
+        const cambio = datosAnteriores?.stock !== undefined ? datosNuevos.stock - datosAnteriores.stock : null;
+        const cambioHTML = cambio !== null ? `
+            <span style="color: ${cambio >= 0 ? '#28a745' : '#dc3545'}; margin-left: 8px; font-weight: 600;">
+                (${cambio >= 0 ? '+' : ''}${cambio})
+            </span>
+        ` : '';
+        
+        items.push(`
+            <div style="font-size: 0.85rem; margin-bottom: 6px;">
+                <strong style="color: #9b59b6;">📊 Stock:</strong> ${datosNuevos.stock} unidades${cambioHTML}
+            </div>
+        `);
     }
     
+    // Código de barras
     if (datosNuevos?.barcode) {
-      items.push(`<div style="font-size: 0.85rem;"><strong>Código:</strong> ${datosNuevos.barcode}</div>`);
+        items.push(`
+            <div style="font-size: 0.85rem; margin-bottom: 6px;">
+                <strong style="color: #9b59b6;">🔢 Código:</strong> 
+                <code style="background: #f8f9fa; padding: 2px 6px; border-radius: 3px; font-size: 0.8rem;">${datosNuevos.barcode}</code>
+            </div>
+        `);
+    }
+    
+    // Tipo de modificación (para logs de stock)
+    if (datosNuevos?.modificacion) {
+        items.push(`
+            <div style="font-size: 0.85rem; margin-top: 8px; padding: 6px 10px; background: #fff3cd; border-left: 3px solid #ffc107; border-radius: 4px;">
+                <strong style="color: #856404;">📝 Modificación:</strong> ${datosNuevos.modificacion}
+            </div>
+        `);
     }
 
     if (items.length === 0) return '';
 
-    return `<div style="margin-top: 12px; padding: 12px; background: #f9f3ff; border-radius: 6px; border: 1px solid #e9d5ff;">${items.join('')}</div>`;
+    return `
+        <div style="margin-top: 12px; padding: 12px; background: #f9f3ff; border-radius: 6px; border: 1px solid #e9d5ff;">
+            ${items.join('')}
+        </div>
+    `;
   },
 
   getLogConfig(tipo) {

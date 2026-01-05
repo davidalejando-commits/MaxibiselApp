@@ -1042,14 +1042,15 @@ async updateStock() {
             return;
         }
 
-        // Determinar qué modo está activo
+        // Determinar modo (agregar o directo)
         const addContainer = document.getElementById('stock-add-container');
         const isAddMode = addContainer && addContainer.style.display !== 'none';
 
         let newStock;
+        let cantidadModificada = 0;
 
         if (isAddMode) {
-            // MODO AGREGAR: Sumar cantidad al stock actual
+            // MODO AGREGAR
             const currentStockEl = document.getElementById('stock-current-stock');
             const addQuantityInput = document.getElementById('stock-add-quantity');
             
@@ -1064,10 +1065,11 @@ async updateStock() {
             }
 
             newStock = currentStock + addQuantity;
+            cantidadModificada = addQuantity;
             console.log(`Modo AGREGAR: ${currentStock} + ${addQuantity} = ${newStock}`);
 
         } else {
-            // MODO ACTUALIZAR DIRECTO: Usar el valor ingresado
+            // MODO ACTUALIZAR DIRECTO
             const directValueInput = document.getElementById('stock-direct-value');
             newStock = parseInt(directValueInput?.value);
 
@@ -1087,6 +1089,7 @@ async updateStock() {
             saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Actualizando...';
         }
 
+        // Obtener producto actual
         let currentProduct = this.products.find(p => p._id === productId);
         if (!currentProduct) {
             console.log('Producto no en cache, obteniendo del servidor...');
@@ -1098,6 +1101,20 @@ async updateStock() {
             throw new Error('Producto no encontrado');
         }
 
+        // ====================================================================
+        // 📝 GUARDAR DATOS ANTERIORES PARA EL LOG (CON FÓRMULA)
+        // ====================================================================
+        const datosAnteriores = {
+            nombre: currentProduct.name,
+            stock: currentProduct.stock || 0,
+            barcode: currentProduct.barcode,
+            formula: {
+                sphere: currentProduct.sphere || 'N/A',
+                cylinder: currentProduct.cylinder || 'N/A',
+                addition: currentProduct.addition || 'N/A'
+            }
+        };
+
         const stockData = {
             stock: newStock,
             stock_surtido: currentProduct.stock_surtido || 0
@@ -1105,6 +1122,7 @@ async updateStock() {
 
         console.log('Actualizando stock:', { productId, stockData });
 
+        // Actualizar en servidor
         const response = await window.api.updateProductStock(productId, stockData);
         const updatedProduct = response.product || response;
 
@@ -1115,11 +1133,40 @@ async updateStock() {
 
         console.log('Stock actualizado en servidor:', updatedProduct);
 
+        // ====================================================================
+        // 📝 REGISTRAR LOG DE ACTUALIZACIÓN DE STOCK (CON FÓRMULA)
+        // ====================================================================
+        if (window.activityLogger) {
+            const accionDescripcion = isAddMode 
+                ? `Stock incrementado: ${currentProduct.name} (+${cantidadModificada} unidades)` 
+                : `Stock actualizado: ${currentProduct.name} (${datosAnteriores.stock} → ${newStock})`;
+
+            window.activityLogger.log({
+                tipo: 'PRODUCTO',
+                accion: accionDescripcion,
+                entidad: 'producto',
+                entidad_id: updatedProduct._id,
+                datos_anteriores: datosAnteriores,
+                datos_nuevos: {
+                    nombre: updatedProduct.name,
+                    stock: updatedProduct.stock,
+                    barcode: updatedProduct.barcode,
+                    formula: {
+                        sphere: updatedProduct.sphere || 'N/A',
+                        cylinder: updatedProduct.cylinder || 'N/A',
+                        addition: updatedProduct.addition || 'N/A'
+                    },
+                    modificacion: isAddMode ? `+${cantidadModificada}` : `Directo: ${newStock}`
+                }
+            });
+        }
+
+        // Sincronizar UI
         await this._syncStockUpdateImmediate(updatedProduct, productId);
 
         const modeText = isAddMode ? 'agregadas' : 'actualizado';
         const quantityText = isAddMode 
-            ? `${newStock - currentProduct.stock} unidades ${modeText}` 
+            ? `${cantidadModificada} unidades ${modeText}` 
             : `${updatedProduct.stock} unidades`;
 
         if (uiManager && uiManager.showAlert) {
@@ -1231,152 +1278,229 @@ _setupStockEvents() {
 },
 
     async saveProduct() {
-        try {
-            console.log('Iniciando guardado de producto...');
+    try {
+        console.log('Iniciando guardado de producto...');
 
-            const productId = document.getElementById('product-id')?.value;
-            const productData = {
-                name: document.getElementById('product-name')?.value?.trim() || '',
-                barcode: document.getElementById('product-barcode')?.value?.trim() || '',
-                sphere: document.getElementById('product-sphere')?.value?.trim() || '',
-                cylinder: document.getElementById('product-cylinder')?.value?.trim() || '',
-                addition: document.getElementById('product-addition')?.value?.trim() || '',
-                stock: parseInt(document.getElementById('product-stock')?.value) || 0
-            };
+        const productId = document.getElementById('product-id')?.value;
+        const productData = {
+            name: document.getElementById('product-name')?.value?.trim() || '',
+            barcode: document.getElementById('product-barcode')?.value?.trim() || '',
+            sphere: document.getElementById('product-sphere')?.value?.trim() || '',
+            cylinder: document.getElementById('product-cylinder')?.value?.trim() || '',
+            addition: document.getElementById('product-addition')?.value?.trim() || '',
+            stock: parseInt(document.getElementById('product-stock')?.value) || 0
+        };
 
-            if (!productData.name) {
-                if (uiManager && uiManager.showAlert) {
-                    uiManager.showAlert('El nombre del producto es obligatorio', 'warning');
-                } else {
-                    alert('El nombre del producto es obligatorio');
-                }
-                return;
-            }
-
-            if (!productData.barcode) {
-                if (uiManager && uiManager.showAlert) {
-                    uiManager.showAlert('El código de barras es obligatorio', 'warning');
-                } else {
-                    alert('El código de barras es obligatorio');
-                }
-                return;
-            }
-
-            // Validación de longitud del código de barras
-            if (productData.barcode.length < 3) {
-                if (uiManager && uiManager.showAlert) {
-                    uiManager.showAlert('El código de barras debe tener al menos 8 dígitos', 'warning');
-                } else {
-                    alert('El código de barras debe tener al menos 3 dígitos');
-                }
-                return;
-            }
-
-            console.log('Datos a guardar:', { productId, productData });
-
-            const saveBtn = document.getElementById('save-product-btn');
-            if (saveBtn) {
-                saveBtn.disabled = true;
-                saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Guardando...';
-            }
-
-            let response;
-            let finalProduct;
-
-            if (productId) {
-                console.log('Editando producto existente:', productId);
-
-                if (this.currentEditingProduct && this.currentEditingProduct.stock !== productData.stock) {
-                    console.log('Stock cambió, actualizando por separado...');
-
-                    const { stock, ...dataWithoutStock } = productData;
-                    const updateResponse = await window.api.updateProduct(productId, dataWithoutStock);
-
-                    const stockData = {
-                        stock: productData.stock,
-                        stock_surtido: this.currentEditingProduct.stock_surtido || 0
-                    };
-                    const stockResponse = await window.api.updateProductStock(productId, stockData);
-                    finalProduct = stockResponse.product || stockResponse;
-                } else {
-                    response = await window.api.updateProduct(productId, productData);
-                    finalProduct = response.product || response;
-                }
-
-                console.log('Producto actualizado:', finalProduct);
-
-            } else {
-                console.log('Creando nuevo producto...');
-                response = await window.api.createProduct(productData);
-
-                // Validar respuesta
-                if (!response || !response.success) {
-                    throw new Error(response?.message || 'Error al crear producto');
-                }
-
-                finalProduct = response.product || response;
-                console.log('Producto creado:', finalProduct);
-            }
-
-            if (!finalProduct || !finalProduct._id) {
-                console.error('Respuesta inválida del servidor:', response);
-                throw new Error('Respuesta del servidor inválida');
-            }
-
-            if (productId) {
-                await this._syncProductUpdateImmediate(finalProduct, productId);
-                if (uiManager && uiManager.showAlert) {
-                    uiManager.showAlert('Producto actualizado correctamente', 'success');
-                }
-            } else {
-                await this._syncProductCreateImmediate(finalProduct);
-                if (uiManager && uiManager.showAlert) {
-                    uiManager.showAlert('Producto creado correctamente', 'success');
-                }
-            }
-
-            if (this.productModal) {
-                this.productModal.hide();
-            }
-
-            this.currentEditingProduct = null;
-
-            setTimeout(() => {
-                this._highlightUpdatedProduct(finalProduct._id);
-            }, 300);
-
-        } catch (error) {
-            console.error('Error completo al guardar producto:', error);
-
-            let errorMessage = 'Error al guardar el producto';
-
-            if (error.message.includes('código de barras es obligatorio')) {
-                errorMessage = 'El código de barras es obligatorio';
-            } else if (error.message.includes('duplicate') ||
-                error.message.includes('unique') ||
-                error.message.includes('ya existe')) {
-                errorMessage = 'Ya existe un producto con ese código de barras';
-            } else if (error.message.includes('validation')) {
-                errorMessage = 'Datos del producto no válidos';
-            } else if (error.message.includes('network') || error.message.includes('fetch')) {
-                errorMessage = 'Error de conexión. Verifique su conexión a internet';
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-
+        // ========== VALIDACIONES ==========
+        if (!productData.name) {
             if (uiManager && uiManager.showAlert) {
-                uiManager.showAlert(errorMessage, 'danger');
+                uiManager.showAlert('El nombre del producto es obligatorio', 'warning');
             } else {
-                alert(errorMessage);
+                alert('El nombre del producto es obligatorio');
             }
-        } finally {
-            const saveBtn = document.getElementById('save-product-btn');
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Guardar Producto';
+            return;
+        }
+
+        if (!productData.barcode) {
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert('El código de barras es obligatorio', 'warning');
+            } else {
+                alert('El código de barras es obligatorio');
+            }
+            return;
+        }
+
+        if (productData.barcode.length < 3) {
+            if (uiManager && uiManager.showAlert) {
+                uiManager.showAlert('El código de barras debe tener al menos 3 dígitos', 'warning');
+            } else {
+                alert('El código de barras debe tener al menos 3 dígitos');
+            }
+            return;
+        }
+
+        console.log('Datos a guardar:', { productId, productData });
+
+        const saveBtn = document.getElementById('save-product-btn');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Guardando...';
+        }
+
+        let response;
+        let finalProduct;
+        let datosAnteriores = null; // Declarar aquí para usar después
+
+        if (productId) {
+            // ========== EDITAR PRODUCTO EXISTENTE ==========
+            console.log('Editando producto existente:', productId);
+
+            // 📝 GUARDAR DATOS ANTERIORES (para log posterior)
+            datosAnteriores = this.currentEditingProduct ? {
+                nombre: this.currentEditingProduct.name,
+                barcode: this.currentEditingProduct.barcode,
+                stock: this.currentEditingProduct.stock,
+                sphere: this.currentEditingProduct.sphere || 'N/A',
+                cylinder: this.currentEditingProduct.cylinder || 'N/A',
+                addition: this.currentEditingProduct.addition || 'N/A',
+                formula: {
+                    sphere: this.currentEditingProduct.sphere || 'N/A',
+                    cylinder: this.currentEditingProduct.cylinder || 'N/A',
+                    addition: this.currentEditingProduct.addition || 'N/A'
+                }
+            } : null;
+
+            if (this.currentEditingProduct && this.currentEditingProduct.stock !== productData.stock) {
+                console.log('Stock cambió, actualizando por separado...');
+
+                const { stock, ...dataWithoutStock } = productData;
+                const updateResponse = await window.api.updateProduct(productId, dataWithoutStock);
+
+                const stockData = {
+                    stock: productData.stock,
+                    stock_surtido: this.currentEditingProduct.stock_surtido || 0
+                };
+                const stockResponse = await window.api.updateProductStock(productId, stockData);
+                finalProduct = stockResponse.product || stockResponse;
+            } else {
+                response = await window.api.updateProduct(productId, productData);
+                finalProduct = response.product || response;
+            }
+
+            console.log('Producto actualizado:', finalProduct);
+
+        } else {
+            // ========== CREAR NUEVO PRODUCTO ==========
+            console.log('Creando nuevo producto...');
+            response = await window.api.createProduct(productData);
+
+            // Validar respuesta
+            if (!response || !response.success) {
+                throw new Error(response?.message || 'Error al crear producto');
+            }
+
+            finalProduct = response.product || response;
+            console.log('Producto creado:', finalProduct);
+        }
+
+        // ========== VALIDACIÓN DE RESPUESTA ==========
+        if (!finalProduct || !finalProduct._id) {
+            console.error('Respuesta inválida del servidor:', response);
+            throw new Error('Respuesta del servidor inválida');
+        }
+
+        // ========== SINCRONIZACIÓN ==========
+        if (productId) {
+            await this._syncProductUpdateImmediate(finalProduct, productId);
+        } else {
+            await this._syncProductCreateImmediate(finalProduct);
+        }
+
+        // ====================================================================
+        // ✅ LOGS SE GUARDAN AQUÍ - DESPUÉS DE CONFIRMAR ÉXITO
+        // ====================================================================
+        if (window.activityLogger) {
+            try {
+                if (productId) {
+                    // LOG DE ACTUALIZACIÓN
+                    window.activityLogger.log({
+                        tipo: 'PRODUCTO',
+                        accion: `Producto actualizado: ${finalProduct.name}`,
+                        entidad: 'producto',
+                        entidad_id: finalProduct._id,
+                        datos_anteriores: datosAnteriores,
+                        datos_nuevos: {
+                            nombre: finalProduct.name,
+                            barcode: finalProduct.barcode,
+                            stock: finalProduct.stock,
+                            sphere: finalProduct.sphere || 'N/A',
+                            cylinder: finalProduct.cylinder || 'N/A',
+                            addition: finalProduct.addition || 'N/A',
+                            formula: {
+                                sphere: finalProduct.sphere || 'N/A',
+                                cylinder: finalProduct.cylinder || 'N/A',
+                                addition: finalProduct.addition || 'N/A'
+                            }
+                        }
+                    });
+                } else {
+                    // LOG DE CREACIÓN
+                    window.activityLogger.log({
+                        tipo: 'PRODUCTO',
+                        accion: `Producto creado: ${finalProduct.name}`,
+                        entidad: 'producto',
+                        entidad_id: finalProduct._id,
+                        datos_nuevos: {
+                            nombre: finalProduct.name,
+                            barcode: finalProduct.barcode,
+                            stock: finalProduct.stock,
+                            sphere: finalProduct.sphere || 'N/A',
+                            cylinder: finalProduct.cylinder || 'N/A',
+                            addition: finalProduct.addition || 'N/A',
+                            formula: {
+                                sphere: finalProduct.sphere || 'N/A',
+                                cylinder: finalProduct.cylinder || 'N/A',
+                                addition: finalProduct.addition || 'N/A'
+                            }
+                        }
+                    });
+                }
+            } catch (logError) {
+                // Si falla el log, NO detener la operación
+                console.error('Error guardando log (no crítico):', logError);
             }
         }
-    },
+
+        // ========== NOTIFICACIONES Y CIERRE ==========
+        if (uiManager && uiManager.showAlert) {
+            uiManager.showAlert(
+                productId ? 'Producto actualizado correctamente' : 'Producto creado correctamente', 
+                'success'
+            );
+        }
+
+        if (this.productModal) {
+            this.productModal.hide();
+        }
+
+        this.currentEditingProduct = null;
+
+        setTimeout(() => {
+            this._highlightUpdatedProduct(finalProduct._id);
+        }, 300);
+
+    } catch (error) {
+        console.error('Error completo al guardar producto:', error);
+
+        let errorMessage = 'Error al guardar el producto';
+
+        if (error.message.includes('código de barras es obligatorio')) {
+            errorMessage = 'El código de barras es obligatorio';
+        } else if (error.message.includes('duplicate') ||
+            error.message.includes('unique') ||
+            error.message.includes('ya existe')) {
+            errorMessage = 'Ya existe un producto con ese código de barras';
+        } else if (error.message.includes('validation')) {
+            errorMessage = 'Datos del producto no válidos';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorMessage = 'Error de conexión. Verifique su conexión a internet';
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+
+        if (uiManager && uiManager.showAlert) {
+            uiManager.showAlert(errorMessage, 'danger');
+        } else {
+            alert(errorMessage);
+        }
+    } finally {
+        const saveBtn = document.getElementById('save-product-btn');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Guardar Producto';
+        }
+    }
+},
 
     async updateStock() {
     try {
@@ -1387,20 +1511,19 @@ _setupStockEvents() {
         if (!productId) {
             if (uiManager && uiManager.showAlert) {
                 uiManager.showAlert('Error: ID del producto no encontrado', 'danger');
-            } else {
-                alert('Error: ID del producto no encontrado');
             }
             return;
         }
 
-        // Determinar qué modo está activo
+        // Determinar modo (agregar o directo)
         const addContainer = document.getElementById('stock-add-container');
         const isAddMode = addContainer && addContainer.style.display !== 'none';
 
         let newStock;
+        let cantidadModificada = 0;
 
         if (isAddMode) {
-            // MODO AGREGAR: Sumar cantidad al stock actual
+            // MODO AGREGAR
             const currentStockEl = document.getElementById('stock-current-stock');
             const addQuantityInput = document.getElementById('stock-add-quantity');
             
@@ -1410,25 +1533,22 @@ _setupStockEvents() {
             if (isNaN(addQuantity) || addQuantity <= 0) {
                 if (uiManager && uiManager.showAlert) {
                     uiManager.showAlert('Por favor, ingrese una cantidad válida a agregar (mayor a 0)', 'warning');
-                } else {
-                    alert('Por favor, ingrese una cantidad válida a agregar (mayor a 0)');
                 }
                 return;
             }
 
             newStock = currentStock + addQuantity;
+            cantidadModificada = addQuantity;
             console.log(`Modo AGREGAR: ${currentStock} + ${addQuantity} = ${newStock}`);
 
         } else {
-            // MODO ACTUALIZAR DIRECTO: Usar el valor ingresado
+            // MODO ACTUALIZAR DIRECTO
             const directValueInput = document.getElementById('stock-direct-value');
             newStock = parseInt(directValueInput?.value);
 
             if (isNaN(newStock) || newStock < 0) {
                 if (uiManager && uiManager.showAlert) {
                     uiManager.showAlert('Por favor, ingrese un valor de stock válido (0 o mayor)', 'warning');
-                } else {
-                    alert('Por favor, ingrese un valor de stock válido (0 o mayor)');
                 }
                 return;
             }
@@ -1442,6 +1562,7 @@ _setupStockEvents() {
             saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Actualizando...';
         }
 
+        // Obtener producto actual
         let currentProduct = this.products.find(p => p._id === productId);
         if (!currentProduct) {
             console.log('Producto no en cache, obteniendo del servidor...');
@@ -1453,6 +1574,23 @@ _setupStockEvents() {
             throw new Error('Producto no encontrado');
         }
 
+        // ====================================================================
+        // 📝 GUARDAR DATOS ANTERIORES PARA EL LOG (CON FÓRMULA)
+        // ====================================================================
+        const datosAnteriores = {
+            nombre: currentProduct.name,
+            stock: currentProduct.stock || 0,
+            barcode: currentProduct.barcode,
+            sphere: currentProduct.sphere || 'N/A',
+            cylinder: currentProduct.cylinder || 'N/A',
+            addition: currentProduct.addition || 'N/A',
+            formula: {
+                sphere: currentProduct.sphere || 'N/A',
+                cylinder: currentProduct.cylinder || 'N/A',
+                addition: currentProduct.addition || 'N/A'
+            }
+        };
+
         const stockData = {
             stock: newStock,
             stock_surtido: currentProduct.stock_surtido || 0
@@ -1460,6 +1598,7 @@ _setupStockEvents() {
 
         console.log('Actualizando stock:', { productId, stockData });
 
+        // Actualizar en servidor
         const response = await window.api.updateProductStock(productId, stockData);
         const updatedProduct = response.product || response;
 
@@ -1470,11 +1609,43 @@ _setupStockEvents() {
 
         console.log('Stock actualizado en servidor:', updatedProduct);
 
+        // ====================================================================
+        // 📝 REGISTRAR LOG DE ACTUALIZACIÓN DE STOCK (CON FÓRMULA)
+        // ====================================================================
+        if (window.activityLogger) {
+            const accionDescripcion = isAddMode 
+                ? `Stock incrementado: ${currentProduct.name} (+${cantidadModificada} unidades)` 
+                : `Stock actualizado: ${currentProduct.name} (${datosAnteriores.stock} → ${newStock})`;
+
+            window.activityLogger.log({
+                tipo: 'PRODUCTO',
+                accion: accionDescripcion,
+                entidad: 'producto',
+                entidad_id: updatedProduct._id,
+                datos_anteriores: datosAnteriores,
+                datos_nuevos: {
+                    nombre: updatedProduct.name,
+                    stock: updatedProduct.stock,
+                    barcode: updatedProduct.barcode,
+                    sphere: updatedProduct.sphere || 'N/A',
+                    cylinder: updatedProduct.cylinder || 'N/A',
+                    addition: updatedProduct.addition || 'N/A',
+                    formula: {
+                        sphere: updatedProduct.sphere || 'N/A',
+                        cylinder: updatedProduct.cylinder || 'N/A',
+                        addition: updatedProduct.addition || 'N/A'
+                    },
+                    modificacion: isAddMode ? `+${cantidadModificada}` : `Directo: ${newStock}`
+                }
+            });
+        }
+
+        // Sincronizar UI
         await this._syncStockUpdateImmediate(updatedProduct, productId);
 
         const modeText = isAddMode ? 'agregadas' : 'actualizado';
         const quantityText = isAddMode 
-            ? `${newStock - currentProduct.stock} unidades ${modeText}` 
+            ? `${cantidadModificada} unidades ${modeText}` 
             : `${updatedProduct.stock} unidades`;
 
         if (uiManager && uiManager.showAlert) {
@@ -1504,8 +1675,6 @@ _setupStockEvents() {
 
         if (uiManager && uiManager.showAlert) {
             uiManager.showAlert(errorMessage, 'danger');
-        } else {
-            alert(errorMessage);
         }
     } finally {
         const saveBtn = document.getElementById('save-stock-btn');
@@ -1514,7 +1683,7 @@ _setupStockEvents() {
             saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Actualizar Stock';
         }
     }
-},
+    },
 
     async _syncProductUpdateImmediate(updatedProduct, productId) {
         console.log('Sincronizando actualización inmediatamente...', updatedProduct);
@@ -1688,54 +1857,88 @@ _setupStockEvents() {
     },
 
     async executeDelete() {
-        if (!this.productToDeleteId) {
-            console.warn('No hay producto para eliminar');
-            this.hideDeleteModal();
-            return;
+    if (!this.productToDeleteId) {
+        console.warn('No hay producto para eliminar');
+        this.hideDeleteModal();
+        return;
+    }
+
+    try {
+        console.log('Eliminando producto:', this.productToDeleteId);
+
+        // ====================================================================
+        // 📝 GUARDAR DATOS DEL PRODUCTO ANTES DE ELIMINAR (CON FÓRMULA)
+        // ====================================================================
+        const productoAEliminar = this.products.find(p => p._id === this.productToDeleteId);
+        
+        const datosEliminados = productoAEliminar ? {
+            nombre: productoAEliminar.name,
+            barcode: productoAEliminar.barcode,
+            stock: productoAEliminar.stock,
+            sphere: productoAEliminar.sphere || 'N/A',
+            cylinder: productoAEliminar.cylinder || 'N/A',
+            addition: productoAEliminar.addition || 'N/A',
+            formula: {
+                sphere: productoAEliminar.sphere || 'N/A',
+                cylinder: productoAEliminar.cylinder || 'N/A',
+                addition: productoAEliminar.addition || 'N/A'
+            }
+        } : null;
+
+        // Eliminar del servidor
+        await window.api.deleteProduct(this.productToDeleteId);
+
+        // ====================================================================
+        // 📝 REGISTRAR LOG DE ELIMINACIÓN
+        // ====================================================================
+        if (window.activityLogger && datosEliminados) {
+            window.activityLogger.log({
+                tipo: 'PRODUCTO',
+                accion: `Producto eliminado: ${this.productToDeleteName}`,
+                entidad: 'producto',
+                entidad_id: this.productToDeleteId,
+                datos_anteriores: datosEliminados,
+                datos_nuevos: null // No hay datos nuevos porque fue eliminado
+            });
         }
 
-        try {
-            console.log('Eliminando producto:', this.productToDeleteId);
+        // Eliminar del cache local
+        const initialLength = this.products.length;
+        this.products = this.products.filter(p => p._id !== this.productToDeleteId);
 
-            await window.api.deleteProduct(this.productToDeleteId);
-
-            const initialLength = this.products.length;
-            this.products = this.products.filter(p => p._id !== this.productToDeleteId);
-
-            if (this.products.length < initialLength) {
-                console.log('Producto eliminado del cache local inmediatamente');
-                this._renderTableImmediate();
-            }
-
-            if (eventManager && typeof eventManager.emit === 'function') {
-                eventManager.emit('data:product:deleted', this.productToDeleteId);
-            }
-
-            if (uiManager && uiManager.showAlert) {
-                uiManager.showAlert(`${this.productToDeleteName} eliminado correctamente`, 'success');
-            }
-
-            this.hideDeleteModal();
-            console.log('Producto eliminado y sincronizado:', this.productToDeleteId);
-
-        } catch (error) {
-            console.error('Error al eliminar producto:', error);
-
-            let errorMessage = 'Error al eliminar el producto';
-            if (error.message.includes('network') || error.message.includes('fetch')) {
-                errorMessage = 'Error de conexión. Verifique su conexión a internet';
-            } else {
-                errorMessage = `Error: ${error.message}`;
-            }
-
-            if (uiManager && uiManager.showAlert) {
-                uiManager.showAlert(errorMessage, 'danger');
-            } else {
-                alert(errorMessage);
-            }
-
-            this.hideDeleteModal();
+        if (this.products.length < initialLength) {
+            console.log('Producto eliminado del cache local inmediatamente');
+            this._renderTableImmediate();
         }
+
+        // Emitir evento
+        if (eventManager && typeof eventManager.emit === 'function') {
+            eventManager.emit('data:product:deleted', this.productToDeleteId);
+        }
+
+        if (uiManager && uiManager.showAlert) {
+            uiManager.showAlert(`${this.productToDeleteName} eliminado correctamente`, 'success');
+        }
+
+        this.hideDeleteModal();
+        console.log('Producto eliminado y sincronizado:', this.productToDeleteId);
+
+    } catch (error) {
+        console.error('Error al eliminar producto:', error);
+
+        let errorMessage = 'Error al eliminar el producto';
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorMessage = 'Error de conexión. Verifique su conexión a internet';
+        } else {
+            errorMessage = `Error: ${error.message}`;
+        }
+
+        if (uiManager && uiManager.showAlert) {
+            uiManager.showAlert(errorMessage, 'danger');
+        }
+
+        this.hideDeleteModal();
+    }
     },
 
     handleProductAction(event) {
