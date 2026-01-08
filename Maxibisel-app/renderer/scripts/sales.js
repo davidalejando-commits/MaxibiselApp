@@ -1,9 +1,9 @@
 // Gestión de ventas - CON SINCRONIZACIÓN CORREGIDA
+import { activityLogger } from './activityLogger.js';
 import { dataSync } from "./dataSync.js";
 import { eventManager } from "./eventManager.js";
 import { syncHelper } from "./sync-helper.js";
 import { uiManager } from "./ui.js";
-import { activityLogger } from './activityLogger.js';
 
 export const sales = {
   sales: [],
@@ -1500,6 +1500,640 @@ salesManager.showFacturaModal = function() {
   document.body.insertAdjacentHTML('beforeend', modalHTML);
 };
 
+// 🎯 PASO 1: Inyectar estilos de impresión
+salesManager.inyectarEstilosImpresion = function() {
+  console.log('📄 Inyectando estilos de impresión...');
+  
+  // Remover estilos anteriores si existen
+  const oldStyles = document.getElementById('pos-print-styles');
+  if (oldStyles) oldStyles.remove();
+
+  const styles = document.createElement('style');
+  styles.id = 'pos-print-styles';
+  styles.textContent = `
+    /* ===== ESTILOS PARA PANTALLA (Vista Previa) ===== */
+    .factura-pos-oculta {
+      display: none !important;
+    }
+
+    /* Estilos para el clon de vista previa */
+    #factura-preview-clone {
+      display: block !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      background: white !important;
+      padding: 25px !important;
+      margin: 0 !important;
+      font-family: 'Courier New', Consolas, monospace !important;
+      color: #000 !important;
+      border-radius: 8px !important;
+    }
+
+    #factura-preview-clone .factura-contenido {
+      display: block !important;
+    }
+
+    #factura-preview-clone .pos-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    #factura-preview-clone .pos-logo-box {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 15px;
+      border: 3px solid #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    #factura-preview-clone .pos-logo-text {
+      font-size: 13px;
+      font-weight: bold;
+      line-height: 1.3;
+    }
+
+    #factura-preview-clone .pos-empresa-nombre {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    #factura-preview-clone .pos-empresa-info {
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    #factura-preview-clone .pos-linea-punteada {
+      border-top: 1px dashed #000;
+      margin: 15px 0;
+    }
+
+    #factura-preview-clone .pos-linea-solida {
+      border-top: 2px solid #000;
+      margin: 15px 0;
+    }
+
+    #factura-preview-clone .pos-titulo {
+      text-align: center;
+      margin: 15px 0;
+    }
+
+    #factura-preview-clone .pos-titulo-principal {
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    #factura-preview-clone .pos-numero-factura {
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    #factura-preview-clone .pos-fecha {
+      text-align: center;
+      font-size: 13px;
+      margin-bottom: 15px;
+    }
+
+    #factura-preview-clone .pos-cliente {
+      margin: 15px 0;
+      font-size: 14px;
+    }
+
+    #factura-preview-clone .pos-cliente-label {
+      font-weight: bold;
+    }
+
+    #factura-preview-clone .flex-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #factura-preview-clone .pos-tabla-header {
+      font-weight: bold;
+      font-size: 14px;
+      padding: 8px 0;
+      border-bottom: 2px solid #000;
+      margin-bottom: 10px;
+    }
+
+    #factura-preview-clone .pos-col-cant {
+      flex: 0 0 60px;
+      text-align: center;
+    }
+
+    #factura-preview-clone .pos-col-desc {
+      flex: 1;
+      padding: 0 15px;
+    }
+
+    #factura-preview-clone .pos-col-total {
+      flex: 0 0 120px;
+      text-align: right;
+    }
+
+    #factura-preview-clone .pos-producto-item {
+      margin-bottom: 15px;
+      font-size: 13px;
+    }
+
+    #factura-preview-clone .pos-producto-nombre {
+      font-weight: bold;
+      word-wrap: break-word;
+      font-size: 14px;
+    }
+
+    #factura-preview-clone .pos-producto-descripcion {
+      font-size: 12px;
+      color: #555;
+      margin-top: 4px;
+    }
+
+    #factura-preview-clone .pos-producto-precio {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    #factura-preview-clone .pos-resumen {
+      font-size: 14px;
+      margin: 15px 0;
+    }
+
+    #factura-preview-clone .pos-resumen-valor {
+      font-weight: bold;
+    }
+
+    #factura-preview-clone .pos-total-container {
+      padding: 15px 0;
+      border-top: 3px solid #000;
+      border-bottom: 3px solid #000;
+      margin: 15px 0;
+    }
+
+    #factura-preview-clone .pos-total-label,
+    #factura-preview-clone .pos-total-valor {
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+    #factura-preview-clone .pos-observaciones {
+      font-size: 13px;
+      margin: 15px 0;
+    }
+
+    #factura-preview-clone .pos-obs-titulo {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    #factura-preview-clone .pos-footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+    }
+
+    #factura-preview-clone .pos-footer-mensaje {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    #factura-preview-clone .pos-footer-sistema {
+      font-size: 11px;
+    }
+
+    /* ===== ESTILOS PARA IMPRESIÓN ===== */
+    @page {
+      size: letter;
+      margin: 15mm;
+    }
+
+    @media print {
+      body > *:not(#factura-pos-print) {
+        display: none !important;
+      }
+
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+      }
+
+      #factura-pos-print {
+        display: block !important;
+        visibility: visible !important;
+      }
+
+      #factura-pos-print * {
+        visibility: visible !important;
+      }
+
+      .factura-contenido {
+        position: relative !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 50px !important;
+        margin: 0 auto !important;
+        background: white !important;
+        font-family: 'Courier New', Consolas, monospace !important;
+        font-size: 24px !important;
+        line-height: 1.7 !important;
+        color: #000 !important;
+        box-sizing: border-box !important;
+      }
+
+      .flex-row {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        width: 100% !important;
+      }
+
+      .pos-header {
+        text-align: center !important;
+        margin-bottom: 25px !important;
+      }
+
+      .pos-logo-box {
+        width: 200px !important;
+        height: 200px !important;
+        margin: 0 auto 25px !important;
+        border: 5px solid #000 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 20px !important;
+      }
+
+      .pos-logo-text {
+        font-size: 26px !important;
+        font-weight: bold !important;
+        line-height: 1.5 !important;
+        text-align: center !important;
+      }
+
+      .pos-empresa-nombre {
+        font-weight: bold !important;
+        font-size: 32px !important;
+        margin-bottom: 15px !important;
+      }
+
+      .pos-empresa-info {
+        font-size: 24px !important;
+        line-height: 1.9 !important;
+      }
+
+      .pos-empresa-nombre {
+        font-weight: bold !important;
+        font-size: 24px !important;
+        margin-bottom: 12px !important;
+      }
+
+      .pos-empresa-info {
+        font-size: 18px !important;
+        line-height: 1.8 !important;
+      }
+
+      .pos-linea-punteada {
+        border-top: 2px dashed #000 !important;
+        margin: 25px 0 !important;
+        height: 0 !important;
+        width: 100% !important;
+      }
+
+      .pos-linea-solida {
+        border-top: 3px solid #000 !important;
+        margin: 25px 0 !important;
+        height: 0 !important;
+        width: 100% !important;
+      }
+
+      .pos-titulo {
+        text-align: center !important;
+        margin: 30px 0 !important;
+      }
+
+      .pos-titulo-principal {
+        font-weight: bold !important;
+        font-size: 36px !important;
+        margin-bottom: 15px !important;
+      }
+
+      .pos-numero-factura {
+        font-weight: bold !important;
+        font-size: 32px !important;
+      }
+
+      .pos-fecha {
+        text-align: center !important;
+        font-size: 24px !important;
+        margin-bottom: 30px !important;
+        line-height: 1.8 !important;
+      }
+
+      .pos-cliente {
+        margin: 30px 0 !important;
+        font-size: 26px !important;
+      }
+
+      .pos-cliente-label {
+        font-weight: bold !important;
+      }
+
+      .pos-tabla-header {
+        font-weight: bold !important;
+        font-size: 26px !important;
+        padding: 18px 0 !important;
+        border-bottom: 4px solid #000 !important;
+        margin-bottom: 22px !important;
+      }
+
+      .pos-col-cant {
+        flex: 0 0 120px !important;
+        text-align: center !important;
+      }
+
+      .pos-col-desc {
+        flex: 1 !important;
+        padding: 0 25px !important;
+      }
+
+      .pos-col-total {
+        flex: 0 0 220px !important;
+        text-align: right !important;
+      }
+
+      .pos-producto-item {
+        margin-bottom: 30px !important;
+        font-size: 24px !important;
+        page-break-inside: avoid !important;
+      }
+
+      .pos-producto-nombre {
+        font-weight: bold !important;
+        word-wrap: break-word !important;
+        font-size: 26px !important;
+      }
+
+      .pos-producto-descripcion {
+        font-size: 22px !important;
+        color: #333 !important;
+        margin-top: 10px !important;
+      }
+
+      .pos-producto-precio {
+        font-size: 22px !important;
+        color: #555 !important;
+        margin-top: 10px !important;
+      }
+
+      .pos-resumen {
+        font-size: 26px !important;
+        margin: 15px 0 !important;
+      }
+
+      .pos-resumen-valor {
+        font-weight: bold !important;
+      }
+
+      .pos-total-container {
+        padding: 25px 0 !important;
+        border-top: 5px solid #000 !important;
+        border-bottom: 5px solid #000 !important;
+        margin: 15px 0 !important;
+        page-break-inside: avoid !important;
+      }
+
+      .pos-total-label,
+      .pos-total-valor {
+        font-weight: bold !important;
+        font-size: 38px !important;
+      }
+
+      .pos-observaciones {
+        font-size: 24px !important;
+        margin: 30px 0 !important;
+      }
+
+      .pos-obs-titulo {
+        font-weight: bold !important;
+        margin-bottom: 15px !important;
+      }
+
+      .pos-obs-texto {
+        word-wrap: break-word !important;
+        line-height: 1.6 !important;
+      }
+
+      .pos-footer {
+        text-align: center !important;
+        margin-top: 35px !important;
+        font-size: 24px !important;
+      }
+
+      .pos-footer-mensaje {
+        font-weight: bold !important;
+        margin-bottom: 15px !important;
+      }
+
+      .pos-footer-sistema {
+        font-size: 20px !important;
+      }
+
+      .pos-espacio-corte {
+        height: 50px !important;
+      }
+    }
+  `;
+
+  document.head.appendChild(styles);
+  console.log('✅ Estilos inyectados correctamente');
+};
+
+// 🎯 PASO 2: Generar HTML de factura
+salesManager.generarHTMLFacturaPOS = function(factura) {
+  console.log('🎨 Generando HTML de factura POS...');
+  
+  if (!factura) {
+    console.error('❌ No se proporcionó factura');
+    return '<div class="factura-pos-oculta">Error: No hay datos</div>';
+  }
+
+  const fecha = new Date(factura.fechaEmision);
+  const fechaStr = fecha.toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+  const horaStr = fecha.toLocaleTimeString('es-CO', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+
+  const totalItems = factura.productos ? 
+    factura.productos.reduce((sum, p) => sum + (p.cantidad || 0), 0) : 0;
+
+  const html = `
+    <div id="factura-pos-print" class="factura-pos-oculta">
+      <div class="factura-contenido">
+        <div class="pos-header">
+          <div class="pos-logo-box">
+            <div class="pos-logo-text">DISTRIBUIDORA</div>
+            <div class="pos-logo-text">MAXI BISEL</div>
+          </div>
+          <div class="pos-empresa-nombre">${factura.empresa?.nombre || 'DISTRIBUIDORA MAXI BISEL'}</div>
+          <div class="pos-empresa-info">
+            NIT: ${factura.empresa?.nit || '000.000.000-0'}<br>
+            ${factura.empresa?.direccion || 'Dirección'}<br>
+            Tel: ${factura.empresa?.telefono || '000-0000000'}
+          </div>
+        </div>
+
+        <div class="pos-linea-punteada"></div>
+
+        <div class="pos-titulo">
+          <div class="pos-titulo-principal">FACTURA DE VENTA</div>
+          <div class="pos-numero-factura">${factura.numeroFactura || 'N/A'}</div>
+        </div>
+
+        <div class="pos-fecha">
+          Fecha: ${fechaStr}<br>
+          Hora: ${horaStr}
+        </div>
+
+        <div class="pos-linea-punteada"></div>
+
+        <div class="pos-cliente">
+          <span class="pos-cliente-label">CLIENTE:</span> ${factura.cliente?.nombre || 'N/A'}
+        </div>
+
+        <div class="pos-linea-solida"></div>
+
+        <div class="flex-row pos-tabla-header">
+          <div class="pos-col-cant">Cant.</div>
+          <div class="pos-col-desc">Descripción</div>
+          <div class="pos-col-total">Total</div>
+        </div>
+
+        <div class="pos-productos-lista">
+          ${factura.productos ? factura.productos.map(prod => `
+            <div class="pos-producto-item">
+              <div class="flex-row">
+                <div class="pos-col-cant">${prod.cantidad || 0}</div>
+                <div class="pos-col-desc">
+                  <div class="pos-producto-nombre">${prod.nombre || 'Producto'}</div>
+                  ${prod.descripcion ? `<div class="pos-producto-descripcion">${prod.descripcion}</div>` : ''}
+                  <div class="pos-producto-precio">Precio Unit.: $${(prod.precioUnitario || 0).toLocaleString('es-CO')}</div>
+                </div>
+                <div class="pos-col-total">$${(prod.subtotal || 0).toLocaleString('es-CO')}</div>
+              </div>
+            </div>
+          `).join('') : '<div class="sin-productos">No hay productos</div>'}
+        </div>
+
+        <div class="pos-linea-solida"></div>
+
+        <div class="pos-resumen">
+          <div class="flex-row">
+            <span>Total Items:</span>
+            <span class="pos-resumen-valor">${totalItems}</span>
+          </div>
+        </div>
+
+        <div class="pos-total-container">
+          <div class="flex-row">
+            <span class="pos-total-label">TOTAL:</span>
+            <span class="pos-total-valor">$${(factura.total || 0).toLocaleString('es-CO')}</span>
+          </div>
+        </div>
+
+        ${factura.observaciones ? `
+          <div class="pos-linea-punteada"></div>
+          <div class="pos-observaciones">
+            <div class="pos-obs-titulo">OBSERVACIONES:</div>
+            <div class="pos-obs-texto">${factura.observaciones}</div>
+          </div>
+        ` : ''}
+
+        <div class="pos-linea-punteada"></div>
+
+        <div class="pos-footer">
+          <div class="pos-footer-mensaje">¡Gracias por su compra!</div>
+          <div class="pos-footer-sistema">Software propio de Maxibisel</div>
+        </div>
+
+        <div class="pos-espacio-corte"></div>
+      </div>
+    </div>
+  `;
+
+  console.log('✅ HTML de factura generado');
+  return html;
+};
+
+// 🎯 PASO 3: Función para imprimir
+salesManager.imprimirFacturaPOS = function() {
+  console.log('🖨️ Iniciando impresión...');
+
+  // Cerrar modal
+  const modal = document.getElementById('factura-preview-modal');
+  if (modal) modal.style.display = 'none';
+
+  // Preparar factura para impresión
+  const factura = document.getElementById('factura-pos-print');
+  if (factura) {
+    factura.style.display = 'block';
+    factura.style.visibility = 'visible';
+    factura.style.position = 'relative';
+    factura.style.left = '0';
+    factura.classList.remove('factura-pos-oculta');
+    console.log('✅ Factura preparada para impresión');
+  }
+
+  // Ejecutar impresión con un delay para asegurar el render
+  setTimeout(() => {
+    console.log('🖨️ Ejecutando window.print()...');
+    window.print();
+    
+    // Restaurar después de imprimir
+    setTimeout(() => {
+      if (factura) {
+        factura.style.display = 'none';
+        factura.style.visibility = 'hidden';
+        factura.style.position = 'absolute';
+        factura.style.left = '-99999px';
+        factura.classList.add('factura-pos-oculta');
+      }
+      if (modal) modal.style.display = 'flex';
+      console.log('✅ Impresión completada, elementos restaurados');
+    }, 500);
+  }, 300);
+};
+
+console.log('✅ Sistema de impresión cargado');
+console.log('📋 Funciones disponibles:');
+console.log('   • salesManager.inyectarEstilosImpresion()');
+console.log('   • salesManager.generarHTMLFacturaPOS(factura)');
+console.log('   • salesManager.imprimirFacturaPOS()');
+
+// 🎯 FUNCIÓN 6: Compatibilidad con hideVistaPrevia
+salesManager.hideVistaPrevia = function() {
+  this.cerrarVistaPrevia();
+};
+
+console.log('✅ Sistema de impresión POS cargado en la ubicación correcta');
+console.log('   ↳ Funciones disponibles: inyectarEstilosImpresion, generarHTMLFacturaPOS, imprimirFacturaPOS');
+console.log('   ↳ Diagnóstico disponible: window.diagnosticarImpresion()');
+
+
 salesManager.hideFacturaModal = function() {
   const modal = document.getElementById('factura-decision-modal');
   if (modal) {
@@ -1659,296 +2293,6 @@ salesManager.hideFormularioFactura = function() {
   }
 };
 
-// FUNCIÓN 1: Inyectar estilos de impresión
-salesManager.inyectarEstilosImpresion = function() {
-  const oldStyles = document.getElementById('pos-print-styles');
-  if (oldStyles) oldStyles.remove();
-
-  const styles = document.createElement('style');
-  styles.id = 'pos-print-styles';
-  styles.textContent = `
-    #factura-pos-print {
-      display: none !important;
-    }
-
-    @media print {
-      * {
-        margin: 0 !important;
-        padding: 0 !important;
-        box-sizing: border-box !important;
-      }
-
-      body * {
-        visibility: hidden !important;
-        display: none !important;
-      }
-
-      @page {
-        size: 80mm auto;
-        margin: 0mm;
-        padding: 0mm;
-      }
-
-      body {
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 80mm !important;
-      }
-
-      #factura-pos-print,
-      #factura-pos-print * {
-        visibility: visible !important;
-        display: block !important;
-      }
-
-      #factura-pos-print {
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 80mm !important;
-        max-width: 80mm !important;
-        margin: 0 !important;
-        padding: 2mm !important;
-        background: white !important;
-        font-family: 'Courier New', 'Consolas', monospace !important;
-        font-size: 11px !important;
-        line-height: 1.3 !important;
-        color: #000 !important;
-      }
-
-      #factura-pos-print .inline {
-        display: inline !important;
-      }
-
-      #factura-pos-print .flex {
-        display: flex !important;
-      }
-
-      #factura-pos-print .grid {
-        display: grid !important;
-      }
-
-      #factura-pos-print img {
-        max-width: 100% !important;
-        height: auto !important;
-      }
-
-      #factura-pos-print,
-      #factura-pos-print * {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-      }
-
-      .linea-punteada {
-        border-top: 1px dashed #000 !important;
-        margin: 3mm 0 !important;
-        width: 100% !important;
-      }
-
-      .linea-solida {
-        border-top: 2px solid #000 !important;
-        margin: 3mm 0 !important;
-        width: 100% !important;
-      }
-    }
-  `;
-
-  document.head.appendChild(styles);
-};
-
-// FUNCIÓN 2: Generar HTML optimizado para POS
-salesManager.generarHTMLFacturaPOS = function(factura) {
-  const fecha = new Date(factura.fechaEmision);
-  const fechaStr = fecha.toLocaleDateString('es-CO', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  const horaStr = fecha.toLocaleTimeString('es-CO', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  });
-
-  const totalItems = factura.productos.reduce((sum, p) => sum + p.cantidad, 0);
-
-  return `
-    <div id="factura-pos-print" style="
-      width: 76mm;
-      max-width: 76mm;
-      padding: 2mm;
-      font-family: 'Courier New', Consolas, monospace;
-      font-size: 11px;
-      line-height: 1.3;
-      color: #000;
-      background: white;
-    ">
-      
-      <div style="text-align: center; margin-bottom: 3mm;">
-        <div style="
-          width: 25mm;
-          height: 25mm;
-          margin: 0 auto 2mm;
-          border: 2px solid #000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 8px;
-          font-weight: bold;
-          line-height: 1.2;
-          text-align: center;
-          padding: 1mm;
-        ">
-          DISTRIBUIDORA<br>MAXI BISEL
-        </div>
-        
-        <div style="font-weight: bold; font-size: 12px; margin-bottom: 1mm;">
-          ${factura.empresa.nombre || 'DISTRIBUIDORA MAXI BISEL'}
-        </div>
-        <div style="font-size: 10px; line-height: 1.4;">
-          NIT: ${factura.empresa.nit || '000.000.000-0'}<br>
-          ${factura.empresa.direccion || 'Dirección no disponible'}<br>
-          Tel: ${factura.empresa.telefono || '000-0000000'}
-        </div>
-      </div>
-
-      <div class="linea-punteada"></div>
-
-      <div style="text-align: center; margin: 3mm 0;">
-        <div style="font-weight: bold; font-size: 13px; margin-bottom: 1mm;">
-          FACTURA DE VENTA
-        </div>
-        <div style="font-weight: bold; font-size: 12px;">
-          ${factura.numeroFactura}
-        </div>
-      </div>
-
-      <div style="text-align: center; font-size: 10px; margin-bottom: 3mm;">
-        Fecha: ${fechaStr}<br>
-        Hora: ${horaStr}
-      </div>
-
-      <div class="linea-punteada"></div>
-
-      <div style="margin: 3mm 0; font-size: 10px;">
-        <div style="font-weight: bold; margin-bottom: 1mm;">CLIENTE:</div>
-        <div>${factura.cliente.nombre}</div>
-      </div>
-
-      <div class="linea-solida"></div>
-
-      <div style="
-        display: flex;
-        font-weight: bold;
-        font-size: 10px;
-        padding: 1mm 0;
-        border-bottom: 1px solid #000;
-        margin-bottom: 2mm;
-      ">
-        <div style="flex: 0 0 12mm; text-align: center;">Cant.</div>
-        <div style="flex: 1;">Descripción</div>
-        <div style="flex: 0 0 18mm; text-align: right;">Total</div>
-      </div>
-
-      <div style="margin-bottom: 3mm;">
-        ${factura.productos.map(prod => `
-          <div style="margin-bottom: 3mm; font-size: 10px;">
-            <div style="display: flex;">
-              <div style="flex: 0 0 12mm; text-align: center; font-weight: bold;">
-                ${prod.cantidad}
-              </div>
-              <div style="flex: 1;">
-                <div style="font-weight: bold; word-wrap: break-word;">
-                  ${prod.nombre}
-                </div>
-              </div>
-              <div style="flex: 0 0 18mm; text-align: right; font-weight: bold;">
-                $${prod.subtotal.toLocaleString('es-CO')}
-              </div>
-            </div>
-            
-            ${prod.descripcion ? `
-              <div style="
-                margin-left: 12mm;
-                font-size: 9px;
-                color: #333;
-                margin-top: 0.5mm;
-              ">
-                ${prod.descripcion}
-              </div>
-            ` : ''}
-            
-            <div style="
-              display: flex;
-              margin-left: 12mm;
-              font-size: 9px;
-              color: #555;
-              margin-top: 0.5mm;
-            ">
-              <div style="flex: 1;">
-                Precio Unit.: $${prod.precioUnitario.toLocaleString('es-CO')}
-              </div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <div class="linea-solida"></div>
-
-      <div style="margin: 3mm 0; font-size: 10px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 1mm;">
-          <div>Total Items:</div>
-          <div style="font-weight: bold;">${totalItems}</div>
-        </div>
-      </div>
-
-      <div style="
-        margin: 3mm 0;
-        padding: 2mm 0;
-        border-top: 2px solid #000;
-        border-bottom: 2px solid #000;
-      ">
-        <div style="
-          display: flex;
-          justify-content: space-between;
-          font-weight: bold;
-          font-size: 14px;
-        ">
-          <div>TOTAL:</div>
-          <div>$${factura.total.toLocaleString('es-CO')}</div>
-        </div>
-      </div>
-
-      ${factura.observaciones ? `
-        <div class="linea-punteada"></div>
-        <div style="margin: 3mm 0; font-size: 9px;">
-          <div style="font-weight: bold; margin-bottom: 1mm;">OBSERVACIONES:</div>
-          <div style="word-wrap: break-word;">${factura.observaciones}</div>
-        </div>
-      ` : ''}
-
-      <div class="linea-punteada"></div>
-
-      <div style="
-        text-align: center;
-        margin-top: 3mm;
-        font-size: 10px;
-        line-height: 1.4;
-      ">
-        <div style="font-weight: bold; margin-bottom: 1mm;">
-          ¡Gracias por su compra!
-        </div>
-        <div style="font-size: 9px;">
-          Software: MaxiBisel POS v1.0
-        </div>
-      </div>
-
-      <div style="height: 10mm;"></div>
-
-    </div>
-  `;
-};
 
 // 7. ACTUALIZAR TOTALES EN TIEMPO REAL
 salesManager.actualizarTotales = function() {
@@ -2159,29 +2503,30 @@ salesManager.generarHTMLVistaPrevia = function(factura) {
 
     return `
       <div id="factura-preview-display" style="
-        width: 80mm;
-        max-width: 80mm;
-        padding: 4mm;
+        width: 210mm;
+        max-width: 210mm;
+        padding: 18mm;
         font-family: 'Courier New', Consolas, monospace;
-        font-size: 11px;
-        line-height: 1.3;
+        font-size: 24px;
+        line-height: 1.7;
         color: #000;
         background: white;
         margin: 0 auto;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
       ">
         
         <!-- ENCABEZADO -->
-        <div style="text-align: center; margin-bottom: 3mm;">
+        <div style="text-align: center; margin-bottom: 10mm;">
           <div style="
-            width: 25mm;
-            height: 25mm;
-            margin: 0 auto 2mm;
-            border: 2px solid #000;
-            font-size: 8px;
+            width: 50mm;
+            height: 50mm;
+            margin: 0 auto 5mm;
+            border: 4px solid #000;
+            font-size: 18px;
             font-weight: bold;
-            line-height: 1.2;
+            line-height: 1.4;
             text-align: center;
-            padding: 1mm;
+            padding: 4mm;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -2191,74 +2536,74 @@ salesManager.generarHTMLVistaPrevia = function(factura) {
             <span>MAXI BISEL</span>
           </div>
           
-          <div style="font-weight: bold; font-size: 12px; margin-bottom: 1mm;">
+          <div style="font-weight: bold; font-size: 32px; margin-bottom: 4mm;">
             ${factura.empresa?.nombre || 'DISTRIBUIDORA MAXI BISEL'}
           </div>
-          <div style="font-size: 10px; line-height: 1.4;">
+          <div style="font-size: 24px; line-height: 1.8;">
             NIT: ${factura.empresa?.nit || '000.000.000-0'}<br>
             ${factura.empresa?.direccion || 'Dirección'}<br>
             Tel: ${factura.empresa?.telefono || '000-0000000'}
           </div>
         </div>
 
-        <div style="border-top: 1px dashed #000; margin: 3mm 0;"></div>
+        <div style="border-top: 3px dashed #000; margin: 10mm 0;"></div>
 
         <!-- TIPO DOCUMENTO -->
-        <div style="text-align: center; margin: 3mm 0;">
-          <div style="font-weight: bold; font-size: 13px; margin-bottom: 1mm;">
+        <div style="text-align: center; margin: 10mm 0;">
+          <div style="font-weight: bold; font-size: 36px; margin-bottom: 4mm;">
             FACTURA DE VENTA
           </div>
-          <div style="font-weight: bold; font-size: 12px;">
+          <div style="font-weight: bold; font-size: 32px;">
             ${factura.numeroFactura || 'N/A'}
           </div>
         </div>
 
         <!-- FECHA -->
-        <div style="text-align: center; font-size: 10px; margin-bottom: 3mm;">
+        <div style="text-align: center; font-size: 24px; margin-bottom: 10mm; line-height: 1.8;">
           Fecha: ${fechaStr}<br>
           Hora: ${horaStr}
         </div>
 
-        <div style="border-top: 1px dashed #000; margin: 3mm 0;"></div>
+        <div style="border-top: 3px dashed #000; margin: 10mm 0;"></div>
 
         <!-- CLIENTE -->
-        <div style="margin: 3mm 0; font-size: 10px;">
-          <div style="font-weight: bold; margin-bottom: 1mm;">CLIENTE:</div>
+        <div style="margin: 10mm 0; font-size: 26px;">
+          <div style="font-weight: bold; margin-bottom: 4mm;">CLIENTE:</div>
           <div>${factura.cliente?.nombre || 'Cliente'}</div>
         </div>
 
-        <div style="border-top: 2px solid #000; margin: 3mm 0;"></div>
+        <div style="border-top: 4px solid #000; margin: 10mm 0;"></div>
 
         <!-- ENCABEZADO TABLA -->
-        <div style="display: flex; font-weight: bold; font-size: 10px; padding: 1mm 0; border-bottom: 1px solid #000; margin-bottom: 2mm;">
-          <div style="flex: 0 0 12mm; text-align: center;">Cant.</div>
+        <div style="display: flex; font-weight: bold; font-size: 26px; padding: 4mm 0; border-bottom: 4px solid #000; margin-bottom: 7mm;">
+          <div style="flex: 0 0 30mm; text-align: center;">Cant.</div>
           <div style="flex: 1;">Descripción</div>
-          <div style="flex: 0 0 18mm; text-align: right;">Total</div>
+          <div style="flex: 0 0 55mm; text-align: right;">Total</div>
         </div>
 
         <!-- PRODUCTOS -->
-        <div style="margin-bottom: 3mm;">
+        <div style="margin-bottom: 10mm;">
           ${factura.productos ? factura.productos.map(prod => `
-            <div style="margin-bottom: 3mm; font-size: 10px;">
+            <div style="margin-bottom: 10mm; font-size: 24px;">
               <div style="display: flex;">
-                <div style="flex: 0 0 12mm; text-align: center; font-weight: bold;">
+                <div style="flex: 0 0 30mm; text-align: center; font-weight: bold; font-size: 26px;">
                   ${prod.cantidad || 0}
                 </div>
                 <div style="flex: 1;">
-                  <div style="font-weight: bold; word-wrap: break-word;">
+                  <div style="font-weight: bold; word-wrap: break-word; font-size: 26px; line-height: 1.5;">
                     ${prod.nombre || 'Producto'}
                   </div>
                 </div>
-                <div style="flex: 0 0 18mm; text-align: right; font-weight: bold;">
+                <div style="flex: 0 0 55mm; text-align: right; font-weight: bold; font-size: 26px;">
                   $${(prod.subtotal || 0).toLocaleString('es-CO')}
                 </div>
               </div>
               ${prod.descripcion ? `
-                <div style="margin-left: 12mm; font-size: 9px; color: #333; margin-top: 0.5mm;">
+                <div style="margin-left: 30mm; font-size: 22px; color: #333; margin-top: 3mm; line-height: 1.5;">
                   ${prod.descripcion}
                 </div>
               ` : ''}
-              <div style="display: flex; margin-left: 12mm; font-size: 9px; color: #555; margin-top: 0.5mm;">
+              <div style="display: flex; margin-left: 30mm; font-size: 22px; color: #555; margin-top: 3mm;">
                 <div style="flex: 1;">
                   Precio Unit.: $${(prod.precioUnitario || 0).toLocaleString('es-CO')}
                 </div>
@@ -2267,45 +2612,45 @@ salesManager.generarHTMLVistaPrevia = function(factura) {
           `).join('') : '<div>No hay productos</div>'}
         </div>
 
-        <div style="border-top: 2px solid #000; margin: 3mm 0;"></div>
+        <div style="border-top: 4px solid #000; margin: 5mm 0;"></div>
 
         <!-- RESUMEN -->
-        <div style="margin: 3mm 0; font-size: 10px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 1mm;">
+        <div style="margin: 5mm 0; font-size: 26px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4mm;">
             <div>Total Items:</div>
             <div style="font-weight: bold;">${totalItems}</div>
           </div>
         </div>
 
         <!-- TOTAL -->
-        <div style="margin: 3mm 0; padding: 2mm 0; border-top: 2px solid #000; border-bottom: 2px solid #000;">
-          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
+        <div style="margin: 5mm 0; padding: 6mm 0; border-top: 5px solid #000; border-bottom: 5px solid #000;">
+          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 38px;">
             <div>TOTAL:</div>
             <div>$${(factura.total || 0).toLocaleString('es-CO')}</div>
           </div>
         </div>
 
         ${factura.observaciones ? `
-          <div style="border-top: 1px dashed #000; margin: 3mm 0;"></div>
-          <div style="margin: 3mm 0; font-size: 9px;">
-            <div style="font-weight: bold; margin-bottom: 1mm;">OBSERVACIONES:</div>
-            <div style="word-wrap: break-word;">${factura.observaciones}</div>
+          <div style="border-top: 3px dashed #000; margin: 10mm 0;"></div>
+          <div style="margin: 10mm 0; font-size: 24px;">
+            <div style="font-weight: bold; margin-bottom: 4mm;">OBSERVACIONES:</div>
+            <div style="word-wrap: break-word; line-height: 1.6;">${factura.observaciones}</div>
           </div>
         ` : ''}
 
-        <div style="border-top: 1px dashed #000; margin: 3mm 0;"></div>
+        <div style="border-top: 3px dashed #000; margin: 10mm 0;"></div>
 
         <!-- PIE -->
-        <div style="text-align: center; margin-top: 3mm; font-size: 10px; line-height: 1.4;">
-          <div style="font-weight: bold; margin-bottom: 1mm;">
+        <div style="text-align: center; margin-top: 10mm; font-size: 24px; line-height: 1.7;">
+          <div style="font-weight: bold; margin-bottom: 4mm;">
             ¡Gracias por su compra!
           </div>
-          <div style="font-size: 9px;">
+          <div style="font-size: 20px;">
             Software propio de Maxibisel
           </div>
         </div>
 
-        <div style="height: 5mm;"></div>
+        <div style="height: 12mm;"></div>
 
       </div>
     `;
@@ -2317,31 +2662,28 @@ salesManager.generarHTMLVistaPrevia = function(factura) {
 
 // 3. MOSTRAR VISTA PREVIA (VERSIÓN ROBUSTA)
 salesManager.mostrarVistaPrevia = function(factura) {
-  console.log('👁️ Mostrando vista previa de factura...');
-  console.log('📋 Datos de factura:', factura);
+  console.log('👁️ Mostrando vista previa...');
+
+  if (!factura) {
+    console.error('❌ No hay factura');
+    uiManager.showAlert('Error: No hay datos de factura', 'danger');
+    return;
+  }
 
   try {
-    // PASO 1: Validar datos
-    if (!factura) {
-      console.error('❌ No se proporcionó factura');
-      uiManager.showAlert('Error: No hay datos de factura para mostrar', 'danger');
-      return;
-    }
-
-    // PASO 2: Limpiar todo lo anterior
+    // Limpiar todo
     this.limpiarVistaPreviaCompleta();
 
-    // PASO 3: Generar HTML de vista previa
-    const facturaVisibleHTML = this.generarHTMLVistaPrevia(factura);
+    // Inyectar estilos
+    this.inyectarEstilosImpresion();
 
-    // PASO 4: Generar HTML para impresión (oculta)
-    const facturaPrintHTML = this.generarHTMLFacturaPOS(factura);
+    // Generar HTML de factura para impresión
+    const facturaHTML = this.generarHTMLFacturaPOS(factura);
 
-    // PASO 5: Insertar factura de impresión en el DOM (oculta)
-    document.body.insertAdjacentHTML('beforeend', facturaPrintHTML);
-    console.log('✓ Factura de impresión insertada');
+    // Insertar factura en el DOM (oculta)
+    document.body.insertAdjacentHTML('beforeend', facturaHTML);
 
-    // PASO 6: Crear modal con vista previa
+    // Crear modal con vista previa
     const modalHTML = `
       <div class="modal" id="factura-preview-modal" style="
         display: flex;
@@ -2355,78 +2697,53 @@ salesManager.mostrarVistaPrevia = function(factura) {
         align-items: center;
         justify-content: center;
         padding: 20px;
-        animation: fadeIn 0.3s ease;
       ">
         <div style="
           background: white;
           border-radius: 12px;
-          max-width: 450px;
+          max-width: 550px;
           width: 100%;
           max-height: 90vh;
           display: flex;
           flex-direction: column;
           box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-          animation: slideUp 0.3s ease;
         ">
           
-          <!-- Header -->
-        <div style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 20px;
-          border-bottom: 2px solid #e9ecef;
-          background: linear-gradient(135deg, #667eea 0%, #257cff 100%);
-          border-radius: 12px 12px 0 0;
-        ">
-          <h3 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; color: white;">
-            <i class="bi bi-receipt" style="font-size: 1.5rem;"></i>
-            Vista Previa - Factura
-          </h3>
-          <button 
-            id="btn-cerrar-preview"
-            style="
-              background: rgba(255,255,255,0.15);
-              border: 1px solid rgba(255,255,255,0.3);
-              color: white;
-              font-size: 1.5rem;
-              width: 36px;
-              height: 36px;
-              border-radius: 4px;
-              cursor: pointer;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: all 0.2s;
-              line-height: -1;
-              padding: 0;
-            "
-            onmouseover="this.style.background='rgba(255,255,255,0.25)'"
-            onmouseout="this.style.background='rgba(255,255,255,0.15)'"
-          >×</button>
-        </div>
-          
-          <!-- Body con factura VISIBLE -->
           <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 2px solid #e9ecef;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px 12px 0 0;
+          ">
+            <h3 style="margin: 0; color: white;">
+              <i class="bi bi-receipt"></i> Vista Previa - Factura ${factura.numeroFactura || 'N/A'}
+            </h3>
+            <button 
+              onclick="salesManager.cerrarVistaPrevia()"
+              style="
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                font-size: 1.5rem;
+                width: 36px;
+                height: 36px;
+                border-radius: 4px;
+                cursor: pointer;
+              ">×</button>
+          </div>
+          
+          <div id="preview-container" style="
             flex: 1;
             overflow-y: auto;
             padding: 20px;
-            background: #e9ecef;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
+            background: #e5e5e5;
           ">
-            <div style="
-              background: white;
-              padding: 8px;
-              border-radius: 8px;
-              box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            ">
-              ${facturaVisibleHTML}
-            </div>
+            <!-- Aquí se clonará la factura -->
           </div>
           
-          <!-- Footer con botones -->
           <div style="
             display: flex;
             gap: 12px;
@@ -2434,10 +2751,9 @@ salesManager.mostrarVistaPrevia = function(factura) {
             padding: 20px;
             border-top: 2px solid #e9ecef;
             background: #f8f9fa;
-            border-radius: 0 0 12px 12px;
           ">
             <button 
-              id="btn-cerrar-preview-2"
+              onclick="salesManager.cerrarVistaPrevia()"
               style="
                 padding: 12px 24px;
                 border-radius: 8px;
@@ -2446,16 +2762,11 @@ salesManager.mostrarVistaPrevia = function(factura) {
                 color: #6c757d;
                 font-weight: 600;
                 cursor: pointer;
-                transition: all 0.2s;
-                font-size: 0.95rem;
-              "
-              onmouseover="this.style.background='#6c757d'; this.style.color='white'"
-              onmouseout="this.style.background='white'; this.style.color='#6c757d'"
-            >
-              <i class="bi bi-x-circle me-1"></i> Cerrar
+              ">
+              <i class="bi bi-x-circle"></i> Cerrar
             </button>
             <button 
-              id="btn-imprimir-pos"
+              onclick="salesManager.imprimirFacturaPOS()"
               style="
                 padding: 12px 24px;
                 border-radius: 8px;
@@ -2464,90 +2775,41 @@ salesManager.mostrarVistaPrevia = function(factura) {
                 color: white;
                 font-weight: 600;
                 cursor: pointer;
-                transition: all 0.2s;
-                box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
-                font-size: 0.95rem;
-              "
-              onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(40, 167, 69, 0.4)'"
-              onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(40, 167, 69, 0.3)'"
-            >
-              <i class="bi bi-printer-fill me-2"></i> Imprimir POS
+              ">
+              <i class="bi bi-printer-fill"></i> Imprimir
             </button>
           </div>
           
         </div>
       </div>
-
-      <style>
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { transform: translateY(20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-      </style>
     `;
 
-    // PASO 7: Insertar modal
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    console.log('✓ Modal insertado');
 
-    // PASO 8: Agregar event listeners con manejo robusto
+    // Clonar factura en preview (con un pequeño delay para asegurar el render)
     setTimeout(() => {
-      const btnCerrar1 = document.getElementById('btn-cerrar-preview');
-      const btnCerrar2 = document.getElementById('btn-cerrar-preview-2');
-      const btnImprimir = document.getElementById('btn-imprimir-pos');
-      const modal = document.getElementById('factura-preview-modal');
-
-      if (btnCerrar1) {
-        btnCerrar1.onclick = () => this.cerrarVistaPrevia();
+      const facturaOriginal = document.getElementById('factura-pos-print');
+      const previewContainer = document.getElementById('preview-container');
+      
+      if (facturaOriginal && previewContainer) {
+        console.log('📋 Clonando factura en vista previa...');
+        const clone = facturaOriginal.cloneNode(true);
+        clone.id = 'factura-preview-clone';
+        clone.classList.remove('factura-pos-oculta');
+        clone.style.display = 'block';
+        clone.style.boxShadow = '0 4px 15px rgba(0,0,0,0.15)';
+        previewContainer.appendChild(clone);
+        console.log('✅ Factura clonada exitosamente');
+      } else {
+        console.error('❌ No se pudo encontrar factura original o contenedor de preview');
       }
-      if (btnCerrar2) {
-        btnCerrar2.onclick = () => this.cerrarVistaPrevia();
-      }
-      if (btnImprimir) {
-        btnImprimir.onclick = () => this.imprimirFacturaPOS();
-      }
-
-      // Cerrar con ESC
-      const escHandler = (e) => {
-        if (e.key === 'Escape') {
-          this.cerrarVistaPrevia();
-          document.removeEventListener('keydown', escHandler);
-        }
-      };
-      document.addEventListener('keydown', escHandler);
-
-      // Cerrar al hacer clic fuera
-      if (modal) {
-        modal.onclick = (e) => {
-          if (e.target === modal) {
-            this.cerrarVistaPrevia();
-          }
-        };
-      }
-
-      console.log('✓ Event listeners agregados');
     }, 100);
 
-    // PASO 9: Inyectar estilos de impresión
-    this.inyectarEstilosImpresion();
-
-    console.log('✅ Vista previa mostrada correctamente');
+    console.log('✅ Vista previa mostrada');
 
   } catch (error) {
-    console.error('💥 Error crítico en vista previa:', error);
-    console.error('Stack:', error.stack);
-    
-    // Limpiar en caso de error
-    this.limpiarVistaPreviaCompleta();
-    
-    uiManager.showAlert(
-      'Error al mostrar vista previa de la factura. Intente nuevamente.', 
-      'danger'
-    );
+    console.error('💥 Error en vista previa:', error);
+    uiManager.showAlert('Error al mostrar vista previa', 'danger');
   }
 };
 
@@ -2591,25 +2853,54 @@ if (!document.getElementById('animation-styles')) {
 }
 
 console.log('✅ Sistema de vista previa robusto cargado');
-// ✅ NUEVA FUNCIÓN: Imprimir con timing correcto
-salesManager.hideVistaPrevia = function() {
-  const modal = document.getElementById('factura-preview-modal');
-  if (modal) {
-    modal.remove();
-  }
+
+
+// 🎯 FUNCIÓN 4: Listeners de impresión
+window.addEventListener('afterprint', function() {
+  console.log('📋 Impresión finalizada');
   
   const factura = document.getElementById('factura-pos-print');
   if (factura) {
     factura.style.display = 'none';
+    factura.style.left = '-9999px';
   }
+  
+  const modal = document.getElementById('factura-preview-modal');
+  if (modal) modal.style.display = 'flex';
+});
+
+window.addEventListener('beforeprint', function() {
+  console.log('🖨️ Iniciando proceso de impresión...');
+});
+
+// 🎯 FUNCIÓN 5: Diagnóstico
+salesManager.diagnosticarImpresion = function() {
+  console.log('🔍 === DIAGNÓSTICO DE IMPRESIÓN ===');
+  
+  const factura = document.getElementById('factura-pos-print');
+  const estilos = document.getElementById('pos-print-styles');
+  
+  console.log('1. Factura existe:', !!factura);
+  console.log('2. Estilos inyectados:', !!estilos);
+  
+  if (factura) {
+    const computed = window.getComputedStyle(factura);
+    console.log('3. Display:', computed.display);
+    console.log('4. Visibility:', computed.visibility);
+    console.log('5. Position:', computed.position);
+    console.log('6. Left:', computed.left);
+    console.log('7. Contenido length:', factura.innerHTML.length);
+    console.log('8. Width:', computed.width);
+  }
+  
+  console.log('9. Web Serial disponible:', 'serial' in navigator);
+  console.log('================================');
 };
 
-salesManager.hideVistaPrevia = function() {
-  const modal = document.getElementById('factura-preview-modal');
-  if (modal) {
-    modal.remove();
-  }
-};
+// Exponer globalmente
+window.diagnosticarImpresion = () => salesManager.diagnosticarImpresion();
+
+console.log('✅ Sistema de impresión POS cargado correctamente');
 
 // 10. HISTORIAL DE FACTURAS
 salesManager.verHistorialFacturas = async function() {
@@ -3278,350 +3569,6 @@ salesManager.verDetalleFactura = async function(facturaId) {
     console.error('💥 Error cargando factura:', error);
     uiManager.showAlert('Error al cargar la factura', 'danger');
   }
-
-  // 1. INYECTAR ESTILOS DE IMPRESIÓN
-salesManager.inyectarEstilosImpresion = function() {
-  console.log('📄 Inyectando estilos de impresión...');
-  
-  const oldStyles = document.getElementById('pos-print-styles');
-  if (oldStyles) {
-    oldStyles.remove();
-  }
-
-  const styles = document.createElement('style');
-  styles.id = 'pos-print-styles';
-  styles.textContent = `
-    /* Ocultar factura en pantalla */
-    #factura-pos-print {
-      display: none !important;
-    }
-
-    /* Estilos para impresión */
-    @media print {
-      /* Resetear todo */
-      * {
-        margin: 0 !important;
-        padding: 0 !important;
-        box-sizing: border-box !important;
-      }
-
-      /* Ocultar todo el contenido */
-      body * {
-        visibility: hidden !important;
-        display: none !important;
-      }
-
-      /* Configurar página para 80mm */
-      @page {
-        size: 80mm auto;
-        margin: 0mm;
-        padding: 0mm;
-      }
-
-      body {
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 80mm !important;
-      }
-
-      /* Mostrar SOLO la factura */
-      #factura-pos-print,
-      #factura-pos-print * {
-        visibility: visible !important;
-        display: block !important;
-      }
-
-      #factura-pos-print {
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 80mm !important;
-        max-width: 80mm !important;
-        margin: 0 !important;
-        padding: 2mm !important;
-        background: white !important;
-        font-family: 'Courier New', 'Consolas', monospace !important;
-        font-size: 11px !important;
-        line-height: 1.3 !important;
-        color: #000 !important;
-      }
-
-      /* Elementos inline */
-      #factura-pos-print .flex {
-        display: flex !important;
-      }
-
-      /* Imágenes */
-      #factura-pos-print img {
-        max-width: 100% !important;
-        height: auto !important;
-      }
-
-      /* Evitar saltos de página */
-      #factura-pos-print,
-      #factura-pos-print * {
-        page-break-inside: avoid !important;
-      }
-
-      /* Líneas decorativas */
-      .linea-punteada {
-        border-top: 1px dashed #000 !important;
-        margin: 3mm 0 !important;
-        width: 100% !important;
-        height: 0 !important;
-      }
-
-      .linea-solida {
-        border-top: 2px solid #000 !important;
-        margin: 3mm 0 !important;
-        width: 100% !important;
-        height: 0 !important;
-      }
-    }
-  `;
-
-  document.head.appendChild(styles);
-  console.log('✅ Estilos de impresión inyectados');
-};
-
-// 2. GENERAR HTML DE FACTURA
-salesManager.generarHTMLFacturaPOS = function(factura) {
-  console.log('🎨 Generando HTML de factura...');
-  
-  const fecha = new Date(factura.fechaEmision);
-  const fechaStr = fecha.toLocaleDateString('es-CO', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  const horaStr = fecha.toLocaleTimeString('es-CO', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  });
-
-  const totalItems = factura.productos.reduce((sum, p) => sum + p.cantidad, 0);
-
-  return `
-    <div id="factura-pos-print" style="
-      width: 76mm;
-      max-width: 76mm;
-      padding: 2mm;
-      font-family: 'Courier New', Consolas, monospace;
-      font-size: 11px;
-      line-height: 1.3;
-      color: #000;
-      background: white;
-      display: none;
-    ">
-      
-      <!-- ENCABEZADO -->
-      <div style="text-align: center; margin-bottom: 3mm;">
-        <div style="
-          width: 25mm;
-          height: 25mm;
-          margin: 0 auto 2mm;
-          border: 2px solid #000;
-          font-size: 8px;
-          font-weight: bold;
-          line-height: 1.2;
-          text-align: center;
-          padding: 1mm;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        ">
-          <span>DISTRIBUIDORA</span>
-          <span>MAXI BISEL</span>
-        </div>
-        
-        <div style="font-weight: bold; font-size: 12px; margin-bottom: 1mm;">
-          ${factura.empresa.nombre || 'DISTRIBUIDORA MAXI BISEL'}
-        </div>
-        <div style="font-size: 10px; line-height: 1.4;">
-          NIT: ${factura.empresa.nit || '000.000.000-0'}<br>
-          ${factura.empresa.direccion || 'Dirección'}<br>
-          Tel: ${factura.empresa.telefono || '000-0000000'}
-        </div>
-      </div>
-
-      <div class="linea-punteada" style="border-top: 1px dashed #000; margin: 3mm 0; height: 0;"></div>
-
-      <!-- TIPO DOCUMENTO -->
-      <div style="text-align: center; margin: 3mm 0;">
-        <div style="font-weight: bold; font-size: 13px; margin-bottom: 1mm;">
-          FACTURA DE VENTA
-        </div>
-        <div style="font-weight: bold; font-size: 12px;">
-          ${factura.numeroFactura}
-        </div>
-      </div>
-
-      <!-- FECHA -->
-      <div style="text-align: center; font-size: 10px; margin-bottom: 3mm;">
-        Fecha: ${fechaStr}<br>
-        Hora: ${horaStr}
-      </div>
-
-      <div class="linea-punteada" style="border-top: 1px dashed #000; margin: 3mm 0; height: 0;"></div>
-
-      <!-- CLIENTE -->
-      <div style="margin: 3mm 0; font-size: 10px;">
-        <div style="font-weight: bold; margin-bottom: 1mm;">CLIENTE:</div>
-        <div>${factura.cliente.nombre}</div>
-      </div>
-
-      <div class="linea-solida" style="border-top: 2px solid #000; margin: 3mm 0; height: 0;"></div>
-
-      <!-- ENCABEZADO TABLA -->
-      <div style="display: flex; font-weight: bold; font-size: 10px; padding: 1mm 0; border-bottom: 1px solid #000; margin-bottom: 2mm;">
-        <div style="flex: 0 0 12mm; text-align: center;">Cant.</div>
-        <div style="flex: 1;">Descripción</div>
-        <div style="flex: 0 0 18mm; text-align: right;">Total</div>
-      </div>
-
-      <!-- PRODUCTOS -->
-      <div style="margin-bottom: 3mm;">
-        ${factura.productos.map(prod => `
-          <div style="margin-bottom: 3mm; font-size: 10px;">
-            <div style="display: flex;">
-              <div style="flex: 0 0 12mm; text-align: center; font-weight: bold;">
-                ${prod.cantidad}
-              </div>
-              <div style="flex: 1;">
-                <div style="font-weight: bold; word-wrap: break-word;">
-                  ${prod.nombre}
-                </div>
-              </div>
-              <div style="flex: 0 0 18mm; text-align: right; font-weight: bold;">
-                $${prod.subtotal.toLocaleString('es-CO')}
-              </div>
-            </div>
-            ${prod.descripcion ? `
-              <div style="margin-left: 12mm; font-size: 9px; color: #333; margin-top: 0.5mm;">
-                ${prod.descripcion}
-              </div>
-            ` : ''}
-            <div style="display: flex; margin-left: 12mm; font-size: 9px; color: #555; margin-top: 0.5mm;">
-              <div style="flex: 1;">
-                Precio Unit.: $${prod.precioUnitario.toLocaleString('es-CO')}
-              </div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-
-      <div class="linea-solida" style="border-top: 2px solid #000; margin: 3mm 0; height: 0;"></div>
-
-      <!-- RESUMEN -->
-      <div style="margin: 3mm 0; font-size: 10px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 1mm;">
-          <div>Total Items:</div>
-          <div style="font-weight: bold;">${totalItems}</div>
-        </div>
-      </div>
-
-      <!-- TOTAL -->
-      <div style="margin: 3mm 0; padding: 2mm 0; border-top: 2px solid #000; border-bottom: 2px solid #000;">
-        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
-          <div>TOTAL:</div>
-          <div>$${factura.total.toLocaleString('es-CO')}</div>
-        </div>
-      </div>
-
-      ${factura.observaciones ? `
-        <div class="linea-punteada" style="border-top: 1px dashed #000; margin: 3mm 0; height: 0;"></div>
-        <div style="margin: 3mm 0; font-size: 9px;">
-          <div style="font-weight: bold; margin-bottom: 1mm;">OBSERVACIONES:</div>
-          <div style="word-wrap: break-word;">${factura.observaciones}</div>
-        </div>
-      ` : ''}
-
-      <div class="linea-punteada" style="border-top: 1px dashed #000; margin: 3mm 0; height: 0;"></div>
-
-      <!-- PIE -->
-      <div style="text-align: center; margin-top: 3mm; font-size: 10px; line-height: 1.4;">
-        <div style="font-weight: bold; margin-bottom: 1mm;">
-          ¡Gracias por su compra!
-        </div>
-        <div style="font-size: 9px;">
-          Software: MaxiBisel POS v1.0
-        </div>
-      </div>
-
-      <div style="height: 10mm;"></div>
-
-    </div>
-  `;
-};
-
-
-
-// 4. IMPRIMIR FACTURA POS
-salesManager.imprimirFacturaPOS = function() {
-  console.log('🖨️ Iniciando impresión POS...');
-
-  try {
-    // Asegurar que los estilos estén inyectados
-    this.inyectarEstilosImpresion();
-
-    // Ocultar modal
-    const modal = document.getElementById('factura-preview-modal');
-    if (modal) {
-      modal.style.display = 'none';
-    }
-
-    // Obtener factura
-    const factura = document.getElementById('factura-pos-print');
-    if (!factura) {
-      console.error('❌ No se encontró #factura-pos-print');
-      uiManager.showAlert('Error: Factura no encontrada para imprimir', 'danger');
-      if (modal) modal.style.display = 'flex';
-      return;
-    }
-
-    // Mostrar factura temporalmente
-    factura.style.display = 'block';
-    factura.style.visibility = 'visible';
-
-    console.log('📄 Factura preparada, abriendo diálogo de impresión...');
-
-    // Esperar un momento antes de imprimir
-    setTimeout(() => {
-      window.print();
-      
-      // Restaurar después de imprimir
-      setTimeout(() => {
-        if (factura) {
-          factura.style.display = 'none';
-          factura.style.visibility = 'hidden';
-        }
-        if (modal) {
-          modal.style.display = 'flex';
-        }
-        console.log('✅ Impresión completada');
-      }, 500);
-    }, 200);
-
-  } catch (error) {
-    console.error('💥 Error en impresión:', error);
-    uiManager.showAlert('Error al imprimir: ' + error.message, 'danger');
-    
-    // Restaurar modal en caso de error
-    const modal = document.getElementById('factura-preview-modal');
-    if (modal) {
-      modal.style.display = 'flex';
-    }
-  }
-};
-
-
-// 6. MANTENER COMPATIBILIDAD CON hideVistaPrevia
-salesManager.hideVistaPrevia = function() {
-  this.cerrarVistaPrevia();
-};
 
 console.log('✅ Sistema de impresión POS cargado correctamente');
   
