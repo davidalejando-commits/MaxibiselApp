@@ -1741,8 +1741,8 @@ salesManager.inyectarEstilosImpresion = function() {
         margin: 0 auto !important;
         background: white !important;
         font-family: 'Courier New', Consolas, monospace !important;
-        font-size: 24px !important;
-        line-height: 1.7 !important;
+        font-size: 32px !important;
+        line-height: 1.8 !important;
         color: #000 !important;
         box-sizing: border-box !important;
       }
@@ -1757,90 +1757,79 @@ salesManager.inyectarEstilosImpresion = function() {
 
       .pos-header {
         text-align: center !important;
-        margin-bottom: 25px !important;
+        margin-bottom: 30px !important;
       }
 
       .pos-logo-box {
-        width: 200px !important;
-        height: 200px !important;
-        margin: 0 auto 25px !important;
-        border: 5px solid #000 !important;
+        width: 220px !important;
+        height: 220px !important;
+        margin: 0 auto 30px !important;
+        border: 6px solid #000 !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
-        padding: 20px !important;
+        padding: 25px !important;
       }
 
       .pos-logo-text {
-        font-size: 26px !important;
+        font-size: 32px !important;
         font-weight: bold !important;
-        line-height: 1.5 !important;
+        line-height: 1.6 !important;
         text-align: center !important;
       }
 
       .pos-empresa-nombre {
         font-weight: bold !important;
-        font-size: 32px !important;
-        margin-bottom: 15px !important;
+        font-size: 38px !important;
+        margin-bottom: 18px !important;
       }
 
       .pos-empresa-info {
-        font-size: 24px !important;
-        line-height: 1.9 !important;
-      }
-
-      .pos-empresa-nombre {
-        font-weight: bold !important;
-        font-size: 24px !important;
-        margin-bottom: 12px !important;
-      }
-
-      .pos-empresa-info {
-        font-size: 18px !important;
-        line-height: 1.8 !important;
+        font-size: 30px !important;
+        line-height: 2.0 !important;
       }
 
       .pos-linea-punteada {
-        border-top: 2px dashed #000 !important;
-        margin: 25px 0 !important;
+        border-top: 3px dashed #000 !important;
+        margin: 30px 0 !important;
         height: 0 !important;
         width: 100% !important;
       }
 
       .pos-linea-solida {
-        border-top: 3px solid #000 !important;
-        margin: 25px 0 !important;
+        border-top: 4px solid #000 !important;
+        margin: 30px 0 !important;
         height: 0 !important;
         width: 100% !important;
       }
 
       .pos-titulo {
         text-align: center !important;
-        margin: 30px 0 !important;
+        margin: 35px 0 !important;
       }
 
       .pos-titulo-principal {
         font-weight: bold !important;
-        font-size: 36px !important;
-        margin-bottom: 15px !important;
+        font-size: 44px !important;
+        margin-bottom: 18px !important;
       }
 
       .pos-numero-factura {
         font-weight: bold !important;
-        font-size: 32px !important;
+        font-size: 38px !important;
       }
 
       .pos-fecha {
         text-align: center !important;
-        font-size: 24px !important;
-        margin-bottom: 30px !important;
-        line-height: 1.8 !important;
+        font-size: 30px !important;
+        margin-bottom: 35px !important;
+        line-height: 2.0 !important;
       }
 
       .pos-cliente {
-        margin: 30px 0 !important;
-        font-size: 26px !important;
+        margin: 35px 0 !important;
+        font-size: 32px !important;
       }
 
       .pos-cliente-label {
@@ -1849,54 +1838,56 @@ salesManager.inyectarEstilosImpresion = function() {
 
       .pos-tabla-header {
         font-weight: bold !important;
-        font-size: 26px !important;
-        padding: 18px 0 !important;
-        border-bottom: 4px solid #000 !important;
-        margin-bottom: 22px !important;
+        font-size: 32px !important;
+        padding: 22px 0 !important;
+        border-bottom: 5px solid #000 !important;
+        margin-bottom: 25px !important;
       }
 
       .pos-col-cant {
-        flex: 0 0 120px !important;
+        flex: 0 0 140px !important;
         text-align: center !important;
       }
 
       .pos-col-desc {
         flex: 1 !important;
-        padding: 0 25px !important;
+        padding: 0 30px !important;
       }
 
       .pos-col-total {
-        flex: 0 0 220px !important;
+        flex: 0 0 250px !important;
         text-align: right !important;
       }
 
       .pos-producto-item {
-        margin-bottom: 30px !important;
-        font-size: 24px !important;
+        margin-bottom: 25px !important;
+        font-size: 30px !important;
         page-break-inside: avoid !important;
       }
 
       .pos-producto-nombre {
         font-weight: bold !important;
         word-wrap: break-word !important;
-        font-size: 26px !important;
+        font-size: 32px !important;
+        line-height: 1.5 !important;
       }
 
       .pos-producto-descripcion {
-        font-size: 22px !important;
+        font-size: 28px !important;
         color: #333 !important;
-        margin-top: 10px !important;
+        margin-top: 8px !important;
+        line-height: 1.5 !important;
       }
 
       .pos-producto-precio {
-        font-size: 22px !important;
+        font-size: 28px !important;
         color: #555 !important;
-        margin-top: 10px !important;
+        margin-top: 8px !important;
       }
 
       .pos-resumen {
-        font-size: 26px !important;
-        margin: 15px 0 !important;
+        font-size: 32px !important;
+        margin: 20px 0 !important;
       }
 
       .pos-resumen-valor {
@@ -1904,51 +1895,51 @@ salesManager.inyectarEstilosImpresion = function() {
       }
 
       .pos-total-container {
-        padding: 25px 0 !important;
-        border-top: 5px solid #000 !important;
-        border-bottom: 5px solid #000 !important;
-        margin: 15px 0 !important;
+        padding: 30px 0 !important;
+        border-top: 6px solid #000 !important;
+        border-bottom: 6px solid #000 !important;
+        margin: 20px 0 !important;
         page-break-inside: avoid !important;
       }
 
       .pos-total-label,
       .pos-total-valor {
         font-weight: bold !important;
-        font-size: 38px !important;
+        font-size: 46px !important;
       }
 
       .pos-observaciones {
-        font-size: 24px !important;
-        margin: 30px 0 !important;
+        font-size: 30px !important;
+        margin: 35px 0 !important;
       }
 
       .pos-obs-titulo {
         font-weight: bold !important;
-        margin-bottom: 15px !important;
+        margin-bottom: 18px !important;
       }
 
       .pos-obs-texto {
         word-wrap: break-word !important;
-        line-height: 1.6 !important;
+        line-height: 1.7 !important;
       }
 
       .pos-footer {
         text-align: center !important;
-        margin-top: 35px !important;
-        font-size: 24px !important;
+        margin-top: 40px !important;
+        font-size: 30px !important;
       }
 
       .pos-footer-mensaje {
         font-weight: bold !important;
-        margin-bottom: 15px !important;
+        margin-bottom: 18px !important;
       }
 
       .pos-footer-sistema {
-        font-size: 20px !important;
+        font-size: 26px !important;
       }
 
       .pos-espacio-corte {
-        height: 50px !important;
+        height: 60px !important;
       }
     }
   `;
@@ -2593,19 +2584,13 @@ salesManager.generarHTMLVistaPrevia = function(factura) {
                   <div style="font-weight: bold; word-wrap: break-word; font-size: 26px; line-height: 1.5;">
                     ${prod.nombre || 'Producto'}
                   </div>
+                  ${prod.descripcion ? `<div style="margin-left: 0; font-size: 22px; color: #333; margin-top: 3mm; line-height: 1.5;">${prod.descripcion}</div>` : ''}
+                  <div style="margin-left: 0; font-size: 22px; color: #555; margin-top: 3mm;">
+                    Precio Unit.: $${(prod.precioUnitario || 0).toLocaleString('es-CO')}
+                  </div>
                 </div>
                 <div style="flex: 0 0 55mm; text-align: right; font-weight: bold; font-size: 26px;">
                   $${(prod.subtotal || 0).toLocaleString('es-CO')}
-                </div>
-              </div>
-              ${prod.descripcion ? `
-                <div style="margin-left: 30mm; font-size: 22px; color: #333; margin-top: 3mm; line-height: 1.5;">
-                  ${prod.descripcion}
-                </div>
-              ` : ''}
-              <div style="display: flex; margin-left: 30mm; font-size: 22px; color: #555; margin-top: 3mm;">
-                <div style="flex: 1;">
-                  Precio Unit.: $${(prod.precioUnitario || 0).toLocaleString('es-CO')}
                 </div>
               </div>
             </div>

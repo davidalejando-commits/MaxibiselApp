@@ -8,7 +8,7 @@ export class BarcodeGenerator {
         this.filteredProducts = [];
         this.selectedReference = '';
         this.searchTerm = '';
-        this.BARCODES_PER_PAGE = 60; // 5 columnas x 12filas
+        this.BARCODES_PER_PAGE = 84; // 6 columnas x 14 filas (OPTIMIZADO)
     }
 
     async init() {
@@ -222,16 +222,32 @@ export class BarcodeGenerator {
 
     formatSpecs(product) {
         const parts = [];
-        if (product.sphere && product.sphere !== 'N' && product.sphere !== '-') {
-            parts.push(product.sphere);
+        
+        // Validar si los valores son válidos (no vacíos, no "N/A", etc.)
+        const isValidValue = (val) => {
+            return val && val !== "N/A" && val !== "" && val !== null && val !== undefined;
+        };
+        
+        const hasSphere = isValidValue(product.sphere);
+        const hasCylinder = isValidValue(product.cylinder);
+        const hasAddition = isValidValue(product.addition);
+        
+        // Si tiene esfera y cilindro: "-0.25 -2.00"
+        if (hasSphere && hasCylinder) {
+            return `${product.sphere} ${product.cylinder}`;
         }
-        if (product.cylinder && product.cylinder !== '-' && product.cylinder !== 'N') {
-            parts.push(product.cylinder);
+        
+        // Si tiene esfera y adición: "-0.25 / +3.00"
+        if (hasSphere && hasAddition) {
+            return `${product.sphere} / ${product.addition}`;
         }
-        if (product.addition && product.addition !== '-' && product.addition !== 'N') {
-            parts.push(`Add ${product.addition}`);
+        
+        // Si solo tiene esfera: "-0.25"
+        if (hasSphere) {
+            return product.sphere;
         }
-        return parts.join(' ') || 'Sin especificaciones';
+        
+        return 'Sin especificaciones';
     }
 
     getTotalBarcodes() {
@@ -322,14 +338,13 @@ export class BarcodeGenerator {
                             const code = item.barcode.toString().trim();
                             
                             // Para la mayoría de códigos alfanuméricos, usar CODE128
-                            // CODE128 soporta: A-Z, a-z, 0-9, y símbolos como - + . / % $ espacio
                             let format = 'CODE128';
                             let options = {
-                                width: 2,
-                                height: 50,
+                                width: 1.8,
+                                height: 40,
                                 displayValue: true,
-                                fontSize: 14,
-                                margin: 5,
+                                fontSize: 11,
+                                margin: 2,
                                 background: '#ffffff',
                                 lineColor: '#000000'
                             };
@@ -355,11 +370,11 @@ export class BarcodeGenerator {
                             try {
                                 window.JsBarcode(svg, item.barcode, {
                                     format: 'CODE39',
-                                    width: 2,
-                                    height: 50,
+                                    width: 1.8,
+                                    height: 40,
                                     displayValue: true,
-                                    fontSize: 14,
-                                    margin: 5
+                                    fontSize: 11,
+                                    margin: 2
                                 });
                                 console.log(`⚠️ Código "${item.barcode}" generado con CODE39 (fallback)`);
                             } catch (e) {
@@ -548,7 +563,7 @@ export class BarcodeGenerator {
                     }
                     .barcode-page {
                         page-break-after: always;
-                        padding: 10mm;
+                        padding: 0;
                         margin: 0;
                         border: none;
                         box-shadow: none;
@@ -556,15 +571,23 @@ export class BarcodeGenerator {
                     .barcode-page:last-child {
                         page-break-after: auto;
                     }
+                    .barcode-grid {
+                        gap: 3px;
+                    }
+                    .barcode-item {
+                        border: 1px solid #dee2e6;
+                        padding: 3px;
+                        min-height: 52px;
+                    }
                     @page {
                         size: A4;
-                        margin: 10mm;
+                        margin: 5mm;
                     }
                 }
                 
                 .barcode-grid {
                     display: grid;
-                    grid-template-columns: repeat(5, 1fr);
+                    grid-template-columns: repeat(6, 1fr);
                     gap: 8px;
                 }
                 
