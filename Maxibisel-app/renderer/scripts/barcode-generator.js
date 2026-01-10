@@ -1,4 +1,5 @@
 // barcode-generator.js - Módulo para gestionar la generación de códigos de barra
+// AJUSTADO PARA HOJA CROQUELADA: Carta, 7x12, 30x22mm, márgenes 6mm/3mm
 
 export class BarcodeGenerator {
     constructor() {
@@ -8,7 +9,7 @@ export class BarcodeGenerator {
         this.filteredProducts = [];
         this.selectedReference = '';
         this.searchTerm = '';
-        this.BARCODES_PER_PAGE = 84; // 6 columnas x 14 filas (OPTIMIZADO)
+        this.BARCODES_PER_PAGE = 84; // 7 columnas x 12 filas (AJUSTADO A HOJA CROQUELADA)
     }
 
     async init() {
@@ -223,7 +224,6 @@ export class BarcodeGenerator {
     formatSpecs(product) {
         const parts = [];
         
-        // Validar si los valores son válidos (no vacíos, no "N/A", etc.)
         const isValidValue = (val) => {
             return val && val !== "N/A" && val !== "" && val !== null && val !== undefined;
         };
@@ -232,17 +232,14 @@ export class BarcodeGenerator {
         const hasCylinder = isValidValue(product.cylinder);
         const hasAddition = isValidValue(product.addition);
         
-        // Si tiene esfera y cilindro: "-0.25 -2.00"
         if (hasSphere && hasCylinder) {
             return `${product.sphere} ${product.cylinder}`;
         }
         
-        // Si tiene esfera y adición: "-0.25 / +3.00"
         if (hasSphere && hasAddition) {
             return `${product.sphere} / ${product.addition}`;
         }
         
-        // Si solo tiene esfera: "-0.25"
         if (hasSphere) {
             return product.sphere;
         }
@@ -280,7 +277,7 @@ export class BarcodeGenerator {
             }
         });
 
-        console.log(`📄 Generando ${barcodes.length} códigos en ${this.getTotalPages()} páginas`);
+        console.log(`📄 Generando ${barcodes.length} códigos en ${this.getTotalPages()} páginas (7x12)`);
         this.renderPreview(barcodes);
     }
 
@@ -290,16 +287,13 @@ export class BarcodeGenerator {
         
         if (!section || !container) return;
 
-        // Calcular número de páginas
         const totalPages = Math.ceil(barcodes.length / this.BARCODES_PER_PAGE);
         
-        // Actualizar información de páginas
         const pageInfo = document.getElementById('page-info');
         if (pageInfo) {
-            pageInfo.textContent = `${barcodes.length} código${barcodes.length !== 1 ? 's' : ''} en ${totalPages} página${totalPages !== 1 ? 's' : ''}`;
+            pageInfo.textContent = `${barcodes.length} código${barcodes.length !== 1 ? 's' : ''} en ${totalPages} página${totalPages !== 1 ? 's' : ''} (7x12 por página)`;
         }
 
-        // Generar páginas
         let html = '';
         for (let page = 0; page < totalPages; page++) {
             const startIdx = page * this.BARCODES_PER_PAGE;
@@ -309,7 +303,7 @@ export class BarcodeGenerator {
             html += `
                 <div class="barcode-page">
                     <div class="page-header no-print">
-                        <span class="badge bg-secondary">Página ${page + 1} de ${totalPages}</span>
+                        <span class="badge bg-secondary">Página ${page + 1} de ${totalPages} • 7 columnas x 12 filas</span>
                     </div>
                     <div class="barcode-grid">
                         ${pageBarcodes.map((item, idx) => `
@@ -324,7 +318,6 @@ export class BarcodeGenerator {
 
         container.innerHTML = html;
 
-        // Generar códigos de barra con JsBarcode
         setTimeout(() => {
             for (let page = 0; page < totalPages; page++) {
                 const startIdx = page * this.BARCODES_PER_PAGE;
@@ -337,19 +330,17 @@ export class BarcodeGenerator {
                         try {
                             const code = item.barcode.toString().trim();
                             
-                            // Para la mayoría de códigos alfanuméricos, usar CODE128
                             let format = 'CODE128';
                             let options = {
-                                width: 1.8,
-                                height: 40,
+                                width: 1.4,
+                                height: 35,
                                 displayValue: true,
-                                fontSize: 11,
-                                margin: 2,
+                                fontSize: 27,
+                                margin: 1,
                                 background: '#ffffff',
                                 lineColor: '#000000'
                             };
                             
-                            // Solo para códigos numéricos puros de formatos específicos
                             if (/^\d{13}$/.test(code)) {
                                 format = 'EAN13';
                             } else if (/^\d{8}$/.test(code)) {
@@ -358,28 +349,23 @@ export class BarcodeGenerator {
                                 format = 'UPC';
                             }
                             
-                            console.log(`✅ Generando código "${code}" en formato ${format}`);
-                            
                             window.JsBarcode(svg, code, {
                                 format: format,
                                 ...options
                             });
                         } catch (error) {
                             console.error(`❌ Error con código "${item.barcode}":`, error.message);
-                            // Si CODE128 falla, intentar CODE39 como fallback
                             try {
                                 window.JsBarcode(svg, item.barcode, {
                                     format: 'CODE39',
-                                    width: 1.8,
-                                    height: 40,
+                                    width: 1.4,
+                                    height: 35,
                                     displayValue: true,
-                                    fontSize: 11,
-                                    margin: 2
+                                    fontSize: 27,
+                                    margin: 1
                                 });
-                                console.log(`⚠️ Código "${item.barcode}" generado con CODE39 (fallback)`);
                             } catch (e) {
-                                svg.innerHTML = `<text x="50%" y="50%" text-anchor="middle" font-size="10" fill="red">Error: Código inválido</text>`;
-                                console.error(`💥 No se pudo generar el código "${item.barcode}"`);
+                                svg.innerHTML = `<text x="50%" y="50%" text-anchor="middle" font-size="8" fill="red">Error</text>`;
                             }
                         }
                     }
@@ -392,7 +378,7 @@ export class BarcodeGenerator {
     }
 
     printBarcodes() {
-        console.log('🖨️ Imprimiendo...');
+        console.log('🖨️ Imprimiendo en hoja carta croquelada...');
         window.print();
     }
 
@@ -530,18 +516,26 @@ export class BarcodeGenerator {
     getMainHTML() {
         return `
             <style>
+                /* 
+                 * CONFIGURACIÓN PARA HOJA CROQUELADA TAMAÑO CARTA
+                 * - Tamaño: 215.9mm x 279.4mm
+                 * - Márgenes: Superior/Inferior 6mm, Laterales 3mm
+                 * - Cuadritos: 30mm x 22mm (sin espaciado entre ellos)
+                 * - Distribución: 7 columnas x 12 filas = 84 códigos por página
+                 */
+                
                 @media screen {
                     .barcode-page {
                         background: white;
-                        padding: 20px;
-                        margin-bottom: 20px;
+                        width: 215.9mm;
+                        padding: 6mm 3mm;
+                        margin: 0 auto 20px;
                         border: 1px solid #dee2e6;
                         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                        page-break-after: always;
                     }
                     .page-header {
                         text-align: center;
-                        margin-bottom: 15px;
+                        margin-bottom: 10px;
                     }
                 }
 
@@ -563,7 +557,9 @@ export class BarcodeGenerator {
                     }
                     .barcode-page {
                         page-break-after: always;
-                        padding: 0;
+                        width: 215.9mm;
+                        height: 279.4mm;
+                        padding: 6mm 3mm;
                         margin: 0;
                         border: none;
                         box-shadow: none;
@@ -572,38 +568,46 @@ export class BarcodeGenerator {
                         page-break-after: auto;
                     }
                     .barcode-grid {
-                        gap: 3px;
+                        gap: 0;
                     }
                     .barcode-item {
-                        border: 1px solid #dee2e6;
-                        padding: 3px;
-                        min-height: 52px;
+                        border: none;
+                        padding: 0;
+                        margin: 0;
                     }
                     @page {
-                        size: A4;
-                        margin: 5mm;
+                        size: letter;
+                        margin: 0;
                     }
                 }
                 
+                /* Grid de 7 columnas x 12 filas, sin espaciado */
                 .barcode-grid {
                     display: grid;
-                    grid-template-columns: repeat(6, 1fr);
-                    gap: 8px;
+                    grid-template-columns: repeat(7, 30mm);
+                    grid-template-rows: repeat(12, 22mm);
+                    gap: 0;
+                    width: 100%;
                 }
                 
+                /* Cada cuadrito exactamente 30mm x 22mm */
                 .barcode-item {
-                    border: 1px solid #dee2e6;
-                    padding: 8px;
+                    width: 30mm;
+                    height: 22mm;
+                    border: 1px solid #e0e0e0;
+                    padding: 2mm;
                     text-align: center;
                     background: white;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    min-height: 70px;
+                    box-sizing: border-box;
+                    overflow: hidden;
                 }
                 
                 .barcode-svg {
                     max-width: 100%;
+                    max-height: 100%;
                     height: auto;
                 }
 
@@ -623,7 +627,13 @@ export class BarcodeGenerator {
 
             <div class="no-print">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2><i class="bi bi-upc-scan me-2"></i>Generador de Códigos de Barra</h2>
+                    <div>
+                        <h2><i class="bi bi-upc-scan me-2"></i>Generador de Códigos de Barra</h2>
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle"></i> 
+                            Optimizado para hoja carta croquelada • 7x12 (84 códigos/página) • 30x22mm
+                        </small>
+                    </div>
                 </div>
 
                 <div class="row">

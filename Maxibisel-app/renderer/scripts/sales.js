@@ -1228,40 +1228,60 @@ formatLensSpecsForLog(lens) {
   },
 
   async processBarcodeInput(barcode) {
-    console.log('📷 Código escaneado:', barcode);
+  console.log('📷 Código escaneado (original):', barcode);
+  
+  if (!barcode || barcode.length < 4) return;
+
+  // ✅ NORMALIZACIÓN: Reemplazar ' por - antes de buscar
+  const barcodeNormalizado = barcode.replace(/'/g, '-');
+  console.log('📷 Código normalizado:', barcodeNormalizado);
+  
+  this.showBarcodeIndicator(barcodeNormalizado, 'searching');
+  
+  try {
+    // ✅ Buscar usando el código normalizado
+    const product = await this.findProductByBarcode(barcodeNormalizado);
     
-    if (!barcode || barcode.length < 4) return;
-    
-    this.showBarcodeIndicator(barcode, 'searching');
-    
-    try {
-      const product = await this.findProductByBarcode(barcode);
-      
-      if (product) {
-        this.addLensToSelection(product._id);
-        this.showBarcodeIndicator(barcode, 'success', product.name);
-        this.playBeep('success');
-      } else {
-        this.showBarcodeIndicator(barcode, 'error');
-        this.playBeep('error');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      this.showBarcodeIndicator(barcode, 'error');
+    if (product) {
+      this.addLensToSelection(product._id);
+      this.showBarcodeIndicator(barcodeNormalizado, 'success', product.name);
+      this.playBeep('success');
+    } else {
+      this.showBarcodeIndicator(barcodeNormalizado, 'error');
       this.playBeep('error');
     }
-  },
+  } catch (error) {
+    console.error('Error:', error);
+    this.showBarcodeIndicator(barcodeNormalizado, 'error');
+    this.playBeep('error');
+  }
+},
 
   async findProductByBarcode(barcode) {
-    if (Array.isArray(this.state.availableLenses)) {
-      const found = this.state.availableLenses.find(
-        lens => lens.barcode && lens.barcode.toLowerCase() === barcode.toLowerCase()
-      );
-      if (found) return found;
+  // Normalizar el código de búsqueda
+  const normalizedBarcode = barcode.replace(/'/g, '-').toLowerCase();
+  console.log('🔍 Buscando código normalizado:', normalizedBarcode);
+  
+  if (Array.isArray(this.state.availableLenses)) {
+    const found = this.state.availableLenses.find(lens => {
+      if (!lens.barcode) return false;
+      
+      // Normalizar el código del producto también
+      const productBarcode = lens.barcode.replace(/'/g, '-').toLowerCase();
+      return productBarcode === normalizedBarcode;
+    });
+    
+    if (found) {
+      console.log('✅ Producto encontrado:', found.name);
+    } else {
+      console.log('❌ Producto no encontrado con código:', normalizedBarcode);
     }
     
-    return null;
-  },
+    return found;
+  }
+  
+  return null;
+},
 
   showBarcodeIndicator(barcode, status, productName = '') {
     const oldIndicator = document.getElementById('barcode-indicator');
