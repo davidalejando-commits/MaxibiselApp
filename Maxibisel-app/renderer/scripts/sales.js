@@ -370,11 +370,22 @@ export const salesManager = {
       <!-- Modal de confirmación -->
       <div class="modal" id="confirmModal">
         <div class="modal-content">
-          <h3 class="modal-title">Confirmar Acción</h3>
-          <p class="modal-message" id="modalMessage">¿Está seguro que desea continuar con esta acción?</p>
+          <h3 class="modal-title">
+            <i class="bi bi-exclamation-triangle-fill" style="color: #e74c3c; margin-right: 8px;"></i>
+            Confirmar Acción
+          </h3>
+          <p class="modal-message" id="modalMessage">
+            ¿Está seguro que desea continuar con esta acción?
+          </p>
           <div class="modal-buttons">
-            <button class="modal-btn confirm-btn" id="confirmButton">Confirmar</button>
-            <button class="modal-btn cancel-modal-btn" id="cancelModalButton">Cancelar</button>
+            <button class="modal-btn confirm-btn" id="confirmButton">
+              <i class="bi bi-check-circle"></i>
+              Confirmar
+            </button>
+            <button class="modal-btn cancel-modal-btn" id="cancelModalButton">
+              <i class="bi bi-x-circle"></i>
+              Cancelar
+            </button>
           </div>
         </div>
       </div>
@@ -1070,6 +1081,7 @@ formatLensSpecsForLog(lens) {
     this.currentModalAction = action;
 
     if (modal) {
+      modal.classList.add('show');
       modal.style.display = "flex";
     }
   },
@@ -1077,10 +1089,13 @@ formatLensSpecsForLog(lens) {
   hideModal() {
     const modal = document.getElementById("confirmModal");
     if (modal) {
-      modal.style.display = "none";
+      modal.classList.remove('show');
+      // Pequeño delay para que la animación se complete
+      setTimeout(() => {
+        modal.style.display = "none";
+      }, 300);
     }
   },
-
   confirmAction() {
     switch (this.currentModalAction) {
       case "saveSale":
