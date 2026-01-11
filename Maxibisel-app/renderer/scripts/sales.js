@@ -1734,234 +1734,234 @@ salesManager.inyectarEstilosImpresion = function() {
     }
 
     @media print {
-      body > *:not(#factura-pos-print) {
-        display: none !important;
-      }
+  body > *:not(#factura-pos-print) {
+    display: none !important;
+  }
 
-      html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-        background: white !important;
-      }
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
 
-      #factura-pos-print {
-        display: block !important;
-        visibility: visible !important;
-      }
+  #factura-pos-print {
+    display: block !important;
+    visibility: visible !important;
+  }
 
-      #factura-pos-print * {
-        visibility: visible !important;
-      }
+  #factura-pos-print * {
+    visibility: visible !important;
+  }
 
-      .factura-contenido {
-        position: relative !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 50px !important;
-        margin: 0 auto !important;
-        background: white !important;
-        font-family: 'Courier New', Consolas, monospace !important;
-        font-size: 32px !important;
-        line-height: 1.8 !important;
-        color: #000 !important;
-        box-sizing: border-box !important;
-      }
+  .factura-contenido {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 15mm !important;
+    margin: 0 auto !important;
+    background: white !important;
+    font-family: 'Courier New', Consolas, monospace !important;
+    font-size: 24px !important;
+    line-height: 1.4 !important;
+    color: #000 !important;
+    box-sizing: border-box !important;
+  }
 
-      .flex-row {
-        display: flex !important;
-        flex-direction: row !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        width: 100% !important;
-      }
+  .flex-row {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
 
-      .pos-header {
-        text-align: center !important;
-        margin-bottom: 30px !important;
-      }
+  .pos-header {
+    text-align: center !important;
+    margin-bottom: 8mm !important;
+  }
 
-      .pos-logo-box {
-        width: 220px !important;
-        height: 220px !important;
-        margin: 0 auto 30px !important;
-        border: 6px solid #000 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 25px !important;
-      }
+  .pos-logo-box {
+    width: 180px !important;
+    height: 180px !important;
+    margin: 0 auto 8mm !important;
+    border: 5px solid #000 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+  }
 
-      .pos-logo-text {
-        font-size: 32px !important;
-        font-weight: bold !important;
-        line-height: 1.6 !important;
-        text-align: center !important;
-      }
+  .pos-logo-text {
+    font-size: 28px !important;
+    font-weight: bold !important;
+    line-height: 1.4 !important;
+    text-align: center !important;
+  }
 
-      .pos-empresa-nombre {
-        font-weight: bold !important;
-        font-size: 38px !important;
-        margin-bottom: 18px !important;
-      }
+  .pos-empresa-nombre {
+    font-weight: bold !important;
+    font-size: 32px !important;
+    margin-bottom: 10px !important;
+  }
 
-      .pos-empresa-info {
-        font-size: 30px !important;
-        line-height: 2.0 !important;
-      }
+  .pos-empresa-info {
+    font-size: 24px !important;
+    line-height: 1.5 !important;
+  }
 
-      .pos-linea-punteada {
-        border-top: 3px dashed #000 !important;
-        margin: 30px 0 !important;
-        height: 0 !important;
-        width: 100% !important;
-      }
+  .pos-linea-punteada {
+    border-top: 2px dashed #000 !important;
+    margin: 8mm 0 !important;
+    height: 0 !important;
+    width: 100% !important;
+  }
 
-      .pos-linea-solida {
-        border-top: 4px solid #000 !important;
-        margin: 30px 0 !important;
-        height: 0 !important;
-        width: 100% !important;
-      }
+  .pos-linea-solida {
+    border-top: 3px solid #000 !important;
+    margin: 8mm 0 !important;
+    height: 0 !important;
+    width: 100% !important;
+  }
 
-      .pos-titulo {
-        text-align: center !important;
-        margin: 35px 0 !important;
-      }
+  .pos-titulo {
+    text-align: center !important;
+    margin: 8mm 0 !important;
+  }
 
-      .pos-titulo-principal {
-        font-weight: bold !important;
-        font-size: 44px !important;
-        margin-bottom: 18px !important;
-      }
+  .pos-titulo-principal {
+    font-weight: bold !important;
+    font-size: 36px !important;
+    margin-bottom: 10px !important;
+  }
 
-      .pos-numero-factura {
-        font-weight: bold !important;
-        font-size: 38px !important;
-      }
+  .pos-numero-factura {
+    font-weight: bold !important;
+    font-size: 32px !important;
+  }
 
-      .pos-fecha {
-        text-align: center !important;
-        font-size: 30px !important;
-        margin-bottom: 35px !important;
-        line-height: 2.0 !important;
-      }
+  .pos-fecha {
+    text-align: center !important;
+    font-size: 24px !important;
+    margin-bottom: 8mm !important;
+    line-height: 1.5 !important;
+  }
 
-      .pos-cliente {
-        margin: 35px 0 !important;
-        font-size: 32px !important;
-      }
+  .pos-cliente {
+    margin: 8mm 0 !important;
+    font-size: 26px !important;
+  }
 
-      .pos-cliente-label {
-        font-weight: bold !important;
-      }
+  .pos-cliente-label {
+    font-weight: bold !important;
+  }
 
-      .pos-tabla-header {
-        font-weight: bold !important;
-        font-size: 32px !important;
-        padding: 22px 0 !important;
-        border-bottom: 5px solid #000 !important;
-        margin-bottom: 25px !important;
-      }
+  .pos-tabla-header {
+    font-weight: bold !important;
+    font-size: 26px !important;
+    padding: 15px 0 !important;
+    border-bottom: 4px solid #000 !important;
+    margin-bottom: 15px !important;
+  }
 
-      .pos-col-cant {
-        flex: 0 0 140px !important;
-        text-align: center !important;
-      }
+  .pos-col-cant {
+    flex: 0 0 100px !important;
+    text-align: center !important;
+  }
 
-      .pos-col-desc {
-        flex: 1 !important;
-        padding: 0 30px !important;
-      }
+  .pos-col-desc {
+    flex: 1 !important;
+    padding: 0 20px !important;
+  }
 
-      .pos-col-total {
-        flex: 0 0 250px !important;
-        text-align: right !important;
-      }
+  .pos-col-total {
+    flex: 0 0 200px !important;
+    text-align: right !important;
+  }
 
-      .pos-producto-item {
-        margin-bottom: 25px !important;
-        font-size: 30px !important;
-        page-break-inside: avoid !important;
-      }
+  .pos-producto-item {
+    margin-bottom: 15px !important;
+    font-size: 24px !important;
+    page-break-inside: avoid !important;
+  }
 
-      .pos-producto-nombre {
-        font-weight: bold !important;
-        word-wrap: break-word !important;
-        font-size: 32px !important;
-        line-height: 1.5 !important;
-      }
+  .pos-producto-nombre {
+    font-weight: bold !important;
+    word-wrap: break-word !important;
+    font-size: 26px !important;
+    line-height: 1.3 !important;
+  }
 
-      .pos-producto-descripcion {
-        font-size: 28px !important;
-        color: #333 !important;
-        margin-top: 8px !important;
-        line-height: 1.5 !important;
-      }
+  .pos-producto-descripcion {
+    font-size: 22px !important;
+    color: #333 !important;
+    margin-top: 4px !important;
+    line-height: 1.3 !important;
+  }
 
-      .pos-producto-precio {
-        font-size: 28px !important;
-        color: #555 !important;
-        margin-top: 8px !important;
-      }
+  .pos-producto-precio {
+    font-size: 22px !important;
+    color: #555 !important;
+    margin-top: 4px !important;
+  }
 
-      .pos-resumen {
-        font-size: 32px !important;
-        margin: 20px 0 !important;
-      }
+  .pos-resumen {
+    font-size: 26px !important;
+    margin: 15px 0 !important;
+  }
 
-      .pos-resumen-valor {
-        font-weight: bold !important;
-      }
+  .pos-resumen-valor {
+    font-weight: bold !important;
+  }
 
-      .pos-total-container {
-        padding: 30px 0 !important;
-        border-top: 6px solid #000 !important;
-        border-bottom: 6px solid #000 !important;
-        margin: 20px 0 !important;
-        page-break-inside: avoid !important;
-      }
+  .pos-total-container {
+    padding: 20px 0 !important;
+    border-top: 5px solid #000 !important;
+    border-bottom: 5px solid #000 !important;
+    margin: 15px 0 !important;
+    page-break-inside: avoid !important;
+  }
 
-      .pos-total-label,
-      .pos-total-valor {
-        font-weight: bold !important;
-        font-size: 46px !important;
-      }
+  .pos-total-label,
+  .pos-total-valor {
+    font-weight: bold !important;
+    font-size: 38px !important;
+  }
 
-      .pos-observaciones {
-        font-size: 30px !important;
-        margin: 35px 0 !important;
-      }
+  .pos-observaciones {
+    font-size: 24px !important;
+    margin: 10mm 0 !important;
+  }
 
-      .pos-obs-titulo {
-        font-weight: bold !important;
-        margin-bottom: 18px !important;
-      }
+  .pos-obs-titulo {
+    font-weight: bold !important;
+    margin-bottom: 10px !important;
+  }
 
-      .pos-obs-texto {
-        word-wrap: break-word !important;
-        line-height: 1.7 !important;
-      }
+  .pos-obs-texto {
+    word-wrap: break-word !important;
+    line-height: 1.4 !important;
+  }
 
-      .pos-footer {
-        text-align: center !important;
-        margin-top: 40px !important;
-        font-size: 30px !important;
-      }
+  .pos-footer {
+    text-align: center !important;
+    margin-top: 15mm !important;
+    font-size: 24px !important;
+  }
 
-      .pos-footer-mensaje {
-        font-weight: bold !important;
-        margin-bottom: 18px !important;
-      }
+  .pos-footer-mensaje {
+    font-weight: bold !important;
+    margin-bottom: 10px !important;
+  }
 
-      .pos-footer-sistema {
-        font-size: 26px !important;
-      }
+  .pos-footer-sistema {
+    font-size: 20px !important;
+  }
 
-      .pos-espacio-corte {
-        height: 60px !important;
-      }
-    }
+  .pos-espacio-corte {
+    height: 30px !important;
+  }
+}
   `;
 
   document.head.appendChild(styles);
@@ -2011,7 +2011,7 @@ salesManager.generarHTMLFacturaPOS = function(factura) {
         <div class="pos-linea-punteada"></div>
 
         <div class="pos-titulo">
-          <div class="pos-titulo-principal">FACTURA DE VENTA</div>
+          <div class="pos-titulo-principal">REMISIÓN</div>
           <div class="pos-numero-factura">${factura.numeroFactura || 'N/A'}</div>
         </div>
 
