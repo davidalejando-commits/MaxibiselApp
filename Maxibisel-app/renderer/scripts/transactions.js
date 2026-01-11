@@ -817,6 +817,19 @@ export const transactionManager = {
       searchBar.value = '';
     }
 
+    // 📊 NUEVO: REGISTRAR LOG DE VISUALIZACIÓN
+    activityLogger.log({
+    tipo: 'PRODUCTO',
+    accion: `Visualización de inventario: ${referencia}`,
+    entidad: 'Consulta',
+    entidad_id: referencia,
+    datos_nuevos: {
+        referencia: referencia,
+        total_productos: this.filteredProducts.length,
+        accion: 'Visualización de productos por referencia'
+    }
+}).catch(err => console.warn('Error registrando log:', err));
+
     this.renderFilteredProducts(this.filteredProducts);
   },
 
@@ -1020,7 +1033,7 @@ export const transactionManager = {
     }
   },
 
-  async saveProductChanges(productId) {
+async saveProductChanges(productId) {
     console.log('\n========================================');
     console.log('💾 [CLIENT] GUARDANDO CAMBIOS DE PRODUCTO');
     console.log('========================================');
@@ -1039,7 +1052,6 @@ export const transactionManager = {
         console.log('   - Código:', product.barcode);
         console.log('   - Stock total:', product.stock);
         console.log('   - Stock surtido:', product.stock_surtido);
-        console.log('   - Stock almacenado:', (product.stock || 0) - (product.stock_surtido || 0));
 
         // VALIDACIÓN CRÍTICA en cliente
         const stockTotal = parseInt(product.stock) || 0;
@@ -1052,13 +1064,19 @@ export const transactionManager = {
             return;
         }
 
+        // 🔍 NUEVO: Guardar datos anteriores para el log
+        const datosAnteriores = {
+            stock: product.stock,
+            stock_surtido: product.stock_surtido,
+            stock_almacenado: (product.stock || 0) - (product.stock_surtido || 0)
+        };
+
         const updateData = {
             stock: stockTotal,
             stock_surtido: stockSurtido
         };
 
         console.log('📤 [CLIENT] Enviando datos al servidor...');
-        console.log('   Datos:', JSON.stringify(updateData, null, 2));
 
         // Mostrar indicador de carga
         const saveBtn = document.querySelector(`.save-changes-btn[data-id="${productId}"]`);
@@ -1076,14 +1094,11 @@ export const transactionManager = {
         
         const response = await Promise.race([updatePromise, timeoutPromise]);
 
-        console.log('📥 [CLIENT] Respuesta del servidor recibida:');
-        console.log(JSON.stringify(response, null, 2));
+        console.log('📥 [CLIENT] Respuesta del servidor recibida');
 
         // VERIFICAR RESPUESTA
         if (!response || !response.success) {
             console.error('❌ [CLIENT] ERROR: Respuesta inválida del servidor');
-            console.error('   Respuesta completa:', response);
-            
             throw new Error(
                 response?.message || 
                 response?.error || 
@@ -1097,39 +1112,79 @@ export const transactionManager = {
             throw new Error('Respuesta incompleta del servidor');
         }
 
-        console.log('✅ [CLIENT] Producto actualizado en servidor:');
-        console.log('   - Stock guardado:', response.product.stock);
-        console.log('   - Stock surtido guardado:', response.product.stock_surtido);
-        console.log('   - Stock almacenado:', response.product.stock_almacenado);
+        console.log('✅ [CLIENT] Producto actualizado en servidor');
 
-        // VERIFICAR CONSISTENCIA
-        if (response.product.stock !== stockTotal) {
-            console.warn('⚠️ [CLIENT] ADVERTENCIA: Discrepancia en stock total');
-            console.warn('   Esperado:', stockTotal);
-            console.warn('   Guardado:', response.product.stock);
-        }
-
-        if (response.product.stock_surtido !== stockSurtido) {
-            console.warn('⚠️ [CLIENT] ADVERTENCIA: Discrepancia en stock surtido');
-            console.warn('   Esperado:', stockSurtido);
-            console.warn('   Guardado:', response.product.stock_surtido);
-        }
-
-        // Actualizar cache local con datos verificados del servidor
+        // Actualizar cache local INMEDIATAMENTE con datos del servidor
         const index = this.products.findIndex(p => p._id === productId);
         if (index !== -1) {
             this.products[index] = {
                 ...this.products[index],
-                ...response.product
+                stock: response.product.stock,
+                stock_surtido: response.product.stock_surtido
             };
-            console.log('✅ [CLIENT] Cache local actualizado');
+            console.log('✅ [CLIENT] Cache local actualizado INMEDIATAMENTE');
         }
 
-        // Remover de lista de modificados
+        // También actualizar filteredProducts si existe
+        const filteredIndex = this.filteredProducts.findIndex(p => p._id === productId);
+        if (filteredIndex !== -1) {
+            this.filteredProducts[filteredIndex] = {
+                ...this.filteredProducts[filteredIndex],
+                stock: response.product.stock,
+                stock_surtido: response.product.stock_surtido
+            };
+            console.log('✅ [CLIENT] filteredProducts actualizado');
+        }
+
+        // Remover de modificados ANTES de actualizar UI
         this.modifiedProducts.delete(productId);
         this.updateSaveAllButton();
 
-        // Mensaje de éxito detallado
+        // 📊 NUEVO: REGISTRAR LOG DE ACTUALIZACIÓN EXITOSA
+        const datosNuevos = {
+    nombre: product.name,
+    barcode: product.barcode,
+    stock: response.product.stock, // Total (para referencia)
+    stock_surtido: response.product.stock_surtido,
+    stock_almacenado: (response.product.stock || 0) - (response.product.stock_surtido || 0),
+    formula: {
+        sphere: product.sphere || 'N/A',
+        cylinder: product.cylinder || 'N/A',
+        addition: product.addition || 'N/A'
+    },
+    modificacion: 'Redistribución de stock entre Surtido y Almacenado'
+};
+
+// Determinar cambios específicos ENFOCADO EN DISTRIBUCIÓN
+const cambios = [];
+
+if (datosAnteriores.stock_surtido !== datosNuevos.stock_surtido) {
+    const diff = datosNuevos.stock_surtido - datosAnteriores.stock_surtido;
+    const signo = diff > 0 ? '+' : '';
+    cambios.push(`Surtido: ${datosAnteriores.stock_surtido} → ${datosNuevos.stock_surtido} (${signo}${diff})`);
+}
+
+if (datosAnteriores.stock_almacenado !== datosNuevos.stock_almacenado) {
+    const diff = datosNuevos.stock_almacenado - datosAnteriores.stock_almacenado;
+    const signo = diff > 0 ? '+' : '';
+    cambios.push(`Almacenado: ${datosAnteriores.stock_almacenado} → ${datosNuevos.stock_almacenado} (${signo}${diff})`);
+}
+
+// Si cambió el total (raro, pero posible)
+if (datosAnteriores.stock !== datosNuevos.stock) {
+    cambios.push(`Total: ${datosAnteriores.stock} → ${datosNuevos.stock}`);
+}
+
+await activityLogger.log({
+    tipo: 'PRODUCTO',
+    accion: `Redistribución de stock: ${product.name} - ${cambios.join(' | ')}`,
+    entidad: 'Producto',
+    entidad_id: productId,
+    datos_anteriores: datosAnteriores,
+    datos_nuevos: datosNuevos
+});
+
+        // Mensaje de éxito
         let successMsg = 'Stock actualizado correctamente';
         if (response.changes) {
             const { stockChanged, stockSurtidoChanged } = response.changes;
@@ -1150,32 +1205,31 @@ export const transactionManager = {
             saveBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
         }
 
-        // Actualizar display
+        // Actualizar display DESPUÉS de actualizar cache
         this.updateProductDisplay(productId);
 
         console.log('========================================');
         console.log('✅ [CLIENT] GUARDADO COMPLETADO');
         console.log('========================================\n');
 
-        // Recargar productos después de un pequeño delay (para asegurar sincronización)
-        setTimeout(async () => {
-            console.log('🔄 [CLIENT] Recargando productos para verificar...');
-            await this.loadProducts();
-            
-            const selectedRef = document.getElementById('referencia')?.value;
-            if (selectedRef) {
-                this.loadReferencia(selectedRef);
-            }
-        }, 500);
-
     } catch (error) {
         console.error('\n========================================');
         console.error('💥 [CLIENT] ERROR AL GUARDAR');
         console.error('========================================');
         console.error('Error completo:', error);
-        console.error('ProductID:', productId);
-        console.error('Stack trace:', error.stack);
         console.error('========================================\n');
+
+        // 📊 NUEVO: REGISTRAR LOG DE ERROR
+        await activityLogger.log({
+            tipo: 'PRODUCTO',
+            accion: `Error al actualizar stock: ${product?.name || 'Producto desconocido'} - ${error.message}`,
+            entidad: 'Producto',
+            entidad_id: productId,
+            datos_nuevos: {
+                error: error.message,
+                timestamp: new Date().toISOString()
+            }
+        });
 
         // Restaurar botón
         const saveBtn = document.querySelector(`.save-changes-btn[data-id="${productId}"]`);
@@ -1183,13 +1237,11 @@ export const transactionManager = {
             saveBtn.disabled = false;
             saveBtn.innerHTML = '<i class="bi bi-x-lg text-danger"></i>';
             
-            // Restaurar después de 2 segundos
             setTimeout(() => {
                 saveBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
             }, 2000);
         }
 
-        // Mensaje de error detallado
         let errorMsg = 'Error al actualizar el stock';
         
         if (error.message.includes('Timeout')) {
@@ -1217,11 +1269,13 @@ async saveAllChanges() {
     console.log('========================================');
     console.log('📦 Total de productos modificados:', this.modifiedProducts.size);
 
+    const productsToSave = Array.from(this.modifiedProducts);
+
     try {
         const saveAllBtn = document.getElementById('save-all-changes-btn');
         if (saveAllBtn) {
             saveAllBtn.disabled = true;
-            saveAllBtn.innerHTML = `<i class="bi bi-hourglass-split"></i> Guardando ${this.modifiedProducts.size} productos...`;
+            saveAllBtn.innerHTML = `<i class="bi bi-hourglass-split"></i> Guardando ${productsToSave.length} productos...`;
         }
 
         const results = {
@@ -1229,8 +1283,11 @@ async saveAllChanges() {
             failed: []
         };
 
-        // Guardar productos uno por uno (con logging detallado)
-        for (const productId of Array.from(this.modifiedProducts)) {
+        // 🔍 NUEVO: Recopilar datos para log masivo
+        const productosModificados = [];
+
+        // Guardar productos uno por uno
+        for (const productId of productsToSave) {
             const product = this.products.find(p => p._id === productId);
             
             if (!product) {
@@ -1241,8 +1298,13 @@ async saveAllChanges() {
 
             console.log(`\n📝 [CLIENT] Guardando producto ${product.name} (${product.barcode})`);
 
+            // Guardar datos anteriores
+            const datosAnteriores = {
+                stock: product.stock,
+                stock_surtido: product.stock_surtido
+            };
+
             try {
-                // Validación
                 const stockTotal = parseInt(product.stock) || 0;
                 const stockSurtido = parseInt(product.stock_surtido) || 0;
 
@@ -1255,26 +1317,55 @@ async saveAllChanges() {
                     stock_surtido: stockSurtido
                 };
 
-                console.log(`   📤 Enviando:`, updateData);
-
                 const response = await window.api.updateProductStock(productId, updateData);
 
                 if (response && response.success) {
                     console.log(`   ✅ Guardado exitosamente`);
+                    
+                    // Actualizar cache inmediatamente
+                    const index = this.products.findIndex(p => p._id === productId);
+                    if (index !== -1 && response.product) {
+                        this.products[index] = {
+                            ...this.products[index],
+                            stock: response.product.stock,
+                            stock_surtido: response.product.stock_surtido
+                        };
+                    }
+
+                    // También actualizar filteredProducts
+                    const filteredIndex = this.filteredProducts.findIndex(p => p._id === productId);
+                    if (filteredIndex !== -1 && response.product) {
+                        this.filteredProducts[filteredIndex] = {
+                            ...this.filteredProducts[filteredIndex],
+                            stock: response.product.stock,
+                            stock_surtido: response.product.stock_surtido
+                        };
+                    }
+
                     results.successful.push({
                         productId,
                         name: product.name,
                         changes: response.changes
                     });
 
-                    // Actualizar cache
-                    const index = this.products.findIndex(p => p._id === productId);
-                    if (index !== -1 && response.product) {
-                        this.products[index] = {
-                            ...this.products[index],
-                            ...response.product
-                        };
-                    }
+                    // 📊 NUEVO: Agregar a lista para log
+                    productosModificados.push({
+                      nombre: product.name,
+                      barcode: product.barcode,
+                      anterior: {
+                      surtido: datosAnteriores.stock_surtido,
+                      almacenado: (datosAnteriores.stock || 0) - (datosAnteriores.stock_surtido || 0)
+                      },
+                      nuevo: {
+                      surtido: response.product.stock_surtido,
+                      almacenado: (response.product.stock || 0) - (response.product.stock_surtido || 0)
+                      },
+                      cambio_surtido: response.product.stock_surtido - datosAnteriores.stock_surtido,
+                      cambio_almacenado: ((response.product.stock || 0) - (response.product.stock_surtido || 0)) - ((datosAnteriores.stock || 0) - (datosAnteriores.stock_surtido || 0))
+});
+
+                    this.modifiedProducts.delete(productId);
+
                 } else {
                     throw new Error(response?.message || 'Respuesta inválida del servidor');
                 }
@@ -1294,21 +1385,50 @@ async saveAllChanges() {
         console.log('========================================');
         console.log('✅ Exitosos:', results.successful.length);
         console.log('❌ Fallidos:', results.failed.length);
-        
-        if (results.failed.length > 0) {
-            console.log('\n❌ Productos que fallaron:');
-            results.failed.forEach(f => {
-                console.log(`   - ${f.name || f.productId}: ${f.error}`);
-            });
-        }
         console.log('========================================\n');
 
-        // Limpiar productos guardados exitosamente
-        results.successful.forEach(r => {
-            this.modifiedProducts.delete(r.productId);
-        });
+        // 📊 NUEVO: REGISTRAR LOG MASIVO DE ACTUALIZACIÓN
+        if (results.successful.length > 0) {
+            await activityLogger.log({
+                tipo: 'PRODUCTO',
+                accion: `Actualización masiva de stock de ${results.successful.length} productos en referencia: ${this.currentReference}`,
+                entidad: 'Productos (Lote)',
+                entidad_id: this.currentReference,
+                datos_nuevos: {
+                    referencia: this.currentReference,
+                    productos_count: results.successful.length,
+                    productos_detalle: productosModificados.slice(0, 10), // Primeros 10
+                    total_modificados: results.successful.length,
+                    timestamp: new Date().toISOString()
+                }
+            });
+        }
 
+        // 📊 NUEVO: REGISTRAR ERRORES SI LOS HAY
+        if (results.failed.length > 0) {
+            await activityLogger.log({
+                tipo: 'PRODUCTO',
+                accion: `Errores en actualización masiva: ${results.failed.length} productos fallaron`,
+                entidad: 'Productos (Errores)',
+                entidad_id: this.currentReference,
+                datos_nuevos: {
+                    referencia: this.currentReference,
+                    errores_count: results.failed.length,
+                    productos_fallidos: results.failed.map(f => ({
+                        nombre: f.name,
+                        error: f.error
+                    }))
+                }
+            });
+        }
+
+        // Actualizar UI
         this.updateSaveAllButton();
+
+        // Re-renderizar productos exitosos
+        results.successful.forEach(r => {
+            this.updateSingleProductRow(r.productId);
+        });
 
         // Mensaje final
         if (results.failed.length === 0) {
@@ -1328,20 +1448,65 @@ async saveAllChanges() {
             );
         }
 
-        // Recargar datos
-        await this.loadProducts();
-        const selectedRef = document.getElementById('referencia')?.value;
-        if (selectedRef) {
-            this.loadReferencia(selectedRef);
-        }
-
     } catch (error) {
         console.error('💥 [CLIENT] Error crítico en saveAllChanges:', error);
+        
+        // 📊 NUEVO: REGISTRAR ERROR CRÍTICO
+        await activityLogger.log({
+            tipo: 'PRODUCTO',
+            accion: `Error crítico en actualización masiva de stock`,
+            entidad: 'Sistema',
+            datos_nuevos: {
+                error: error.message,
+                referencia: this.currentReference,
+                stack: error.stack
+            }
+        });
+        
         uiManager.showAlert(`Error crítico: ${error.message}`, 'danger');
         this.updateSaveAllButton();
     }
 },
 
+async verifyServerSync(productId) {
+    try {
+        console.log('🔍 Verificando sincronización con servidor para:', productId);
+        
+        const response = await window.api.getProducts();
+        
+        if (response && response.success && Array.isArray(response.products)) {
+            const serverProduct = response.products.find(p => p._id === productId);
+            const localProduct = this.products.find(p => p._id === productId);
+            
+            if (serverProduct && localProduct) {
+                const stockMatch = serverProduct.stock === localProduct.stock;
+                const stockSurtidoMatch = serverProduct.stock_surtido === localProduct.stock_surtido;
+                
+                if (!stockMatch || !stockSurtidoMatch) {
+                    console.warn('⚠️ DESINCRONIZACIÓN DETECTADA:');
+                    console.warn('Servidor:', { 
+                        stock: serverProduct.stock, 
+                        stock_surtido: serverProduct.stock_surtido 
+                    });
+                    console.warn('Local:', { 
+                        stock: localProduct.stock, 
+                        stock_surtido: localProduct.stock_surtido 
+                    });
+                    
+                    return false;
+                }
+                
+                console.log('✅ Producto sincronizado correctamente');
+                return true;
+            }
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('❌ Error al verificar sincronización:', error);
+        return false;
+    }
+},
   // FUNCIÓN DE EXPORTACIÓN UNIFICADA CSV - CORREGIDA
   async exportUnifiedCSV() {
     const referencia = document.getElementById('referencia').value;
@@ -1350,7 +1515,6 @@ async saveAllChanges() {
       return;
     }
 
-    // CORRECCIÓN: Verificar que this.products sea un array
     if (!Array.isArray(this.products)) {
       uiManager.showAlert('Error: No se han cargado los productos correctamente', 'danger');
       return;
@@ -1368,15 +1532,43 @@ async saveAllChanges() {
     try {
       const result = await unifiedExportSystem.exportUnifiedCSV(filteredProducts, referencia);
 
+      // 📊 NUEVO: REGISTRAR LOG DE EXPORTACIÓN
+      await activityLogger.log({
+        tipo: 'PRODUCTO',
+        accion: `Exportación de plantilla CSV - ${result.lensType.toUpperCase()}`,
+        entidad: 'Exportación',
+        entidad_id: referencia,
+        datos_nuevos: {
+          referencia: referencia,
+          tipo_lente: result.lensType,
+          total_productos: result.totalProducts,
+          grupos_generados: result.groupsCount,
+          timestamp: new Date().toISOString()
+        }
+      });
+
       uiManager.showAlert(
         `Plantilla ${result.lensType.toUpperCase()} exportada correctamente - ${result.totalProducts} productos procesados`,
         'success'
       );
     } catch (error) {
       console.error('Error en exportación:', error);
+      
+      // 📊 NUEVO: REGISTRAR ERROR DE EXPORTACIÓN
+      await activityLogger.log({
+        tipo: 'PRODUCTO',
+        accion: `Error en exportación de plantilla CSV`,
+        entidad: 'Exportación',
+        entidad_id: referencia,
+        datos_nuevos: {
+          referencia: referencia,
+          error: error.message
+        }
+      });
+      
       uiManager.showAlert(`Error al generar plantilla: ${error.message}`, 'danger');
     }
-  },
+},
   // ========== SINCRONIZACIÓN ==========
 
   setupSyncListeners() {
@@ -1442,45 +1634,48 @@ async saveAllChanges() {
     console.log('🔄 TransactionManager: Actualizando producto', product._id);
 
     if (!Array.isArray(this.products)) {
-      console.warn('⚠️ TransactionManager.products no es un array');
-      return;
+        console.warn('⚠️ TransactionManager.products no es un array');
+        return;
+    }
+
+    // ✅ CORRECCIÓN: NO actualizar si el producto está siendo modificado localmente
+    if (this.modifiedProducts.has(product._id)) {
+        console.log('⚠️ Producto está siendo modificado, ignorando actualización externa');
+        return;
     }
 
     const index = this.products.findIndex(p => p._id === product._id);
     if (index !== -1) {
-      // Actualizar producto en cache
-      this.products[index] = {
-        ...this.products[index],
-        ...product
-      };
+        // Actualizar producto en cache
+        this.products[index] = {
+            ...this.products[index],
+            ...product
+        };
 
-      console.log(`✅ Producto actualizado en cache: ${product.name}`);
+        console.log(`✅ Producto actualizado en cache: ${product.name}`);
 
-      // CORRECCIÓN: Re-renderizar vista activa
-      if (this.currentReference) {
         // Actualizar filteredProducts también
         const filteredIndex = this.filteredProducts.findIndex(p => p._id === product._id);
         if (filteredIndex !== -1) {
-          this.filteredProducts[filteredIndex] = this.products[index];
-          console.log('✅ Producto actualizado en filteredProducts');
+            this.filteredProducts[filteredIndex] = this.products[index];
+            console.log('✅ Producto actualizado en filteredProducts');
 
-          // Re-renderizar solo si el producto pertenece a la referencia actual
-          if (product.name === this.currentReference) {
-            this.updateSingleProductRow(product._id);
-          }
+            // Re-renderizar solo si el producto pertenece a la referencia actual
+            if (product.name === this.currentReference) {
+                this.updateSingleProductRow(product._id);
+            }
         }
-      }
     } else {
-      console.log('⚠️ Producto no encontrado en cache, agregándolo...');
-      this.products.push(product);
-      this.sortProductsById();
+        console.log('⚠️ Producto no encontrado en cache, agregándolo...');
+        this.products.push(product);
+        this.sortProductsById();
 
-      // Si pertenece a la referencia actual, recargar
-      if (product.name === this.currentReference) {
-        this.loadReferencia(this.currentReference);
-      }
+        // Si pertenece a la referencia actual, recargar
+        if (product.name === this.currentReference) {
+            this.loadReferencia(this.currentReference);
+        }
     }
-  }, 
+}, 
 
   handleStockUpdated(data) {
     console.log('📦 TransactionManager: Stock actualizado', data.productId);

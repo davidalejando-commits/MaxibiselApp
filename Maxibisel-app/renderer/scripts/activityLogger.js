@@ -1,5 +1,6 @@
 import { uiManager } from './ui.js';
 
+
 export const activityLogger = {
   logs: [],
   maxLogsInMemory: 100,
@@ -552,7 +553,7 @@ export const activityLogger = {
     }
     
     // ====================================================================
-    // 🔬 FÓRMULA DEL PRODUCTO EN ESPAÑOL
+    // 🔬 FÓRMULA DEL PRODUCTO
     // ====================================================================
     if (datosNuevos?.formula) {
         const formula = datosNuevos.formula;
@@ -562,7 +563,7 @@ export const activityLogger = {
             items.push(`
                 <div style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); padding: 10px 12px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e9d5ff;">
                     <div style="font-weight: 600; color: #7c3aed; font-size: 0.8rem; margin-bottom: 6px; display: flex; align-items: center;">
-                        <i class="bi bi-diagram-3 me-2"></i>Fórmula del Producto
+                        <i class="bi bi-diagram-3 me-2"></i>Información del Producto
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
                         <div style="background: white; padding: 6px 8px; border-radius: 4px; text-align: center;">
@@ -583,8 +584,106 @@ export const activityLogger = {
         }
     }
     
-    // Stock con comparación
-    if (datosNuevos?.stock !== undefined) {
+    // ====================================================================
+    // 📊 DISTRIBUCIÓN DE STOCK (PRINCIPAL - NUEVO)
+    // ====================================================================
+    const tieneDistribucion = 
+        (datosNuevos?.stock_surtido !== undefined) || 
+        (datosNuevos?.stock_almacenado !== undefined);
+    
+    if (tieneDistribucion) {
+        // Valores actuales
+        const surtidoNuevo = datosNuevos?.stock_surtido ?? 0;
+        const almacenadoNuevo = datosNuevos?.stock_almacenado ?? 0;
+        const totalNuevo = surtidoNuevo + almacenadoNuevo;
+        
+        // Valores anteriores
+        const surtidoAnterior = datosAnteriores?.stock_surtido ?? 0;
+        const almacenadoAnterior = datosAnteriores?.stock_almacenado ?? 0;
+        const totalAnterior = surtidoAnterior + almacenadoAnterior;
+        
+        // Calcular cambios
+        const cambioSurtido = surtidoNuevo - surtidoAnterior;
+        const cambioAlmacenado = almacenadoNuevo - almacenadoAnterior;
+        const cambioTotal = totalNuevo - totalAnterior;
+        
+        // Función auxiliar para generar indicador de cambio
+        const generarCambio = (cambio) => {
+            if (cambio === 0 || !datosAnteriores) return '';
+            const color = cambio > 0 ? '#28a745' : '#dc3545';
+            const icono = cambio > 0 ? '↑' : '↓';
+            return `<span style="color: ${color}; font-weight: 600; margin-left: 6px; font-size: 0.85rem;">${icono} ${Math.abs(cambio)}</span>`;
+        };
+        
+        // Calcular porcentajes
+        const porcentajeSurtido = totalNuevo > 0 ? ((surtidoNuevo / totalNuevo) * 100).toFixed(0) : 0;
+        const porcentajeAlmacenado = totalNuevo > 0 ? ((almacenadoNuevo / totalNuevo) * 100).toFixed(0) : 0;
+        
+        items.push(`
+            <div style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%); padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #c8e6c9;">
+                <div style="font-weight: 700; color: #2e7d32; font-size: 0.85rem; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="bi bi-bar-chart-fill me-2"></i>Distribución de Stock</span>
+                    <span style="background: #66bb6a; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">
+                        Total: ${totalNuevo} Und ${generarCambio(cambioTotal)}
+                    </span>
+                </div>
+                
+                <!-- Barra de progreso visual -->
+                <div style="background: white; border-radius: 6px; overflow: hidden; height: 30px; margin-bottom: 10px; display: flex; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+                    ${surtidoNuevo > 0 ? `
+                        <div style="background: linear-gradient(135deg, #42a5f5 0%, #1976d2 100%); width: ${porcentajeSurtido}%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem; transition: width 0.3s ease;">
+                            ${porcentajeSurtido}%
+                        </div>
+                    ` : ''}
+                    ${almacenadoNuevo > 0 ? `
+                        <div style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); width: ${porcentajeAlmacenado}%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem; transition: width 0.3s ease;">
+                            ${porcentajeAlmacenado}%
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <!-- Detalles numéricos -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div style="background: white; padding: 10px; border-radius: 6px; border-left: 4px solid #1976d2;">
+                        <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                            <i class="bi bi-shop" style="color: #1976d2; font-size: 1.1rem; margin-right: 6px;"></i>
+                            <span style="font-size: 0.75rem; color: #6c757d; font-weight: 600;">SURTIDO (En Tienda)</span>
+                        </div>
+                        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+                            <span style="font-size: 1.3rem; font-weight: 700; color: #1976d2;">${surtidoNuevo}</span>
+                            ${generarCambio(cambioSurtido)}
+                        </div>
+                        ${datosAnteriores && cambioSurtido !== 0 ? `
+                            <div style="font-size: 0.7rem; color: #6c757d; margin-top: 4px;">
+                                Anterior: ${surtidoAnterior} Und
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div style="background: white; padding: 10px; border-radius: 6px; border-left: 4px solid #f57c00;">
+                        <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                            <i class="bi bi-box-seam" style="color: #f57c00; font-size: 1.1rem; margin-right: 6px;"></i>
+                            <span style="font-size: 0.75rem; color: #6c757d; font-weight: 600;">ALMACENADO (Bodega)</span>
+                        </div>
+                        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+                            <span style="font-size: 1.3rem; font-weight: 700; color: #f57c00;">${almacenadoNuevo}</span>
+                            ${generarCambio(cambioAlmacenado)}
+                        </div>
+                        ${datosAnteriores && cambioAlmacenado !== 0 ? `
+                            <div style="font-size: 0.7rem; color: #6c757d; margin-top: 4px;">
+                                Anterior: ${almacenadoAnterior} Und
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `);
+    }
+    
+    // ====================================================================
+    // 📦 STOCK TOTAL (Solo si no hay distribución o como info adicional)
+    // ====================================================================
+    if (datosNuevos?.stock !== undefined && !tieneDistribucion) {
         const cambio = datosAnteriores?.stock !== undefined ? datosNuevos.stock - datosAnteriores.stock : null;
         const cambioHTML = cambio !== null ? `
             <span style="color: ${cambio >= 0 ? '#28a745' : '#dc3545'}; margin-left: 8px; font-weight: 600;">
@@ -594,7 +693,7 @@ export const activityLogger = {
         
         items.push(`
             <div style="font-size: 0.85rem; margin-bottom: 6px;">
-                <strong style="color: #9b59b6;">📊 Stock:</strong> ${datosNuevos.stock} unidades${cambioHTML}
+                <strong style="color: #9b59b6;">📊 Stock Total:</strong> ${datosNuevos.stock} unidades${cambioHTML}
             </div>
         `);
     }
@@ -609,11 +708,11 @@ export const activityLogger = {
         `);
     }
     
-    // Tipo de modificación (para logs de stock)
+    // Tipo de modificación
     if (datosNuevos?.modificacion) {
         items.push(`
             <div style="font-size: 0.85rem; margin-top: 8px; padding: 6px 10px; background: #fff3cd; border-left: 3px solid #ffc107; border-radius: 4px;">
-                <strong style="color: #856404;">📝 Modificación:</strong> ${datosNuevos.modificacion}
+                <strong style="color: #856404;">📝 Tipo:</strong> ${datosNuevos.modificacion}
             </div>
         `);
     }
@@ -625,7 +724,7 @@ export const activityLogger = {
             ${items.join('')}
         </div>
     `;
-  },
+},
 
   getLogConfig(tipo) {
     const configs = {

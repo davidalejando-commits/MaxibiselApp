@@ -629,10 +629,6 @@ export class BarcodeGenerator {
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2><i class="bi bi-upc-scan me-2"></i>Generador de Códigos de Barra</h2>
-                        <small class="text-muted">
-                            <i class="bi bi-info-circle"></i> 
-                            Optimizado para hoja carta croquelada • 7x12 (84 códigos/página) • 30x22mm
-                        </small>
                     </div>
                 </div>
 

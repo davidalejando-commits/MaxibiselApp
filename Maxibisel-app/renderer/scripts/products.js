@@ -14,6 +14,7 @@ export const productManager = {
     currentEditingProduct: null,
     productToDeleteId: null,
     productToDeleteName: null,
+    _scrollConfigured: false,
 
     async init() {
         if (this.initializationPromise) {
@@ -48,7 +49,7 @@ export const productManager = {
         await this._waitForDOMElements(10000);
         this._initializeModals();
         this.setupEventListeners();
-        this._setupTableScrolling();
+        
 
         if (dataSync && typeof dataSync.subscribe === 'function') {
             dataSync.subscribe(this.viewName, 'products', this.handleDataChange.bind(this));
@@ -81,50 +82,38 @@ export const productManager = {
     }
 },
 
-    _setupTableScrolling() {
-        const productsView = document.querySelector('#products-view');
-        const card = document.querySelector('#products-view .card');
+   _setupTableScrolling() {
         const tableContainer = document.querySelector('#products-view .table-container');
-
-        if (tableContainer && card) {
-            const navbar = document.querySelector('nav');
-            const navbarHeight = navbar ? navbar.offsetHeight : 60;
-            const marginTop = 32;
-            const headerSection = document.querySelector('#products-view .d-flex.justify-content-between');
-            const headerHeight = headerSection ? headerSection.offsetHeight : 60;
-            const cardPadding = 48;
-
-            const availableHeight = window.innerHeight - navbarHeight - marginTop - 40;
-            card.style.height = `${availableHeight}px`;
-            card.style.display = 'flex';
-            card.style.flexDirection = 'column';
-            card.style.overflow = 'hidden';
-
-            const cardBody = card.querySelector('.card-body');
-            if (cardBody) {
-                cardBody.style.flex = '1';
-                cardBody.style.display = 'flex';
-                cardBody.style.flexDirection = 'column';
-                cardBody.style.overflow = 'hidden';
-            }
-
-            const table = tableContainer.querySelector('table');
-            if (table) {
-                table.style.marginBottom = '0';
-                const thead = table.querySelector('thead');
-                if (thead) {
-                    thead.style.position = 'sticky';
-                    thead.style.top = '0';
-                    thead.style.backgroundColor = '#f8f9fa';
-                    thead.style.zIndex = '10';
-                    thead.style.boxShadow = '0 2px 2px -1px rgba(0, 0, 0, 0.1)';
-                }
-            }
-
-            console.log('Scroll de tabla configurado con altura:', availableHeight);
+        
+        if (!tableContainer) {
+            console.warn('Contenedor de tabla no encontrado para scroll');
+            return;
         }
+
+        // Solo configurar propiedades CSS esenciales (sin calcular alturas)
+        tableContainer.style.maxHeight = 'calc(100vh - 248px)'; // 2px más de altura (250px - 2px)
+        tableContainer.style.overflowY = 'auto';
+        tableContainer.style.overflowX = 'hidden';
+        tableContainer.style.paddingBottom = '10px'; // Reducido de 30px a 10px
+        
+        const table = tableContainer.querySelector('table');
+        if (table) {
+            table.style.marginBottom = '15px'; // Reducido de 40px a 15px
+            
+            const thead = table.querySelector('thead');
+            if (thead) {
+                thead.style.position = 'sticky';
+                thead.style.top = '0';
+                thead.style.backgroundColor = '#f8f9fa';
+                thead.style.zIndex = '10';
+                thead.style.boxShadow = '0 2px 2px -1px rgba(0, 0, 0, 0.1)';
+            }
+        }
+
+        console.log('✅ Scroll configurado con CSS estático');
     },
 
+    
     setupAuthEventListeners() {
         console.log('Configurando listeners para eventos de auth...');
         eventManager.on('auth:login-success', this.handleLoginSuccess.bind(this));
@@ -450,7 +439,7 @@ export const productManager = {
                 const container = table.closest('.table-container, .table-responsive');
                 if (container) {
                     container.classList.add('table-container-base');
-                    this._setupTableScrolling();
+                    
                 }
             }
 
@@ -691,7 +680,11 @@ export const productManager = {
 
         tableBody.appendChild(fragment);
 
-        this._setupTableScrolling();
+        if (!this._scrollConfigured && this.products.length > 0) {
+            this._setupTableScrolling();
+            this._scrollConfigured = true;
+            console.log('Scroll configurado por primera vez');
+        }
 
         setTimeout(() => {
             if (window.uiManager && window.uiManager.forceStyleUpdate) {
