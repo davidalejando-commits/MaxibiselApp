@@ -1242,60 +1242,108 @@ formatLensSpecsForLog(lens) {
     console.log('✅ Escáner activo');
   },
 
-  async processBarcodeInput(barcode) {
+ async processBarcodeInput(barcode) {
   console.log('📷 Código escaneado (original):', barcode);
   
   if (!barcode || barcode.length < 4) return;
 
-  // ✅ NORMALIZACIÓN: Reemplazar ' por - antes de buscar
-  const barcodeNormalizado = barcode.replace(/'/g, '-');
+  // ✅ NORMALIZACIÓN MEJORADA: Usar función centralizada
+  const barcodeNormalizado = this.normalizarCodigoBarras(barcode);
   console.log('📷 Código normalizado:', barcodeNormalizado);
   
   this.showBarcodeIndicator(barcodeNormalizado, 'searching');
   
   try {
-    // ✅ Buscar usando el código normalizado
     const product = await this.findProductByBarcode(barcodeNormalizado);
     
     if (product) {
+      console.log('✅ Producto encontrado:', product.name, 'ID:', product._id);
       this.addLensToSelection(product._id);
       this.showBarcodeIndicator(barcodeNormalizado, 'success', product.name);
       this.playBeep('success');
     } else {
+      console.log('❌ Producto NO encontrado');
       this.showBarcodeIndicator(barcodeNormalizado, 'error');
       this.playBeep('error');
     }
   } catch (error) {
-    console.error('Error:', error);
+    console.error('💥 Error procesando código:', error);
     this.showBarcodeIndicator(barcodeNormalizado, 'error');
     this.playBeep('error');
   }
 },
 
-  async findProductByBarcode(barcode) {
-  // Normalizar el código de búsqueda
-  const normalizedBarcode = barcode.replace(/'/g, '-').toLowerCase();
+// ✅ NUEVA FUNCIÓN: Normalizar códigos de barras
+normalizarCodigoBarras(barcode) {
+  if (!barcode) return '';
+  
+  let codigo = String(barcode);
+  codigo = codigo.trim();
+  
+  // ✅ El escáner lee ' en lugar de -
+  codigo = codigo.replace(/'/g, '-');
+  
+  // ✅ El escáner lee ¡ en lugar de +
+  codigo = codigo.replace(/¡/g, '+');
+  
+  codigo = codigo.toLowerCase();
+  codigo = codigo.replace(/\s+/g, '');
+  
+  return codigo;
+},
+
+async findProductByBarcode(barcode) {
+  const normalizedBarcode = this.normalizarCodigoBarras(barcode);
   console.log('🔍 Buscando código normalizado:', normalizedBarcode);
   
-  if (Array.isArray(this.state.availableLenses)) {
-    const found = this.state.availableLenses.find(lens => {
-      if (!lens.barcode) return false;
-      
-      // Normalizar el código del producto también
-      const productBarcode = lens.barcode.replace(/'/g, '-').toLowerCase();
-      return productBarcode === normalizedBarcode;
-    });
-    
-    if (found) {
-      console.log('✅ Producto encontrado:', found.name);
-    } else {
-      console.log('❌ Producto no encontrado con código:', normalizedBarcode);
-    }
-    
-    return found;
+  if (!Array.isArray(this.state.availableLenses)) {
+    console.error('❌ availableLenses no es un array');
+    return null;
   }
   
-  return null;
+  if (this.state.availableLenses.length === 0) {
+    console.warn('⚠️ No hay productos cargados');
+    return null;
+  }
+  
+  const found = this.state.availableLenses.find(lens => {
+    if (!lens || !lens.barcode) return false;
+    
+    const productBarcode = this.normalizarCodigoBarras(lens.barcode);
+    const match = productBarcode === normalizedBarcode;
+    
+    if (match) {
+      console.log('✅ MATCH encontrado:', {
+        productoNombre: lens.name,
+        codigoBuscado: normalizedBarcode,
+        codigoProducto: productBarcode,
+        codigoOriginal: lens.barcode
+      });
+    }
+    
+    return match;
+  });
+  
+  if (found) {
+    console.log('✅ Producto encontrado:', found.name);
+  } else {
+    console.log('❌ Producto no encontrado');
+    console.log('📊 Total productos:', this.state.availableLenses.length);
+    console.log('📊 Con código:', this.state.availableLenses.filter(l => l.barcode).length);
+    
+    // Mostrar muestra de códigos
+    const muestra = this.state.availableLenses
+      .filter(l => l.barcode)
+      .slice(0, 5)
+      .map(l => ({
+        nombre: l.name,
+        original: l.barcode,
+        normalizado: this.normalizarCodigoBarras(l.barcode)
+      }));
+    console.log('📋 Muestra de códigos:', muestra);
+  }
+  
+  return found;
 },
 
   showBarcodeIndicator(barcode, status, productName = '') {
