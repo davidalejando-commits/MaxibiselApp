@@ -570,47 +570,155 @@ export const salesManager = {
     this.updateSelectedCounter();
   },
 
-  handleSearch(event) {
-    const searchTerm = event.target.value.toLowerCase().trim();
-    if (!searchTerm) {
-      document.getElementById("searchResults").innerHTML = `
-        <div class="lens-item" data-id="ejemplo-placeholder">
-          <p>Busque productos para mostrar resultados...</p>
-        </div>
-      `;
-      return;
+  // ✅ FUNCIÓN DE BÚSQUEDA MEJORADA Y ORGANIZADA
+handleSearch(event) {
+  const searchTerm = event.target.value.trim();
+  
+  // Si el campo está vacío, mostrar mensaje por defecto
+  if (!searchTerm) {
+    document.getElementById("searchResults").innerHTML = `
+      <div class="lens-item" data-id="ejemplo-placeholder">
+        <p>Busque productos para mostrar resultados...</p>
+      </div>
+    `;
+    return;
+  }
+
+  // ✅ VALIDACIÓN: Asegurar que availableLenses sea un array
+  if (!Array.isArray(this.state.availableLenses)) {
+    console.error("❌ availableLenses no es un array:", this.state.availableLenses);
+    this.state.availableLenses = [];
+    document.getElementById("searchResults").innerHTML = `
+      <div class="lens-item">
+        <p>Error: No se pueden buscar productos</p>
+      </div>
+    `;
+    return;
+  }
+
+  // ✅ NORMALIZAR término de búsqueda
+  const searchTermNormalized = this.normalizarTerminoBusqueda(searchTerm);
+  
+  console.log('🔍 Búsqueda:', {
+    original: searchTerm,
+    normalizado: searchTermNormalized
+  });
+
+  // ✅ FILTRAR productos usando función especializada
+  const filteredLenses = this.state.availableLenses.filter(lens => 
+    this.productoCoincideConBusqueda(lens, searchTermNormalized)
+  );
+
+  // ✅ ORDENAR resultados
+  this.sortLensesById(filteredLenses);
+  this.state.searchResults = filteredLenses;
+  
+  console.log(`✅ Encontrados ${filteredLenses.length} productos`);
+  this.renderSearchResults();
+},
+
+// ✅ NUEVA FUNCIÓN: Normalizar término de búsqueda
+normalizarTerminoBusqueda(termino) {
+  if (!termino) return '';
+  
+  let normalizado = String(termino);
+  normalizado = normalizado.trim();
+  normalizado = normalizado.toLowerCase();
+  
+  // Reemplazar caracteres especiales que el escáner puede leer mal
+  normalizado = normalizado.replace(/'/g, '-');
+  normalizado = normalizado.replace(/¡/g, '+');
+  
+  return normalizado;
+},
+
+// ✅ NUEVA FUNCIÓN: Verificar si un producto coincide con la búsqueda
+productoCoincideConBusqueda(lens, searchTerm) {
+  if (!lens) return false;
+  
+  // ✅ 1. BÚSQUEDA POR CÓDIGO DE BARRAS (prioridad alta)
+  if (lens.barcode) {
+    const barcodeNormalizado = this.normalizarCodigoBarras(lens.barcode);
+    if (barcodeNormalizado === searchTerm) {
+      console.log('🎯 Coincidencia exacta por código:', lens.name);
+      return true;
     }
-
-    // ✅ VALIDACIÓN: Asegurar que availableLenses sea un array
-    if (!Array.isArray(this.state.availableLenses)) {
-      console.error(
-        "❌ availableLenses no es un array:",
-        this.state.availableLenses
-      );
-      this.state.availableLenses = [];
-      document.getElementById("searchResults").innerHTML = `
-        <div class="lens-item">
-          <p>Error: No se pueden buscar productos</p>
-        </div>
-      `;
-      return;
+    if (barcodeNormalizado.includes(searchTerm)) {
+      return true;
     }
+  }
 
-    const filteredLenses = this.state.availableLenses.filter((lens) => {
-      if (!lens) return false;
-      return (
-        (lens.name && lens.name.toLowerCase().includes(searchTerm)) ||
-        (lens.barcode && lens.barcode.toLowerCase().includes(searchTerm)) ||
-        (lens.sphere && lens.sphere.includes(searchTerm)) ||
-        (lens.cylinder && lens.cylinder.includes(searchTerm))
-      );
-    });
+  // ✅ 2. BÚSQUEDA POR NOMBRE
+  if (lens.name) {
+    const nombreNormalizado = lens.name.toLowerCase().trim();
+    if (nombreNormalizado.includes(searchTerm)) {
+      return true;
+    }
+  }
 
-    // ✅ CORRECCIÓN: Usar this.sortLensesById para el panel izquierdo
-    this.sortLensesById(filteredLenses);
-    this.state.searchResults = filteredLenses;
-    this.renderSearchResults();
-  },
+  // ✅ 3. BÚSQUEDA POR ESFERA
+  if (lens.sphere && lens.sphere !== 'N' && lens.sphere !== 'N/A') {
+    const esferaNormalizada = String(lens.sphere).toLowerCase().trim();
+    
+    // Búsqueda exacta
+    if (esferaNormalizada === searchTerm) {
+      return true;
+    }
+    
+    // Búsqueda parcial (ejemplo: buscar "0.25" encontrará "+0.25" o "-0.25")
+    if (esferaNormalizada.includes(searchTerm)) {
+      return true;
+    }
+    
+    // Búsqueda sin signo (ejemplo: buscar "2.00" encontrará "+2.00" o "-2.00")
+    const esferaSinSigno = esferaNormalizada.replace(/[+\-]/g, '');
+    const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
+    if (esferaSinSigno === terminoSinSigno) {
+      return true;
+    }
+  }
+
+  // ✅ 4. BÚSQUEDA POR CILINDRO
+  if (lens.cylinder && lens.cylinder !== '-' && lens.cylinder !== 'N/A') {
+    const cilindroNormalizado = String(lens.cylinder).toLowerCase().trim();
+    
+    if (cilindroNormalizado === searchTerm) {
+      return true;
+    }
+    
+    if (cilindroNormalizado.includes(searchTerm)) {
+      return true;
+    }
+    
+    const cilindroSinSigno = cilindroNormalizado.replace(/[+\-]/g, '');
+    const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
+    if (cilindroSinSigno === terminoSinSigno) {
+      return true;
+    }
+  }
+
+  // ✅ 5. BÚSQUEDA POR ADICIÓN
+  if (lens.addition && lens.addition !== '-' && lens.addition !== 'N/A') {
+    const adicionNormalizada = String(lens.addition).toLowerCase().trim();
+    
+    if (adicionNormalizada === searchTerm) {
+      return true;
+    }
+    
+    if (adicionNormalizada.includes(searchTerm)) {
+      return true;
+    }
+    
+    const adicionSinSigno = adicionNormalizada.replace(/[+\-]/g, '');
+    const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
+    if (adicionSinSigno === terminoSinSigno) {
+      return true;
+    }
+  }
+
+  // No coincide con ningún criterio
+  return false;
+},
 
   renderSearchResults() {
     const resultsContainer = document.getElementById("searchResults");
@@ -2059,10 +2167,7 @@ salesManager.generarHTMLFacturaPOS = function(factura) {
     <div id="factura-pos-print" class="factura-pos-oculta">
       <div class="factura-contenido">
         <div class="pos-header">
-          <div class="pos-logo-box">
-            <div class="pos-logo-text">DISTRIBUIDORA</div>
-            <div class="pos-logo-text">MAXI BISEL</div>
-          </div>
+          <img src="../assets/Logo.png" alt="Logo" style="max-width: 100px; max-height: 100px; margin: 0 auto 15px; display: block;">
           <div class="pos-empresa-nombre">${factura.empresa?.nombre || 'DISTRIBUIDORA MAXI BISEL'}</div>
           <div class="pos-empresa-info">
             NIT: ${factura.empresa?.nit || '000.000.000-0'}<br>
@@ -2588,28 +2693,9 @@ salesManager.generarHTMLVistaPrevia = function(factura) {
         margin: 0 auto;
         box-shadow: 0 4px 20px rgba(0,0,0,0.1);
       ">
-        
-        <!-- ENCABEZADO -->
         <div style="text-align: center; margin-bottom: 10mm;">
-          <div style="
-            width: 50mm;
-            height: 50mm;
-            margin: 0 auto 5mm;
-            border: 4px solid #000;
-            font-size: 18px;
-            font-weight: bold;
-            line-height: 1.4;
-            text-align: center;
-            padding: 4mm;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-          ">
-            <span>DISTRIBUIDORA</span>
-            <span>MAXI BISEL</span>
-          </div>
-          
+        <img src="../assets/Logo.png" alt="Logo" style="max-width: 120px; max-height: 120px; margin: 0 auto 5mm; display: block;">
+        
           <div style="font-weight: bold; font-size: 32px; margin-bottom: 4mm;">
             ${factura.empresa?.nombre || 'DISTRIBUIDORA MAXI BISEL'}
           </div>

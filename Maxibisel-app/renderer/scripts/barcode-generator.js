@@ -412,52 +412,172 @@ export class BarcodeGenerator {
         }
     }
 
-    renderProductList() {
-        const container = document.getElementById('barcode-products-list');
-        if (!container) return;
+ 
+renderProductList() {
+    const container = document.getElementById('barcode-products-list');
+    if (!container) return;
 
-        const searchResults = this.filteredProducts.filter(p => {
-            if (!this.searchTerm) return true;
-            const term = this.searchTerm.toLowerCase();
-            return (
-                (p.sphere && p.sphere.toLowerCase().includes(term)) ||
-                (p.cylinder && p.cylinder.toLowerCase().includes(term)) ||
-                (p.addition && p.addition.toLowerCase().includes(term)) ||
-                (p.barcode && p.barcode.includes(term))
-            );
-        });
+    // Si no hay referencia seleccionada, mostrar mensaje
+    if (!this.selectedReference) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-box-seam" style="font-size: 3rem;"></i>
+                <p class="mt-2">Seleccione una referencia</p>
+            </div>
+        `;
+        return;
+    }
 
-        if (searchResults.length > 0) {
-            container.innerHTML = searchResults.map(product => `
-                <div class="card mb-2 product-card" data-product-id="${product._id}">
-                    <div class="card-body p-3">
-                        <h6 class="mb-1 fw-bold">${product.name}</h6>
-                        <p class="mb-1 text-muted small">${this.formatSpecs(product)}</p>
-                        <p class="mb-0 text-muted" style="font-family: monospace; font-size: 0.75rem;">
-                            ${product.barcode}
-                        </p>
-                        <small class="text-info">
-                            <i class="bi bi-box"></i> Stock: ${product.stock || 0}
-                        </small>
-                    </div>
+    // Si no hay término de búsqueda, mostrar todos los productos filtrados
+    if (!this.searchTerm) {
+        this.renderProductCards(this.filteredProducts);
+        return;
+    }
+
+    console.log('🔍 Buscando productos con término:', this.searchTerm);
+
+    // Normalizar término de búsqueda
+    const searchTermNormalized = this.normalizarTerminoBusqueda(this.searchTerm);
+
+    // Filtrar productos usando función especializada
+    const searchResults = this.filteredProducts.filter(product => 
+        this.productoCoincideConBusqueda(product, searchTermNormalized)
+    );
+
+    console.log(`✅ Encontrados ${searchResults.length} de ${this.filteredProducts.length} productos`);
+
+    this.renderProductCards(searchResults);
+}
+
+// ✅ NUEVA FUNCIÓN: Renderizar tarjetas de productos (extraída para reutilizar)
+renderProductCards(products) {
+    const container = document.getElementById('barcode-products-list');
+    if (!container) return;
+
+    if (products.length > 0) {
+        container.innerHTML = products.map(product => `
+            <div class="card mb-2 product-card" data-product-id="${product._id}">
+                <div class="card-body p-3">
+                    <h6 class="mb-1 fw-bold">${product.name}</h6>
+                    <p class="mb-1 text-muted small">${this.formatSpecs(product)}</p>
+                    <p class="mb-0 text-muted" style="font-family: monospace; font-size: 0.75rem;">
+                        ${product.barcode}
+                    </p>
+                    <small class="text-info">
+                        <i class="bi bi-box"></i> Stock: ${product.stock || 0}
+                    </small>
                 </div>
-            `).join('');
-        } else if (this.selectedReference) {
-            container.innerHTML = `
-                <div class="text-center text-muted py-5">
-                    <i class="bi bi-search" style="font-size: 3rem;"></i>
-                    <p class="mt-2">${this.searchTerm ? 'No hay resultados' : 'Busque por fórmula'}</p>
-                </div>
-            `;
-        } else {
-            container.innerHTML = `
-                <div class="text-center text-muted py-5">
-                    <i class="bi bi-box-seam" style="font-size: 3rem;"></i>
-                    <p class="mt-2">Seleccione una referencia</p>
-                </div>
-            `;
+            </div>
+        `).join('');
+    } else {
+        container.innerHTML = `
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-search" style="font-size: 3rem;"></i>
+                <p class="mt-2">No hay resultados para "${this.searchTerm}"</p>
+            </div>
+        `;
+    }
+}
+
+// ✅ AGREGAR estas funciones auxiliares DESPUÉS de renderProductCards
+
+// Normalizar término de búsqueda
+normalizarTerminoBusqueda(termino) {
+    if (!termino) return '';
+    
+    let normalizado = String(termino);
+    normalizado = normalizado.trim();
+    normalizado = normalizado.toLowerCase();
+    
+    // Reemplazar caracteres especiales
+    normalizado = normalizado.replace(/'/g, '-');
+    normalizado = normalizado.replace(/¡/g, '+');
+    
+    return normalizado;
+}
+
+// Normalizar código de barras
+normalizarCodigoBarras(barcode) {
+    if (!barcode) return '';
+    
+    let codigo = String(barcode);
+    codigo = codigo.trim();
+    codigo = codigo.replace(/'/g, '-');
+    codigo = codigo.replace(/¡/g, '+');
+    codigo = codigo.toLowerCase();
+    codigo = codigo.replace(/\s+/g, '');
+    
+    return codigo;
+}
+
+// Verificar si un producto coincide con la búsqueda
+productoCoincideConBusqueda(product, searchTerm) {
+    if (!product) return false;
+    
+    // 1. BÚSQUEDA POR CÓDIGO DE BARRAS (prioridad alta)
+    if (product.barcode) {
+        const barcodeNormalizado = this.normalizarCodigoBarras(product.barcode);
+        if (barcodeNormalizado === searchTerm || barcodeNormalizado.includes(searchTerm)) {
+            return true;
         }
     }
+
+    // 2. BÚSQUEDA POR NOMBRE
+    if (product.name) {
+        const nombreNormalizado = product.name.toLowerCase().trim();
+        if (nombreNormalizado.includes(searchTerm)) {
+            return true;
+        }
+    }
+
+    // 3. BÚSQUEDA POR ESFERA
+    if (product.sphere && product.sphere !== 'N' && product.sphere !== 'N/A') {
+        const esferaNormalizada = String(product.sphere).toLowerCase().trim();
+        
+        if (esferaNormalizada === searchTerm || esferaNormalizada.includes(searchTerm)) {
+            return true;
+        }
+        
+        // Búsqueda sin signo
+        const esferaSinSigno = esferaNormalizada.replace(/[+\-]/g, '');
+        const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
+        if (esferaSinSigno === terminoSinSigno) {
+            return true;
+        }
+    }
+
+    // 4. BÚSQUEDA POR CILINDRO
+    if (product.cylinder && product.cylinder !== '-' && product.cylinder !== 'N/A') {
+        const cilindroNormalizado = String(product.cylinder).toLowerCase().trim();
+        
+        if (cilindroNormalizado === searchTerm || cilindroNormalizado.includes(searchTerm)) {
+            return true;
+        }
+        
+        const cilindroSinSigno = cilindroNormalizado.replace(/[+\-]/g, '');
+        const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
+        if (cilindroSinSigno === terminoSinSigno) {
+            return true;
+        }
+    }
+
+    // 5. BÚSQUEDA POR ADICIÓN
+    if (product.addition && product.addition !== '-' && product.addition !== 'N/A') {
+        const adicionNormalizada = String(product.addition).toLowerCase().trim();
+        
+        if (adicionNormalizada === searchTerm || adicionNormalizada.includes(searchTerm)) {
+            return true;
+        }
+        
+        const adicionSinSigno = adicionNormalizada.replace(/[+\-]/g, '');
+        const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
+        if (adicionSinSigno === terminoSinSigno) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
     renderSelectedProducts() {
         const container = document.getElementById('barcode-selected-list');

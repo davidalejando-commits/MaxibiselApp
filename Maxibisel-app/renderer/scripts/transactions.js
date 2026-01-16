@@ -833,29 +833,138 @@ export const transactionManager = {
     this.renderFilteredProducts(this.filteredProducts);
   },
 
-  filterTableResults(searchTerm) {
+filterTableResults(searchTerm) {
     const tableBody = document.getElementById('table-body');
     if (!tableBody || !this.filteredProducts.length) return;
 
-    const term = searchTerm.toLowerCase().trim();
+    const term = searchTerm.trim();
 
+    // Si no hay término, mostrar todos los productos de la referencia actual
     if (!term) {
-      this.renderFilteredProducts(this.filteredProducts);
-      return;
+        this.renderFilteredProducts(this.filteredProducts);
+        return;
     }
 
-    const searchResults = this.filteredProducts.filter(product => {
-      return (
-        (product.barcode && product.barcode.toLowerCase().includes(term)) ||
-        (product.sphere && product.sphere.toLowerCase().includes(term)) ||
-        (product.cylinder && product.cylinder.toLowerCase().includes(term)) ||
-        (product.addition && product.addition.toLowerCase().includes(term)) ||
-        this.getStatusInfo(product.stock_surtido || 0).text.toLowerCase().includes(term)
-      );
-    });
+    console.log('🔍 Filtrando productos con término:', term);
+
+    // Normalizar término de búsqueda
+    const searchTermNormalized = this.normalizarTerminoBusqueda(term);
+
+    // Filtrar productos usando función especializada
+    const searchResults = this.filteredProducts.filter(product => 
+        this.productoCoincideConBusqueda(product, searchTermNormalized)
+    );
+
+    console.log(`✅ Encontrados ${searchResults.length} de ${this.filteredProducts.length} productos`);
 
     this.renderFilteredProducts(searchResults);
-  },
+},
+
+// ✅ AGREGAR estas funciones auxiliares DESPUÉS de filterTableResults
+
+// Normalizar término de búsqueda
+normalizarTerminoBusqueda(termino) {
+    if (!termino) return '';
+    
+    let normalizado = String(termino);
+    normalizado = normalizado.trim();
+    normalizado = normalizado.toLowerCase();
+    
+    // Reemplazar caracteres especiales
+    normalizado = normalizado.replace(/'/g, '-');
+    normalizado = normalizado.replace(/¡/g, '+');
+    
+    return normalizado;
+},
+
+// Normalizar código de barras
+normalizarCodigoBarras(barcode) {
+    if (!barcode) return '';
+    
+    let codigo = String(barcode);
+    codigo = codigo.trim();
+    codigo = codigo.replace(/'/g, '-');
+    codigo = codigo.replace(/¡/g, '+');
+    codigo = codigo.toLowerCase();
+    codigo = codigo.replace(/\s+/g, '');
+    
+    return codigo;
+},
+
+// Verificar si un producto coincide con la búsqueda
+productoCoincideConBusqueda(product, searchTerm) {
+    if (!product) return false;
+    
+    // 1. BÚSQUEDA POR CÓDIGO DE BARRAS (prioridad alta)
+    if (product.barcode) {
+        const barcodeNormalizado = this.normalizarCodigoBarras(product.barcode);
+        if (barcodeNormalizado === searchTerm || barcodeNormalizado.includes(searchTerm)) {
+            return true;
+        }
+    }
+
+    // 2. BÚSQUEDA POR NOMBRE
+    if (product.name) {
+        const nombreNormalizado = product.name.toLowerCase().trim();
+        if (nombreNormalizado.includes(searchTerm)) {
+            return true;
+        }
+    }
+
+    // 3. BÚSQUEDA POR ESFERA
+    if (product.sphere && product.sphere !== 'N' && product.sphere !== 'N/A') {
+        const esferaNormalizada = String(product.sphere).toLowerCase().trim();
+        
+        if (esferaNormalizada === searchTerm || esferaNormalizada.includes(searchTerm)) {
+            return true;
+        }
+        
+        // Búsqueda sin signo
+        const esferaSinSigno = esferaNormalizada.replace(/[+\-]/g, '');
+        const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
+        if (esferaSinSigno === terminoSinSigno) {
+            return true;
+        }
+    }
+
+    // 4. BÚSQUEDA POR CILINDRO
+    if (product.cylinder && product.cylinder !== '-' && product.cylinder !== 'N/A') {
+        const cilindroNormalizado = String(product.cylinder).toLowerCase().trim();
+        
+        if (cilindroNormalizado === searchTerm || cilindroNormalizado.includes(searchTerm)) {
+            return true;
+        }
+        
+        const cilindroSinSigno = cilindroNormalizado.replace(/[+\-]/g, '');
+        const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
+        if (cilindroSinSigno === terminoSinSigno) {
+            return true;
+        }
+    }
+
+    // 5. BÚSQUEDA POR ADICIÓN
+    if (product.addition && product.addition !== '-' && product.addition !== 'N/A') {
+        const adicionNormalizada = String(product.addition).toLowerCase().trim();
+        
+        if (adicionNormalizada === searchTerm || adicionNormalizada.includes(searchTerm)) {
+            return true;
+        }
+        
+        const adicionSinSigno = adicionNormalizada.replace(/[+\-]/g, '');
+        const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
+        if (adicionSinSigno === terminoSinSigno) {
+            return true;
+        }
+    }
+
+    // 6. BÚSQUEDA POR ESTADO (Bueno, Bajo, Crítico)
+    const status = this.getStatusInfo(product.stock_surtido || 0);
+    if (status.text.toLowerCase().includes(searchTerm)) {
+        return true;
+    }
+
+    return false;
+},
 
   renderFilteredProducts(productsToRender) {
     const tableBody = document.getElementById('table-body');

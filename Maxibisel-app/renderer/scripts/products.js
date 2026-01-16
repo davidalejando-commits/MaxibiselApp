@@ -2006,33 +2006,142 @@ _setupStockEvents() {
         }
     },
 
-    filterProducts() {
-        const searchInput = document.getElementById('product-search');
-        const searchTerm = searchInput?.value.toLowerCase() || '';
+filterProducts() {
+    const searchInput = document.getElementById('product-search');
+    const searchTerm = searchInput?.value.trim() || '';
 
-        if (!searchTerm) {
-            this.renderProductsTable();
-            return;
-        }
-
-        if (!Array.isArray(this.products)) {
-            console.warn('this.products no es un array para filtrar');
-            return;
-        }
-
-        const filteredProducts = this.products.filter(product =>
-            (product.name || '').toLowerCase().includes(searchTerm) ||
-            (product.barcode || '').toLowerCase().includes(searchTerm) ||
-            (product.sphere || '').includes(searchTerm) ||
-            (product.cylinder || '').includes(searchTerm) ||
-            (product.addition || '').includes(searchTerm)
-        );
-
-        const originalProducts = [...this.products];
-        this.products = filteredProducts;
+    // Si no hay término de búsqueda, mostrar todos los productos
+    if (!searchTerm) {
         this.renderProductsTable();
-        this.products = originalProducts;
-    },
+        return;
+    }
+
+    // Validación: Asegurar que products sea un array
+    if (!Array.isArray(this.products)) {
+        console.warn('this.products no es un array para filtrar');
+        this.products = [];
+        this.renderProductsTable();
+        return;
+    }
+
+    console.log('🔍 Filtrando productos con término:', searchTerm);
+
+    // Normalizar término de búsqueda
+    const searchTermNormalized = this.normalizarTerminoBusqueda(searchTerm);
+
+    // Filtrar productos usando función especializada
+    const filteredProducts = this.products.filter(product => 
+        this.productoCoincideConBusqueda(product, searchTermNormalized)
+    );
+
+    console.log(`✅ Encontrados ${filteredProducts.length} de ${this.products.length} productos`);
+
+    // Guardar productos originales y renderizar filtrados
+    const originalProducts = [...this.products];
+    this.products = filteredProducts;
+    this.renderProductsTable();
+    this.products = originalProducts;
+},
+
+// ✅ AGREGAR estas funciones auxiliares después de filterProducts
+
+// Normalizar término de búsqueda
+normalizarTerminoBusqueda(termino) {
+    if (!termino) return '';
+    
+    let normalizado = String(termino);
+    normalizado = normalizado.trim();
+    normalizado = normalizado.toLowerCase();
+    
+    // Reemplazar caracteres especiales que el escáner puede leer mal
+    normalizado = normalizado.replace(/'/g, '-');
+    normalizado = normalizado.replace(/¡/g, '+');
+    
+    return normalizado;
+},
+
+// Normalizar código de barras (reutilizar la misma lógica que salesManager)
+normalizarCodigoBarras(barcode) {
+    if (!barcode) return '';
+    
+    let codigo = String(barcode);
+    codigo = codigo.trim();
+    codigo = codigo.replace(/'/g, '-');
+    codigo = codigo.replace(/¡/g, '+');
+    codigo = codigo.toLowerCase();
+    codigo = codigo.replace(/\s+/g, '');
+    
+    return codigo;
+},
+
+// Verificar si un producto coincide con la búsqueda
+productoCoincideConBusqueda(product, searchTerm) {
+    if (!product) return false;
+    
+    // 1. BÚSQUEDA POR CÓDIGO DE BARRAS (prioridad alta)
+    if (product.barcode) {
+        const barcodeNormalizado = this.normalizarCodigoBarras(product.barcode);
+        if (barcodeNormalizado === searchTerm || barcodeNormalizado.includes(searchTerm)) {
+            return true;
+        }
+    }
+
+    // 2. BÚSQUEDA POR NOMBRE
+    if (product.name) {
+        const nombreNormalizado = product.name.toLowerCase().trim();
+        if (nombreNormalizado.includes(searchTerm)) {
+            return true;
+        }
+    }
+
+    // 3. BÚSQUEDA POR ESFERA
+    if (product.sphere && product.sphere !== 'N' && product.sphere !== 'N/A') {
+        const esferaNormalizada = String(product.sphere).toLowerCase().trim();
+        
+        if (esferaNormalizada === searchTerm || esferaNormalizada.includes(searchTerm)) {
+            return true;
+        }
+        
+        // Búsqueda sin signo
+        const esferaSinSigno = esferaNormalizada.replace(/[+\-]/g, '');
+        const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
+        if (esferaSinSigno === terminoSinSigno) {
+            return true;
+        }
+    }
+
+    // 4. BÚSQUEDA POR CILINDRO
+    if (product.cylinder && product.cylinder !== '-' && product.cylinder !== 'N/A') {
+        const cilindroNormalizado = String(product.cylinder).toLowerCase().trim();
+        
+        if (cilindroNormalizado === searchTerm || cilindroNormalizado.includes(searchTerm)) {
+            return true;
+        }
+        
+        const cilindroSinSigno = cilindroNormalizado.replace(/[+\-]/g, '');
+        const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
+        if (cilindroSinSigno === terminoSinSigno) {
+            return true;
+        }
+    }
+
+    // 5. BÚSQUEDA POR ADICIÓN
+    if (product.addition && product.addition !== '-' && product.addition !== 'N/A') {
+        const adicionNormalizada = String(product.addition).toLowerCase().trim();
+        
+        if (adicionNormalizada === searchTerm || adicionNormalizada.includes(searchTerm)) {
+            return true;
+        }
+        
+        const adicionSinSigno = adicionNormalizada.replace(/[+\-]/g, '');
+        const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
+        if (adicionSinSigno === terminoSinSigno) {
+            return true;
+        }
+    }
+
+    return false;
+},
 
     async _forceStyleRefresh() {
         return new Promise(resolve => {
