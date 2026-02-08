@@ -1407,42 +1407,49 @@ async updateInventoryIntelligently() {
   // ========== ESCANEO DE CÓDIGOS DE BARRAS ==========
   
   setupBarcodeScanner() {
-    console.log('📷 Configurando escáner de códigos de barras...');
+  console.log('📷 Configurando escáner de códigos de barras...');
+  
+  this.barcodeBuffer = '';
+  this.barcodeTimeout = null;
+  
+  this.barcodeListener = (e) => {
+    // ✅ VALIDACIÓN CRÍTICA: Solo procesar si estamos en la vista de salidas
+    const salesView = document.getElementById('sales-view');
+    if (!salesView || salesView.style.display === 'none') {
+      // Si no estamos en la vista de salidas, ignorar completamente el escaneo
+      return;
+    }
     
-    this.barcodeBuffer = '';
-    this.barcodeTimeout = null;
+    const activeElement = document.activeElement;
+    const isTextInput = activeElement && 
+      (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') &&
+      activeElement.id !== 'searchInput';
     
-    this.barcodeListener = (e) => {
-      const activeElement = document.activeElement;
-      const isTextInput = activeElement && 
-        (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') &&
-        activeElement.id !== 'searchInput';
-      
-      if (isTextInput) return;
-      if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt') return;
-      
-      if (e.key === 'Enter' && this.barcodeBuffer.length > 0) {
-        e.preventDefault();
-        this.processBarcodeInput(this.barcodeBuffer.trim());
+    if (isTextInput) return;
+    if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt') return;
+    
+    if (e.key === 'Enter' && this.barcodeBuffer.length > 0) {
+      e.preventDefault();
+      this.processBarcodeInput(this.barcodeBuffer.trim());
+      this.barcodeBuffer = '';
+      return;
+    }
+    
+    if (e.key.length === 1) {
+      this.barcodeBuffer += e.key;
+      clearTimeout(this.barcodeTimeout);
+      this.barcodeTimeout = setTimeout(() => {
+        if (this.barcodeBuffer.length >= 4) {
+          this.processBarcodeInput(this.barcodeBuffer.trim());
+        }
         this.barcodeBuffer = '';
-        return;
-      }
-      
-      if (e.key.length === 1) {
-        this.barcodeBuffer += e.key;
-        clearTimeout(this.barcodeTimeout);
-        this.barcodeTimeout = setTimeout(() => {
-          if (this.barcodeBuffer.length >= 4) {
-            this.processBarcodeInput(this.barcodeBuffer.trim());
-          }
-          this.barcodeBuffer = '';
-        }, 100);
-      }
-    };
-    
-    document.addEventListener('keydown', this.barcodeListener);
-    console.log('✅ Escáner activo');
-  },
+      }, 100);
+    }
+  };
+  
+  document.addEventListener('keydown', this.barcodeListener);
+  console.log('✅ Escáner activo (solo funciona en vista de salidas)');
+},
 
  async processBarcodeInput(barcode) {
   console.log('📷 Código escaneado (original):', barcode);

@@ -15,6 +15,7 @@ export const productManager = {
     productToDeleteId: null,
     productToDeleteName: null,
     _scrollConfigured: false,
+    searchDebounceTimer: null,
 
     async init() {
         if (this.initializationPromise) {
@@ -1259,7 +1260,7 @@ setupEventListeners() {
         { id: 'generate-barcode-btn', event: 'click', handler: this.generateBarcode.bind(this) },
         { id: 'barcode-scan-btn', event: 'click', handler: this.showBarcodeScannerModal.bind(this) },
         { id: 'manual-barcode-btn', event: 'click', handler: this.searchByManualBarcode.bind(this) },
-        { id: 'product-search', event: 'input', handler: this.filterProducts.bind(this) },
+        { id: 'product-search', event: 'input', handler: this.handleSearchInput.bind(this) },
         { id: 'confirm-delete-btn', event: 'click', handler: this.executeDelete.bind(this) },
         { id: 'cancel-delete-btn', event: 'click', handler: this.hideDeleteModal.bind(this) },
         
@@ -1908,7 +1909,45 @@ filterProducts() {
     this.products = originalProducts;
 },
 
-// ✅ AGREGAR estas funciones auxiliares después de filterProducts
+handleSearchInput(event) {
+    // Cancelar el timer anterior si existe
+    if (this.searchDebounceTimer) {
+        clearTimeout(this.searchDebounceTimer);
+    }
+
+    const searchValue = event.target.value.trim();
+
+    // Si el campo está vacío, mostrar todo inmediatamente
+    if (!searchValue) {
+        this.renderProductsTable();
+        return;
+    }
+
+    // Mostrar indicador de búsqueda (opcional)
+    this.showSearchIndicator(true);
+
+    // Crear nuevo timer de 300ms
+    this.searchDebounceTimer = setTimeout(() => {
+        console.log('⏱️ Ejecutando búsqueda después de debounce');
+        this.filterProducts();
+        this.showSearchIndicator(false);
+    }, 300); // 300ms de espera
+},
+
+showSearchIndicator(show) {
+    const searchInput = document.getElementById('product-search');
+    if (!searchInput) return;
+
+    if (show) {
+        // Agregar clase visual o cambiar borde
+        searchInput.style.borderColor = '#0d6efd';
+        searchInput.style.boxShadow = '0 0 0 0.2rem rgba(13, 110, 253, 0.25)';
+    } else {
+        // Remover indicador
+        searchInput.style.borderColor = '';
+        searchInput.style.boxShadow = '';
+    }
+},
 
 // Normalizar término de búsqueda
 normalizarTerminoBusqueda(termino) {
@@ -1939,76 +1978,222 @@ normalizarCodigoBarras(barcode) {
     return codigo;
 },
 
-// Verificar si un producto coincide con la búsqueda
+// ============================================================================
+// FUNCIONES PARA FILTRADO POR FÓRMULAS OFTÁLMICAS
+// ============================================================================
+
+// Parsear fórmula compacta oftálmica (ej: +200125 → +2.00 -1.25)
+parsearFormulaCompacta(formulaCompacta) {
+    if (!formulaCompacta || typeof formulaCompacta !== 'string') {
+        return null;
+    }
+
+    // Limpiar entrada
+    let formula = formulaCompacta.trim().toUpperCase();
+    
+    // Detectar patrón de fórmula oftálmica compacta
+    // Ejemplos válidos: +200125, -200125, +200-125, -200-125, 200125, 200-125
+    const patronFormula = /^([+\-]?)(\d{2,3})([+\-]?)(\d{2,3})$/;
+    const match = formula.match(patronFormula);
+    
+    if (!match) {
+        return null;
+    }
+
+    const [, signoEsfera, valorEsfera, signoCilindro, valorCilindro] = match;
+
+    // Convertir valores numéricos a formato decimal
+    const esferaDecimal = this.convertirADecimal(valorEsfera, signoEsfera || '+');
+    const cilindroDecimal = this.convertirADecimal(valorCilindro, signoCilindro || '-');
+
+    console.log('🔍 Fórmula parseada:', {
+        original: formulaCompacta,
+        esfera: esferaDecimal,
+        cilindro: cilindroDecimal
+    });
+
+    return {
+        esfera: esferaDecimal,
+        cilindro: cilindroDecimal,
+        original: formulaCompacta
+    };
+},
+
+// Convertir número compacto a formato decimal (200 → 2.00, 125 → 1.25)
+convertirADecimal(valorCompacto, signo) {
+    const numero = parseInt(valorCompacto);
+    
+    if (isNaN(numero)) {
+        return null;
+    }
+
+    let decimal;
+    
+    if (numero >= 100) {
+        // 200 → 2.00, 125 → 1.25
+        decimal = (numero / 100).toFixed(2);
+    } else {
+        // 75 → 0.75, 50 → 0.50
+        decimal = (numero / 100).toFixed(2);
+    }
+
+    // Aplicar signo
+    const valorFinal = signo === '-' ? `-${decimal}` : `+${decimal}`;
+    
+    return valorFinal;
+},
+
+// Normalizar fórmula del producto para comparación
+normalizarFormulaProducto(producto) {
+    if (!producto) {
+        return null;
+    }
+
+    const sphere = producto.sphere || '';
+    const cylinder = producto.cylinder || '';
+
+    // Si no tiene fórmula válida, retornar null
+    if (!sphere || sphere === 'N' || sphere === 'N/A' || 
+        !cylinder || cylinder === '-' || cylinder === 'N/A') {
+        return null;
+    }
+
+    // Normalizar valores para comparación
+    const esferaNormalizada = this.normalizarValorOptico(sphere);
+    const cilindroNormalizado = this.normalizarValorOptico(cylinder);
+
+    if (!esferaNormalizada || !cilindroNormalizado) {
+        return null;
+    }
+
+    return {
+        esfera: esferaNormalizada,
+        cilindro: cilindroNormalizado
+    };
+},
+
+// Normalizar valor óptico individual
+normalizarValorOptico(valor) {
+    if (!valor || typeof valor !== 'string') {
+        return null;
+    }
+
+    let normalizado = valor.trim().toUpperCase();
+    
+    // Remover espacios
+    normalizado = normalizado.replace(/\s+/g, '');
+    
+    // Asegurar que tenga signo
+    if (!normalizado.startsWith('+') && !normalizado.startsWith('-')) {
+        normalizado = '+' + normalizado;
+    }
+
+    // Validar formato decimal (debe tener punto)
+    if (!normalizado.includes('.')) {
+        return null;
+    }
+
+    return normalizado;
+},
+
+// Comparar dos fórmulas normalizadas
+compararFormulas(formulaProducto, formulaBuscada) {
+    if (!formulaProducto || !formulaBuscada) {
+        return false;
+    }
+
+    const esferaCoincide = formulaProducto.esfera === formulaBuscada.esfera;
+    const cilindroCoincide = formulaProducto.cilindro === formulaBuscada.cilindro;
+
+    return esferaCoincide && cilindroCoincide;
+},
+
+// Verificar si un producto coincide con la búsqueda (NUEVA VERSIÓN)
 productoCoincideConBusqueda(product, searchTerm) {
     if (!product) return false;
     
-    // 1. BÚSQUEDA POR CÓDIGO DE BARRAS (prioridad alta)
-    if (product.barcode) {
-        const barcodeNormalizado = this.normalizarCodigoBarras(product.barcode);
-        if (barcodeNormalizado === searchTerm || barcodeNormalizado.includes(searchTerm)) {
-            return true;
+    // ====================================================================
+    // NUEVA LÓGICA: Detectar si el término contiene una fórmula compacta
+    // ====================================================================
+    const partesBusqueda = searchTerm.split(/\s+/);
+    let terminoNombre = '';
+    let formulaBuscada = null;
+
+    // Intentar identificar fórmula en el término de búsqueda
+    for (let i = 0; i < partesBusqueda.length; i++) {
+        const parte = partesBusqueda[i];
+        const posibleFormula = this.parsearFormulaCompacta(parte);
+        
+        if (posibleFormula) {
+            formulaBuscada = posibleFormula;
+            console.log('📋 Fórmula detectada en búsqueda:', posibleFormula);
+            // Remover esta parte del término de búsqueda
+            partesBusqueda.splice(i, 1);
+            break;
         }
     }
 
-    // 2. BÚSQUEDA POR NOMBRE
-    if (product.name) {
-        const nombreNormalizado = product.name.toLowerCase().trim();
-        if (nombreNormalizado.includes(searchTerm)) {
-            return true;
+    // El resto es búsqueda por nombre
+    terminoNombre = partesBusqueda.join(' ').toLowerCase().trim();
+
+    console.log('🔍 Desglose de búsqueda:', {
+        terminoOriginal: searchTerm,
+        terminoNombre: terminoNombre,
+        formulaBuscada: formulaBuscada
+    });
+
+    // ====================================================================
+    // VALIDACIÓN 1: Si hay fórmula, debe coincidir
+    // ====================================================================
+    if (formulaBuscada) {
+        const formulaProducto = this.normalizarFormulaProducto(product);
+        
+        if (!formulaProducto) {
+            // El producto no tiene fórmula válida, no coincide
+            return false;
         }
+
+        const formulasCoinciden = this.compararFormulas(formulaProducto, formulaBuscada);
+        
+        if (!formulasCoinciden) {
+            // La fórmula no coincide, descartar producto
+            return false;
+        }
+
+        console.log('✅ Fórmula coincide:', product.name);
     }
 
-    // 3. BÚSQUEDA POR ESFERA
-    if (product.sphere && product.sphere !== 'N' && product.sphere !== 'N/A') {
-        const esferaNormalizada = String(product.sphere).toLowerCase().trim();
-        
-        if (esferaNormalizada === searchTerm || esferaNormalizada.includes(searchTerm)) {
-            return true;
+    // ====================================================================
+    // VALIDACIÓN 2: Si hay término de nombre, debe coincidir también
+    // ====================================================================
+    if (terminoNombre) {
+        // Búsqueda por código de barras
+        if (product.barcode) {
+            const barcodeNormalizado = this.normalizarCodigoBarras(product.barcode);
+            if (barcodeNormalizado === terminoNombre || barcodeNormalizado.includes(terminoNombre)) {
+                return true;
+            }
         }
-        
-        // Búsqueda sin signo
-        const esferaSinSigno = esferaNormalizada.replace(/[+\-]/g, '');
-        const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
-        if (esferaSinSigno === terminoSinSigno) {
-            return true;
+
+        // Búsqueda por nombre
+        if (product.name) {
+            const nombreNormalizado = product.name.toLowerCase().trim();
+            if (nombreNormalizado.includes(terminoNombre)) {
+                return true;
+            }
         }
+
+        // Si había término de nombre pero no coincidió, rechazar
+        return false;
     }
 
-    // 4. BÚSQUEDA POR CILINDRO
-    if (product.cylinder && product.cylinder !== '-' && product.cylinder !== 'N/A') {
-        const cilindroNormalizado = String(product.cylinder).toLowerCase().trim();
-        
-        if (cilindroNormalizado === searchTerm || cilindroNormalizado.includes(searchTerm)) {
-            return true;
-        }
-        
-        const cilindroSinSigno = cilindroNormalizado.replace(/[+\-]/g, '');
-        const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
-        if (cilindroSinSigno === terminoSinSigno) {
-            return true;
-        }
-    }
-
-    // 5. BÚSQUEDA POR ADICIÓN
-    if (product.addition && product.addition !== '-' && product.addition !== 'N/A') {
-        const adicionNormalizada = String(product.addition).toLowerCase().trim();
-        
-        if (adicionNormalizada === searchTerm || adicionNormalizada.includes(searchTerm)) {
-            return true;
-        }
-        
-        const adicionSinSigno = adicionNormalizada.replace(/[+\-]/g, '');
-        const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
-        if (adicionSinSigno === terminoSinSigno) {
-            return true;
-        }
-    }
-
-    return false;
+    // ====================================================================
+    // Si solo había fórmula y coincidió, aceptar producto
+    // ====================================================================
+    return formulaBuscada !== null;
 },
 
-    async _forceStyleRefresh() {
+async _forceStyleRefresh() {
         return new Promise(resolve => {
             setTimeout(() => {
                 const table = document.getElementById('products-table');
