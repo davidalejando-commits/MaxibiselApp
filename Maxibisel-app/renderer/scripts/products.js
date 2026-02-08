@@ -1039,7 +1039,7 @@ async updateStock() {
         const addContainer = document.getElementById('stock-add-container');
         const isAddMode = addContainer && addContainer.style.display !== 'none';
 
-        let newStock;
+        let newStockTotal;
         let cantidadModificada = 0;
 
         if (isAddMode) {
@@ -1057,23 +1057,23 @@ async updateStock() {
                 return;
             }
 
-            newStock = currentStock + addQuantity;
+            newStockTotal = currentStock + addQuantity;
             cantidadModificada = addQuantity;
-            console.log(`Modo AGREGAR: ${currentStock} + ${addQuantity} = ${newStock}`);
+            console.log(`Modo AGREGAR: ${currentStock} + ${addQuantity} = ${newStockTotal}`);
 
         } else {
             // MODO ACTUALIZAR DIRECTO
             const directValueInput = document.getElementById('stock-direct-value');
-            newStock = parseInt(directValueInput?.value);
+            newStockTotal = parseInt(directValueInput?.value);
 
-            if (isNaN(newStock) || newStock < 0) {
+            if (isNaN(newStockTotal) || newStockTotal < 0) {
                 if (uiManager && uiManager.showAlert) {
                     uiManager.showAlert('Por favor, ingrese un valor de stock válido (0 o mayor)', 'warning');
                 }
                 return;
             }
 
-            console.log(`Modo DIRECTO: Nuevo stock = ${newStock}`);
+            console.log(`Modo DIRECTO: Nuevo stock = ${newStockTotal}`);
         }
 
         const saveBtn = document.getElementById('save-stock-btn');
@@ -1095,12 +1095,17 @@ async updateStock() {
         }
 
         // ====================================================================
-        // 📝 GUARDAR DATOS ANTERIORES PARA EL LOG (CON FÓRMULA)
+        // 📝 GUARDAR DATOS ANTERIORES PARA EL LOG
         // ====================================================================
         const datosAnteriores = {
             nombre: currentProduct.name,
             stock: currentProduct.stock || 0,
+            stock_surtido: currentProduct.stock_surtido || 0,
+            stock_almacenado: currentProduct.stock_almacenado || 0,
             barcode: currentProduct.barcode,
+            sphere: currentProduct.sphere || 'N/A',
+            cylinder: currentProduct.cylinder || 'N/A',
+            addition: currentProduct.addition || 'N/A',
             formula: {
                 sphere: currentProduct.sphere || 'N/A',
                 cylinder: currentProduct.cylinder || 'N/A',
@@ -1108,12 +1113,48 @@ async updateStock() {
             }
         };
 
+        // ====================================================================
+        // ✅ CRÍTICO: CALCULAR LOS 3 VALORES CORRECTAMENTE
+        // ====================================================================
+        
+        // Obtener stock_surtido actual
+        const currentStockSurtido = currentProduct.stock_surtido || 0;
+        
+        // Si el nuevo stock total es mayor o igual al stock_surtido actual, mantenerlo
+        // Si es menor, ajustar stock_surtido para que no exceda el nuevo total
+        let newStockSurtido;
+        if (newStockTotal >= currentStockSurtido) {
+            // Hay espacio para mantener el stock_surtido actual
+            newStockSurtido = currentStockSurtido;
+        } else {
+            // El nuevo total es menor que stock_surtido, ajustar
+            newStockSurtido = newStockTotal;
+        }
+        
+        // Calcular stock_almacenado para que la ecuación sea consistente
+        const newStockAlmacenado = newStockTotal - newStockSurtido;
+
+        console.log('📊 Valores calculados:');
+        console.log('   Stock total:', newStockTotal);
+        console.log('   Stock surtido:', newStockSurtido);
+        console.log('   Stock almacenado:', newStockAlmacenado);
+        console.log('   Verificación:', `${newStockSurtido} + ${newStockAlmacenado} = ${newStockSurtido + newStockAlmacenado}`);
+
+        // ✅ VALIDACIÓN: Verificar que la suma sea correcta
+        if (newStockSurtido + newStockAlmacenado !== newStockTotal) {
+            throw new Error(
+                `Error de cálculo: ${newStockSurtido} + ${newStockAlmacenado} = ${newStockSurtido + newStockAlmacenado}, pero debería ser ${newStockTotal}`
+            );
+        }
+
+        // ✅ PREPARAR DATOS PARA ENVIAR AL BACKEND
         const stockData = {
-            stock: newStock,
-            stock_surtido: currentProduct.stock_surtido || 0
+            stock: newStockTotal,
+            stock_surtido: newStockSurtido,
+            stock_almacenado: newStockAlmacenado
         };
 
-        console.log('Actualizando stock:', { productId, stockData });
+        console.log('📤 Enviando al backend:', stockData);
 
         // Actualizar en servidor
         const response = await window.api.updateProductStock(productId, stockData);
@@ -1124,15 +1165,15 @@ async updateStock() {
             throw new Error('Respuesta del servidor inválida');
         }
 
-        console.log('Stock actualizado en servidor:', updatedProduct);
+        console.log('✅ Stock actualizado en servidor:', updatedProduct);
 
         // ====================================================================
-        // 📝 REGISTRAR LOG DE ACTUALIZACIÓN DE STOCK (CON FÓRMULA)
+        // 📝 REGISTRAR LOG
         // ====================================================================
         if (window.activityLogger) {
             const accionDescripcion = isAddMode 
                 ? `Stock incrementado: ${currentProduct.name} (+${cantidadModificada} unidades)` 
-                : `Stock actualizado: ${currentProduct.name} (${datosAnteriores.stock} → ${newStock})`;
+                : `Stock actualizado: ${currentProduct.name} (${datosAnteriores.stock} → ${newStockTotal})`;
 
             window.activityLogger.log({
                 tipo: 'PRODUCTO',
@@ -1143,13 +1184,18 @@ async updateStock() {
                 datos_nuevos: {
                     nombre: updatedProduct.name,
                     stock: updatedProduct.stock,
+                    stock_surtido: updatedProduct.stock_surtido,
+                    stock_almacenado: updatedProduct.stock_almacenado,
                     barcode: updatedProduct.barcode,
+                    sphere: updatedProduct.sphere || 'N/A',
+                    cylinder: updatedProduct.cylinder || 'N/A',
+                    addition: updatedProduct.addition || 'N/A',
                     formula: {
                         sphere: updatedProduct.sphere || 'N/A',
                         cylinder: updatedProduct.cylinder || 'N/A',
                         addition: updatedProduct.addition || 'N/A'
                     },
-                    modificacion: isAddMode ? `+${cantidadModificada}` : `Directo: ${newStock}`
+                    modificacion: isAddMode ? `+${cantidadModificada}` : `Directo: ${newStockTotal}`
                 }
             });
         }
@@ -1183,6 +1229,8 @@ async updateStock() {
         let errorMessage = 'Error al actualizar el stock';
         if (error.message.includes('network') || error.message.includes('fetch')) {
             errorMessage = 'Error de conexión. Verifique su conexión a internet';
+        } else if (error.message.includes('Inconsistencia')) {
+            errorMessage = 'Error de cálculo interno. Por favor reporte este problema.';
         } else {
             errorMessage = `Error: ${error.message}`;
         }
@@ -1494,189 +1542,6 @@ _setupStockEvents() {
         }
     }
 },
-
-    async updateStock() {
-    try {
-        console.log('Iniciando actualización de stock...');
-
-        const productId = document.getElementById('stock-product-id')?.value;
-        
-        if (!productId) {
-            if (uiManager && uiManager.showAlert) {
-                uiManager.showAlert('Error: ID del producto no encontrado', 'danger');
-            }
-            return;
-        }
-
-        // Determinar modo (agregar o directo)
-        const addContainer = document.getElementById('stock-add-container');
-        const isAddMode = addContainer && addContainer.style.display !== 'none';
-
-        let newStock;
-        let cantidadModificada = 0;
-
-        if (isAddMode) {
-            // MODO AGREGAR
-            const currentStockEl = document.getElementById('stock-current-stock');
-            const addQuantityInput = document.getElementById('stock-add-quantity');
-            
-            const currentStock = parseInt(currentStockEl?.textContent) || 0;
-            const addQuantity = parseInt(addQuantityInput?.value);
-
-            if (isNaN(addQuantity) || addQuantity <= 0) {
-                if (uiManager && uiManager.showAlert) {
-                    uiManager.showAlert('Por favor, ingrese una cantidad válida a agregar (mayor a 0)', 'warning');
-                }
-                return;
-            }
-
-            newStock = currentStock + addQuantity;
-            cantidadModificada = addQuantity;
-            console.log(`Modo AGREGAR: ${currentStock} + ${addQuantity} = ${newStock}`);
-
-        } else {
-            // MODO ACTUALIZAR DIRECTO
-            const directValueInput = document.getElementById('stock-direct-value');
-            newStock = parseInt(directValueInput?.value);
-
-            if (isNaN(newStock) || newStock < 0) {
-                if (uiManager && uiManager.showAlert) {
-                    uiManager.showAlert('Por favor, ingrese un valor de stock válido (0 o mayor)', 'warning');
-                }
-                return;
-            }
-
-            console.log(`Modo DIRECTO: Nuevo stock = ${newStock}`);
-        }
-
-        const saveBtn = document.getElementById('save-stock-btn');
-        if (saveBtn) {
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Actualizando...';
-        }
-
-        // Obtener producto actual
-        let currentProduct = this.products.find(p => p._id === productId);
-        if (!currentProduct) {
-            console.log('Producto no en cache, obteniendo del servidor...');
-            const response = await window.api.getProduct(productId);
-            currentProduct = response.product || response;
-        }
-
-        if (!currentProduct) {
-            throw new Error('Producto no encontrado');
-        }
-
-        // ====================================================================
-        // 📝 GUARDAR DATOS ANTERIORES PARA EL LOG (CON FÓRMULA)
-        // ====================================================================
-        const datosAnteriores = {
-            nombre: currentProduct.name,
-            stock: currentProduct.stock || 0,
-            barcode: currentProduct.barcode,
-            sphere: currentProduct.sphere || 'N/A',
-            cylinder: currentProduct.cylinder || 'N/A',
-            addition: currentProduct.addition || 'N/A',
-            formula: {
-                sphere: currentProduct.sphere || 'N/A',
-                cylinder: currentProduct.cylinder || 'N/A',
-                addition: currentProduct.addition || 'N/A'
-            }
-        };
-
-        const stockData = {
-            stock: newStock,
-            stock_surtido: currentProduct.stock_surtido || 0
-        };
-
-        console.log('Actualizando stock:', { productId, stockData });
-
-        // Actualizar en servidor
-        const response = await window.api.updateProductStock(productId, stockData);
-        const updatedProduct = response.product || response;
-
-        if (!updatedProduct || !updatedProduct._id) {
-            console.error('Respuesta de API inválida:', response);
-            throw new Error('Respuesta del servidor inválida');
-        }
-
-        console.log('Stock actualizado en servidor:', updatedProduct);
-
-        // ====================================================================
-        // 📝 REGISTRAR LOG DE ACTUALIZACIÓN DE STOCK (CON FÓRMULA)
-        // ====================================================================
-        if (window.activityLogger) {
-            const accionDescripcion = isAddMode 
-                ? `Stock incrementado: ${currentProduct.name} (+${cantidadModificada} unidades)` 
-                : `Stock actualizado: ${currentProduct.name} (${datosAnteriores.stock} → ${newStock})`;
-
-            window.activityLogger.log({
-                tipo: 'PRODUCTO',
-                accion: accionDescripcion,
-                entidad: 'producto',
-                entidad_id: updatedProduct._id,
-                datos_anteriores: datosAnteriores,
-                datos_nuevos: {
-                    nombre: updatedProduct.name,
-                    stock: updatedProduct.stock,
-                    barcode: updatedProduct.barcode,
-                    sphere: updatedProduct.sphere || 'N/A',
-                    cylinder: updatedProduct.cylinder || 'N/A',
-                    addition: updatedProduct.addition || 'N/A',
-                    formula: {
-                        sphere: updatedProduct.sphere || 'N/A',
-                        cylinder: updatedProduct.cylinder || 'N/A',
-                        addition: updatedProduct.addition || 'N/A'
-                    },
-                    modificacion: isAddMode ? `+${cantidadModificada}` : `Directo: ${newStock}`
-                }
-            });
-        }
-
-        // Sincronizar UI
-        await this._syncStockUpdateImmediate(updatedProduct, productId);
-
-        const modeText = isAddMode ? 'agregadas' : 'actualizado';
-        const quantityText = isAddMode 
-            ? `${cantidadModificada} unidades ${modeText}` 
-            : `${updatedProduct.stock} unidades`;
-
-        if (uiManager && uiManager.showAlert) {
-            uiManager.showAlert(
-                `Stock ${isAddMode ? 'incrementado' : 'actualizado'} correctamente: ${quantityText}`, 
-                'success'
-            );
-        }
-
-        if (this.stockModal) {
-            this.stockModal.hide();
-        }
-
-        setTimeout(() => {
-            this._highlightUpdatedProduct(productId);
-        }, 300);
-
-    } catch (error) {
-        console.error('Error al actualizar stock:', error);
-
-        let errorMessage = 'Error al actualizar el stock';
-        if (error.message.includes('network') || error.message.includes('fetch')) {
-            errorMessage = 'Error de conexión. Verifique su conexión a internet';
-        } else {
-            errorMessage = `Error: ${error.message}`;
-        }
-
-        if (uiManager && uiManager.showAlert) {
-            uiManager.showAlert(errorMessage, 'danger');
-        }
-    } finally {
-        const saveBtn = document.getElementById('save-stock-btn');
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Actualizar Stock';
-        }
-    }
-    },
 
     async _syncProductUpdateImmediate(updatedProduct, productId) {
         console.log('Sincronizando actualización inmediatamente...', updatedProduct);

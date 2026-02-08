@@ -1006,161 +1006,255 @@ formatLensSpecsForLog(lens) {
 },
 
 
-  // ✅ FUNCIÓN CORREGIDA CON SINCRONIZACIÓN Y VALIDACIONES
-  async updateInventoryIntelligently() {
-    try {
-      console.log("🔄 Iniciando actualización inteligente de inventario...");
+  //Permite stock negativo y siempre registra la salida
+async updateInventoryIntelligently() {
+  try {
+    console.log("🔄 Iniciando actualización inteligente de inventario...");
 
-      // Validación: Asegurar que selectedLenses sea un array
-      if (!Array.isArray(this.state.selectedLenses)) {
-        throw new Error("No hay productos seleccionados para procesar");
+    // ✅ VALIDACIÓN 1: Verificar que hay productos seleccionados
+    if (!Array.isArray(this.state.selectedLenses) || this.state.selectedLenses.length === 0) {
+      throw new Error("No hay productos seleccionados para procesar");
+    }
+
+    const useWarehouseStock = this.state.useWarehouseStock || false;
+    let updatedCount = 0;
+    const advertencias = []; // ✅ Advertencias no críticas (stock negativo)
+
+    console.log(`📦 Modo de operación: ${useWarehouseStock ? 'BODEGA' : 'NORMAL'}`);
+    console.log(`📊 Productos a procesar: ${this.state.selectedLenses.length}`);
+
+    // ✅ VALIDACIÓN PREVENTIVA (SOLO ADVERTENCIAS, NO ERRORES)
+    for (const selectedLens of this.state.selectedLenses) {
+      if (!selectedLens || !selectedLens._id) {
+        console.warn("⚠️ Producto inválido encontrado:", selectedLens);
+        continue;
       }
 
-      const useWarehouseStock = this.state.useWarehouseStock || false;
-      let updatedCount = 0; // ✅ Contador de productos actualizados
+      const productResponse = await window.api.getProduct(selectedLens._id);
+      const product = productResponse?.product || productResponse;
 
-      for (const selectedLens of this.state.selectedLenses) {
-        if (!selectedLens || !selectedLens._id) {
-          console.warn("⚠️ Lente inválido encontrado:", selectedLens);
-          continue;
+      if (!product || !product._id) {
+        advertencias.push(`Producto no encontrado: ${selectedLens.name || selectedLens._id}`);
+        continue;
+      }
+
+      const quantityToSubtract = selectedLens.quantity || 0;
+      const currentStock = product.stock || 0;
+      const productName = product.name || "Producto sin nombre";
+
+      // ⚠️ ADVERTENCIA (NO ERROR): Stock insuficiente
+      if (currentStock < quantityToSubtract) {
+        const faltante = quantityToSubtract - currentStock;
+        advertencias.push(
+          `"${productName}": Stock insuficiente (Disponible: ${currentStock}, Solicitado: ${quantityToSubtract}, Faltante: ${faltante}). Se registrará como stock negativo.`
+        );
+      }
+    }
+
+    // ✅ Mostrar advertencias si existen (pero continuar)
+    if (advertencias.length > 0) {
+      console.warn("⚠️ ADVERTENCIAS DETECTADAS:");
+      advertencias.forEach(adv => console.warn(`   - ${adv}`));
+      
+      // Opcional: Mostrar al usuario pero permitir continuar
+      const mensajeAdvertencia = advertencias.join("\n\n");
+      console.log(`⚠️ ${mensajeAdvertencia}`);
+    }
+
+    console.log("✅ Validación completada. Procediendo con actualizaciones (se permite stock negativo)...");
+
+    // ✅ PROCESAMIENTO: Actualizar cada producto
+    for (const selectedLens of this.state.selectedLenses) {
+      if (!selectedLens || !selectedLens._id) continue;
+
+      const productResponse = await window.api.getProduct(selectedLens._id);
+      const product = productResponse?.product || productResponse;
+
+      if (!product || !product._id) {
+        console.error(`❌ Producto ${selectedLens._id} no encontrado en procesamiento`);
+        continue;
+      }
+
+      const quantityToSubtract = selectedLens.quantity || 0;
+      const currentStock = product.stock || 0;
+      const currentStockSurtido = product.stock_surtido || 0;
+      const currentStockAlmacenado = product.stock_almacenado || 0;
+      const productName = product.name || "Producto sin nombre";
+
+      console.log(`\n📦 Procesando: ${productName}`);
+      console.log(`   Cantidad a descontar: ${quantityToSubtract}`);
+      console.log(`   Stock actual: ${currentStock}`);
+      console.log(`   Stock surtido actual: ${currentStockSurtido}`);
+      console.log(`   Stock almacenado actual: ${currentStockAlmacenado}`);
+
+      let newStockSurtido, newStockAlmacenado, newStock;
+
+      // ✅ LÓGICA DE DISTRIBUCIÓN (PERMITE NEGATIVOS)
+      if (useWarehouseStock) {
+        // ══════════════════════════════════════════════════════════
+        // MODO BODEGA: Solo descontar del stock_almacenado
+        // ══════════════════════════════════════════════════════════
+        
+        newStockSurtido = currentStockSurtido; // ✅ NO CAMBIA
+        newStockAlmacenado = currentStockAlmacenado - quantityToSubtract; // ✅ Puede ser negativo
+        newStock = currentStock - quantityToSubtract; // ✅ Puede ser negativo
+
+        console.log(`   ✅ MODO BODEGA aplicado:`);
+        console.log(`      Stock surtido: ${currentStockSurtido} → ${newStockSurtido} (sin cambios)`);
+        console.log(`      Stock almacenado: ${currentStockAlmacenado} → ${newStockAlmacenado}${newStockAlmacenado < 0 ? ' ⚠️ NEGATIVO' : ''}`);
+        console.log(`      Stock total: ${currentStock} → ${newStock}${newStock < 0 ? ' ⚠️ NEGATIVO' : ''}`);
+
+        if (newStockAlmacenado < 0) {
+          console.warn(`   ⚠️ Stock almacenado quedará negativo: ${newStockAlmacenado}`);
         }
 
-        // Obtener el producto actual
-        const productResponse = await window.api.getProduct(selectedLens._id);
+      } else {
+        // ══════════════════════════════════════════════════════════
+        // MODO NORMAL: Priorizar stock_surtido
+        // ══════════════════════════════════════════════════════════
 
-        // CORRECCIÓN: Extraer producto según formato de respuesta
-        const product = productResponse?.product || productResponse;
-
-        if (!product || !product._id) {
-          throw new Error(
-            `No se encontró el producto con ID: ${selectedLens._id}`
-          );
-        }
-
-        const quantityToSubtract = selectedLens.quantity || 0;
-        const currentStockSurtido = product.stock_surtido || 0;
-        const currentStock = product.stock || 0;
-        const productName = product.name || "Producto sin nombre";
-
-        console.log(`📦 Procesando ${productName}:`, {
-          cantidadSalida: quantityToSubtract,
-          stockActual: currentStock,
-          stockSurtidoActual: currentStockSurtido,
-          usarBodega: useWarehouseStock,
-        });
-
-        // Validación de stock
-        if (currentStock < quantityToSubtract) {
-          throw new Error(
-            `Stock insuficiente para ${productName}. Disponible: ${currentStock}, Solicitado: ${quantityToSubtract}`
-          );
-        }
-
-        // Calcular nuevos valores según la opción seleccionada
-        let newStockSurtido, newStock;
-
-        if (useWarehouseStock) {
-          // MODO BODEGA: Solo descontar del stock general, mantener stock_surtido intacto
-          newStockSurtido = currentStockSurtido;
+        if (currentStockSurtido >= quantityToSubtract) {
+          // ✅ CASO 1: Hay suficiente en stock_surtido
+          newStockSurtido = currentStockSurtido - quantityToSubtract;
+          newStockAlmacenado = currentStockAlmacenado; // NO CAMBIA
           newStock = currentStock - quantityToSubtract;
 
-          console.log(
-            `📦 Modo bodega: Descontando ${quantityToSubtract} solo del stock general`
-          );
+          console.log(`   ✅ CASO 1: Descontando solo de stock_surtido`);
+          console.log(`      Stock surtido: ${currentStockSurtido} → ${newStockSurtido}`);
+          console.log(`      Stock almacenado: ${currentStockAlmacenado} → ${newStockAlmacenado} (sin cambios)`);
+          console.log(`      Stock total: ${currentStock} → ${newStock}`);
+
+        } else if (currentStock >= quantityToSubtract) {
+          // ✅ CASO 2: Stock surtido insuficiente pero stock total suficiente
+          const remainingToSubtract = quantityToSubtract - currentStockSurtido;
+
+          console.log(`   ⚠️ CASO 2: Stock surtido insuficiente`);
+          console.log(`      Faltante a tomar de almacenado: ${remainingToSubtract}`);
+
+          newStockSurtido = 0; // Se agota completamente
+          newStockAlmacenado = currentStockAlmacenado - remainingToSubtract;
+          newStock = currentStock - quantityToSubtract;
+
+          console.log(`   ✅ Distribución aplicada:`);
+          console.log(`      Stock surtido: ${currentStockSurtido} → ${newStockSurtido} (agotado)`);
+          console.log(`      Stock almacenado: ${currentStockAlmacenado} → ${newStockAlmacenado}`);
+          console.log(`      Stock total: ${currentStock} → ${newStock}`);
+
         } else {
-          // MODO NORMAL: Priorizar stock_surtido
-          if (currentStockSurtido >= quantityToSubtract) {
-            newStockSurtido = currentStockSurtido - quantityToSubtract;
-            newStock = currentStock - quantityToSubtract;
-          } else {
-            const remainingToSubtract =
-              quantityToSubtract - currentStockSurtido;
-            const currentStockAlmacenado = product.stock_almacenado || 0;
+          // ✅ CASO 3: Stock total insuficiente - PERMITIR NEGATIVO
+          console.warn(`   ⚠️ CASO 3: Stock total insuficiente - Stock quedará NEGATIVO`);
+          
+          const deficit = quantityToSubtract - currentStock;
+          console.log(`      Déficit: ${deficit} unidades`);
 
-            if (currentStockAlmacenado < remainingToSubtract) {
-              throw new Error(
-                `Stock insuficiente para ${productName}. Total disponible: ${currentStock}, Solicitado: ${quantityToSubtract}`
-              );
-            }
+          // Estrategia: Agotar todo y llevar el faltante a stock_almacenado negativo
+          newStockSurtido = 0;
+          newStockAlmacenado = -deficit; // ✅ NEGATIVO
+          newStock = currentStock - quantityToSubtract; // ✅ NEGATIVO
 
-            newStockSurtido = 0;
-            newStock = currentStock - quantityToSubtract;
-          }
+          console.log(`   ⚠️ Distribución con stock negativo:`);
+          console.log(`      Stock surtido: ${currentStockSurtido} → ${newStockSurtido} (agotado)`);
+          console.log(`      Stock almacenado: ${currentStockAlmacenado} → ${newStockAlmacenado} ⚠️ NEGATIVO`);
+          console.log(`      Stock total: ${currentStock} → ${newStock} ⚠️ NEGATIVO`);
         }
+      }
 
-        // ACTUALIZAR EN BACKEND
-        const updateResult = await window.api.updateProductStock(
+      // ✅ VALIDACIÓN: stock_surtido + stock_almacenado = stock (incluso con negativos)
+      const sumaParciales = newStockSurtido + newStockAlmacenado;
+      if (sumaParciales !== newStock) {
+        console.error(`❌ ERROR DE CONSISTENCIA en ${productName}:`);
+        console.error(`   Stock total calculado: ${newStock}`);
+        console.error(`   Suma de parciales: ${sumaParciales} (${newStockSurtido} + ${newStockAlmacenado})`);
+        throw new Error(
+          `"${productName}": Inconsistencia en cálculo de stock (${sumaParciales} ≠ ${newStock})`
+        );
+      }
+
+      console.log(`\n📤 Enviando actualización al backend...`);
+      console.log(`   Datos a enviar:`, {
+        stock: newStock,
+        stock_surtido: newStockSurtido,
+        stock_almacenado: newStockAlmacenado
+      });
+
+      // ✅ ACTUALIZAR EN BACKEND
+      const updateResult = await window.api.updateProductStock(
+        selectedLens._id,
+        {
+          stock: newStock,
+          stock_surtido: newStockSurtido,
+          stock_almacenado: newStockAlmacenado
+        }
+      );
+
+      console.log(`📥 Respuesta del backend:`, updateResult);
+
+      const updatedProduct = updateResult?.product || updateResult;
+
+      if (!updatedProduct || updatedProduct.stock === undefined) {
+        throw new Error(
+          `"${productName}": El backend no devolvió datos válidos de actualización`
+        );
+      }
+
+      // ✅ VERIFICAR ACTUALIZACIÓN
+      if (updatedProduct.stock !== newStock) {
+        console.warn(`⚠️ Discrepancia en stock actualizado:`);
+        console.warn(`   Esperado: ${newStock}`);
+        console.warn(`   Recibido: ${updatedProduct.stock}`);
+      }
+
+      // ✅ SINCRONIZACIÓN
+      if (syncHelper && typeof syncHelper.notifyProductSold === "function") {
+        syncHelper.notifyProductSold(
           selectedLens._id,
-          {
-            stock: newStock,
-            stock_surtido: newStockSurtido,
-          }
+          quantityToSubtract,
+          newStock,
+          updatedProduct,
+          "salesView"
         );
-
-        const updatedProduct = updateResult.product || updateResult;
-
-        // SINCRONIZACIÓN INMEDIATA
-        if (syncHelper && typeof syncHelper.notifyProductSold === "function") {
-          syncHelper.notifyProductSold(
-            selectedLens._id,
-            quantityToSubtract,
+        console.log(`✅ Sincronización notificada vía syncHelper`);
+      } else {
+        console.warn("⚠️ syncHelper.notifyProductSold no disponible");
+        if (eventManager && typeof eventManager.emit === "function") {
+          eventManager.emit("data:product:stock-updated", {
+            productId: selectedLens._id,
             newStock,
-            updatedProduct,
-            "salesView"
-          );
-        } else {
-          console.warn("⚠️ syncHelper.notifyProductSold no disponible");
-          if (eventManager && typeof eventManager.emit === "function") {
-            eventManager.emit("data:product:stock-updated", {
-              productId: selectedLens._id,
-              newStock,
-              product: updatedProduct,
-            });
-          }
-        }
-
-        updatedCount++; // ✅ Incrementar contador
-        console.log(
-          `✅ Inventario actualizado y sincronizado para ${productName}`
-        );
-      }
-
-      // Recargar datos locales
-      await this.loadInitialData();
-
-      console.log(`✅ Actualización inteligente completada: ${updatedCount} productos actualizados`);
-      return true;
-    } catch (error) {
-      console.error("💥 Error en actualización inteligente:", error);
-
-      let errorMessage = "Error al actualizar el inventario";
-      if (error.message) {
-        if (error.message.includes("Stock insuficiente")) {
-          errorMessage = error.message;
-        } else if (
-          error.message.includes("400") ||
-          error.message.includes("inválido")
-        ) {
-          errorMessage = "Error de validación: " + error.message;
-        } else if (
-          error.message.includes("404") ||
-          error.message.includes("no encontrado")
-        ) {
-          errorMessage = "Producto no encontrado";
-        } else if (
-          error.message.includes("500") ||
-          error.message.includes("servidor")
-        ) {
-          errorMessage = "Error del servidor: Intente nuevamente";
-        } else {
-          errorMessage = error.message;
+            product: updatedProduct,
+          });
+          console.log(`✅ Evento de sincronización emitido vía eventManager`);
         }
       }
 
-      uiManager.showAlert(errorMessage, "danger");
-      return false;
+      updatedCount++;
+      console.log(`✅ Producto actualizado correctamente (${updatedCount}/${this.state.selectedLenses.length})`);
     }
-  },
+
+    // ✅ RECARGAR DATOS LOCALES
+    console.log("\n🔄 Recargando datos locales...");
+    await this.loadInitialData();
+
+    console.log(`\n✅ ═══════════════════════════════════════════════════`);
+    console.log(`✅ ACTUALIZACIÓN COMPLETADA EXITOSAMENTE`);
+    console.log(`✅ Productos actualizados: ${updatedCount}/${this.state.selectedLenses.length}`);
+    if (advertencias.length > 0) {
+      console.log(`⚠️ Con ${advertencias.length} advertencia(s) de stock negativo`);
+    }
+    console.log(`✅ ═══════════════════════════════════════════════════\n`);
+
+    return true;
+
+  } catch (error) {
+    console.error("\n💥 ═══════════════════════════════════════════════════");
+    console.error("💥 ERROR EN ACTUALIZACIÓN DE INVENTARIO");
+    console.error("💥 ═══════════════════════════════════════════════════");
+    console.error(error);
+
+    let errorMessage = "Error al actualizar el inventario: " + error.message;
+    uiManager.showAlert(errorMessage, "danger");
+    return false;
+  }
+},
 
   handleCancel() {
     // ✅ VALIDACIÓN: Asegurar que selectedLenses sea un array

@@ -6,20 +6,20 @@ const Transaction = require('../models/transaction');
 // ============================================================================
 exports.updateProductStock = async (req, res) => {
     const productId = req.params.id;
-    const { stock, stock_surtido } = req.body;
+    const { stock, stock_surtido, stock_almacenado } = req.body; // ✅ Agregar stock_almacenado
     
     console.log('\n========================================');
     console.log('🔄 [STOCK-UPDATE] INICIO DE ACTUALIZACIÓN');
     console.log('========================================');
     console.log('📦 ProductID:', productId);
-    console.log('📝 Datos recibidos:', JSON.stringify({ stock, stock_surtido }, null, 2));
+    console.log('📝 Datos recibidos:', JSON.stringify({ stock, stock_surtido, stock_almacenado }, null, 2));
     console.log('⏰ Timestamp:', new Date().toISOString());
     
     try {
         // ====================================================================
         // PASO 1: VALIDACIONES INICIALES
         // ====================================================================
-        if (stock === undefined && stock_surtido === undefined) {
+        if (stock === undefined && stock_surtido === undefined && stock_almacenado === undefined) {
             console.error('❌ [STOCK-UPDATE] ERROR: No se proporcionaron datos para actualizar');
             return res.status(400).json({
                 success: false,
@@ -28,29 +28,63 @@ exports.updateProductStock = async (req, res) => {
             });
         }
 
-        // Validar formato de números
+        // ✅ CAMBIO: Permitir números negativos
+        const validarNumero = (valor, nombreCampo) => {
+            if (valor === undefined) return null;
+            
+            const numero = parseInt(valor);
+            if (isNaN(numero)) {
+                console.error(`❌ [STOCK-UPDATE] ERROR: ${nombreCampo} inválido:`, valor);
+                return {
+                    error: true,
+                    message: `El ${nombreCampo} debe ser un número válido`,
+                    receivedValue: valor
+                };
+            }
+            
+            // ✅ PERMITIR NEGATIVOS (eliminar validación >= 0)
+            if (numero < 0) {
+                console.warn(`⚠️ [STOCK-UPDATE] ADVERTENCIA: ${nombreCampo} es negativo: ${numero}`);
+            }
+            
+            return { error: false, value: numero };
+        };
+
+        // Validar stock
         if (stock !== undefined) {
-            const stockNumber = parseInt(stock);
-            if (isNaN(stockNumber) || stockNumber < 0) {
-                console.error('❌ [STOCK-UPDATE] ERROR: Stock inválido:', stock);
+            const validacion = validarNumero(stock, 'stock');
+            if (validacion.error) {
                 return res.status(400).json({
                     success: false,
-                    message: 'El stock debe ser un número válido mayor o igual a 0',
+                    message: validacion.message,
                     error: 'INVALID_STOCK_VALUE',
-                    receivedValue: stock
+                    receivedValue: validacion.receivedValue
                 });
             }
         }
 
+        // Validar stock_surtido
         if (stock_surtido !== undefined) {
-            const stockSurtidoNumber = parseInt(stock_surtido);
-            if (isNaN(stockSurtidoNumber) || stockSurtidoNumber < 0) {
-                console.error('❌ [STOCK-UPDATE] ERROR: Stock surtido inválido:', stock_surtido);
+            const validacion = validarNumero(stock_surtido, 'stock_surtido');
+            if (validacion.error) {
                 return res.status(400).json({
                     success: false,
-                    message: 'El stock surtido debe ser un número válido mayor o igual a 0',
+                    message: validacion.message,
                     error: 'INVALID_STOCK_SURTIDO_VALUE',
-                    receivedValue: stock_surtido
+                    receivedValue: validacion.receivedValue
+                });
+            }
+        }
+
+        // Validar stock_almacenado
+        if (stock_almacenado !== undefined) {
+            const validacion = validarNumero(stock_almacenado, 'stock_almacenado');
+            if (validacion.error) {
+                return res.status(400).json({
+                    success: false,
+                    message: validacion.message,
+                    error: 'INVALID_STOCK_ALMACENADO_VALUE',
+                    receivedValue: validacion.receivedValue
                 });
             }
         }
@@ -76,52 +110,69 @@ exports.updateProductStock = async (req, res) => {
         console.log('   - Código:', oldProduct.barcode);
         console.log('   - Stock actual:', oldProduct.stock);
         console.log('   - Stock surtido actual:', oldProduct.stock_surtido);
+        console.log('   - Stock almacenado actual:', oldProduct.stock_almacenado);
 
         // ====================================================================
         // PASO 3: CALCULAR NUEVOS VALORES
         // ====================================================================
         const newStock = stock !== undefined ? parseInt(stock) : oldProduct.stock;
         const newStockSurtido = stock_surtido !== undefined ? parseInt(stock_surtido) : oldProduct.stock_surtido;
+        const newStockAlmacenado = stock_almacenado !== undefined ? parseInt(stock_almacenado) : oldProduct.stock_almacenado;
 
         console.log('📊 [STOCK-UPDATE] Calculando nuevos valores:');
         console.log('   - Nuevo stock total:', newStock);
         console.log('   - Nuevo stock surtido:', newStockSurtido);
+        console.log('   - Nuevo stock almacenado:', newStockAlmacenado);
 
-        // VALIDACIÓN CRÍTICA: stock_surtido no puede exceder stock
-        if (newStockSurtido > newStock) {
-            console.error('❌ [STOCK-UPDATE] ERROR: Stock surtido excede stock total');
+        // ✅ CAMBIO: Permitir stock_surtido mayor que stock si ambos son negativos
+        // Solo validar consistencia lógica
+        const sumaParciales = newStockSurtido + newStockAlmacenado;
+        if (sumaParciales !== newStock) {
+            console.error('❌ [STOCK-UPDATE] ERROR: Inconsistencia en suma de stocks');
             console.error('   - Stock total:', newStock);
-            console.error('   - Stock surtido intentado:', newStockSurtido);
+            console.error('   - Stock surtido + almacenado:', sumaParciales);
+            console.error('   - Diferencia:', Math.abs(newStock - sumaParciales));
             
             return res.status(400).json({
                 success: false,
-                message: `El stock surtido (${newStockSurtido}) no puede ser mayor que el stock total (${newStock})`,
-                error: 'STOCK_SURTIDO_EXCEEDS_TOTAL',
+                message: `Inconsistencia: stock_surtido (${newStockSurtido}) + stock_almacenado (${newStockAlmacenado}) = ${sumaParciales}, pero stock total es ${newStock}`,
+                error: 'STOCK_INCONSISTENCY',
                 values: {
                     stock: newStock,
                     stock_surtido: newStockSurtido,
-                    difference: newStockSurtido - newStock
+                    stock_almacenado: newStockAlmacenado,
+                    suma: sumaParciales,
+                    diferencia: newStock - sumaParciales
                 }
             });
+        }
+
+        // ✅ ADVERTENCIA si hay valores negativos
+        const advertencias = [];
+        if (newStock < 0) {
+            advertencias.push(`Stock total negativo: ${newStock}`);
+        }
+        if (newStockSurtido < 0) {
+            advertencias.push(`Stock surtido negativo: ${newStockSurtido}`);
+        }
+        if (newStockAlmacenado < 0) {
+            advertencias.push(`Stock almacenado negativo: ${newStockAlmacenado}`);
+        }
+
+        if (advertencias.length > 0) {
+            console.warn('⚠️ [STOCK-UPDATE] ADVERTENCIAS:');
+            advertencias.forEach(adv => console.warn('   -', adv));
         }
 
         // ====================================================================
         // PASO 4: PREPARAR DATOS DE ACTUALIZACIÓN
         // ====================================================================
         const updateData = {
+            stock: newStock,
+            stock_surtido: newStockSurtido,
+            stock_almacenado: newStockAlmacenado,
             lastUpdated: new Date()
         };
-
-        if (stock !== undefined) {
-            updateData.stock = newStock;
-        }
-
-        if (stock_surtido !== undefined) {
-            updateData.stock_surtido = newStockSurtido;
-        }
-
-        // Calcular stock almacenado
-        updateData.stock_almacenado = newStock - newStockSurtido;
 
         console.log('📝 [STOCK-UPDATE] Datos de actualización preparados:');
         console.log(JSON.stringify(updateData, null, 2));
@@ -135,9 +186,9 @@ exports.updateProductStock = async (req, res) => {
             productId,
             { $set: updateData },
             {
-                new: true,          // Retornar documento actualizado
-                runValidators: true, // Ejecutar validaciones del schema
-                lean: false          // Retornar documento Mongoose completo
+                new: true,
+                runValidators: false, // ✅ Desactivar validadores para permitir negativos
+                lean: false
             }
         );
 
@@ -167,15 +218,19 @@ exports.updateProductStock = async (req, res) => {
             });
         }
 
-        // Verificar que los valores se guardaron correctamente
+        // Verificar valores
         const verificationErrors = [];
         
-        if (stock !== undefined && verifiedProduct.stock !== newStock) {
+        if (verifiedProduct.stock !== newStock) {
             verificationErrors.push(`Stock esperado: ${newStock}, guardado: ${verifiedProduct.stock}`);
         }
         
-        if (stock_surtido !== undefined && verifiedProduct.stock_surtido !== newStockSurtido) {
+        if (verifiedProduct.stock_surtido !== newStockSurtido) {
             verificationErrors.push(`Stock surtido esperado: ${newStockSurtido}, guardado: ${verifiedProduct.stock_surtido}`);
+        }
+
+        if (verifiedProduct.stock_almacenado !== newStockAlmacenado) {
+            verificationErrors.push(`Stock almacenado esperado: ${newStockAlmacenado}, guardado: ${verifiedProduct.stock_almacenado}`);
         }
 
         if (verificationErrors.length > 0) {
@@ -186,9 +241,7 @@ exports.updateProductStock = async (req, res) => {
                 success: false,
                 message: 'Los datos no se guardaron correctamente',
                 error: 'DATA_MISMATCH',
-                details: verificationErrors,
-                expected: { stock: newStock, stock_surtido: newStockSurtido },
-                actual: { stock: verifiedProduct.stock, stock_surtido: verifiedProduct.stock_surtido }
+                details: verificationErrors
             });
         }
 
@@ -197,7 +250,7 @@ exports.updateProductStock = async (req, res) => {
         // ====================================================================
         // PASO 7: REGISTRAR TRANSACCIÓN
         // ====================================================================
-        if (stock !== undefined && newStock !== oldProduct.stock) {
+        if (newStock !== oldProduct.stock) {
             try {
                 console.log('📝 [STOCK-UPDATE] Registrando transacción...');
                 
@@ -208,14 +261,13 @@ exports.updateProductStock = async (req, res) => {
                     previousStock: oldProduct.stock,
                     newStock: newStock,
                     userId: req.user ? req.user.id : null,
-                    notes: `Actualización de inventario - Stock ${newStock < oldProduct.stock ? 'reducido' : 'aumentado'}`
+                    notes: `Actualización de inventario - Stock ${newStock < oldProduct.stock ? 'reducido' : 'aumentado'}${newStock < 0 ? ' (STOCK NEGATIVO)' : ''}`
                 });
 
                 await transaction.save();
                 console.log('✅ [STOCK-UPDATE] Transacción registrada:', transaction._id);
                 
             } catch (transError) {
-                // No fallar la actualización si falla el registro de transacción
                 console.warn('⚠️ [STOCK-UPDATE] Advertencia: No se pudo registrar transacción:', transError.message);
             }
         }
@@ -226,30 +278,27 @@ exports.updateProductStock = async (req, res) => {
         if (req.app.get('io')) {
             try {
                 const io = req.app.get('io');
-                
                 console.log('📡 [STOCK-UPDATE] Emitiendo eventos Socket.IO...');
                 
-                // Evento específico de actualización de stock
                 io.emit('product:stock-updated', {
                     productId: productId,
                     oldStock: oldProduct.stock,
                     newStock: verifiedProduct.stock,
                     oldStockSurtido: oldProduct.stock_surtido,
                     newStockSurtido: verifiedProduct.stock_surtido,
+                    oldStockAlmacenado: oldProduct.stock_almacenado,
+                    newStockAlmacenado: verifiedProduct.stock_almacenado,
                     product: verifiedProduct,
+                    hasNegativeStock: verifiedProduct.stock < 0,
                     timestamp: new Date().toISOString()
                 });
                 
-                // Evento general de producto actualizado
                 io.emit('product:updated', verifiedProduct);
-                
                 console.log('✅ [STOCK-UPDATE] Eventos emitidos correctamente');
                 
             } catch (socketError) {
                 console.warn('⚠️ [STOCK-UPDATE] Advertencia: Error al emitir eventos:', socketError.message);
             }
-        } else {
-            console.warn('⚠️ [STOCK-UPDATE] Socket.IO no disponible');
         }
 
         // ====================================================================
@@ -262,8 +311,12 @@ exports.updateProductStock = async (req, res) => {
             previousStockSurtido: oldProduct.stock_surtido,
             newStockSurtido: verifiedProduct.stock_surtido,
             stockSurtidoChanged: verifiedProduct.stock_surtido !== oldProduct.stock_surtido,
+            previousStockAlmacenado: oldProduct.stock_almacenado,
+            newStockAlmacenado: verifiedProduct.stock_almacenado,
+            stockAlmacenadoChanged: verifiedProduct.stock_almacenado !== oldProduct.stock_almacenado,
             stockReduced: oldProduct.stock - verifiedProduct.stock,
-            stockAlmacenado: verifiedProduct.stock_almacenado
+            hasNegativeStock: verifiedProduct.stock < 0,
+            warnings: advertencias
         };
 
         console.log('✅ [STOCK-UPDATE] Cambios aplicados:');
@@ -274,9 +327,10 @@ exports.updateProductStock = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: 'Stock actualizado correctamente',
+            message: 'Stock actualizado correctamente' + (advertencias.length > 0 ? ' (con stock negativo)' : ''),
             product: verifiedProduct,
             changes: changes,
+            warnings: advertencias,
             timestamp: new Date().toISOString()
         });
 
@@ -286,21 +340,16 @@ exports.updateProductStock = async (req, res) => {
         console.error('========================================');
         console.error('Error completo:', error);
         console.error('Stack trace:', error.stack);
-        console.error('ProductID afectado:', productId);
-        console.error('Datos intentados:', JSON.stringify({ stock, stock_surtido }, null, 2));
         console.error('========================================\n');
         
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor al actualizar stock',
             error: error.message,
-            errorType: error.name,
-            productId: productId,
             timestamp: new Date().toISOString()
         });
     }
 };
-
 // ============================================================================
 // FUNCIÓN AUXILIAR: Obtener todos los productos (también mejorada)
 // ============================================================================

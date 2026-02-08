@@ -1162,10 +1162,18 @@ async saveProductChanges(productId) {
         console.log('   - Stock total:', product.stock);
         console.log('   - Stock surtido:', product.stock_surtido);
 
-        // VALIDACIÓN CRÍTICA en cliente
+        // ====================================================================
+        // ✅ CORRECCIÓN CRÍTICA: VALIDAR Y CALCULAR VALORES CORRECTAMENTE
+        // ====================================================================
+        
         const stockTotal = parseInt(product.stock) || 0;
         const stockSurtido = parseInt(product.stock_surtido) || 0;
 
+        console.log('📊 [CLIENT] Valores numéricos:');
+        console.log('   - Stock total:', stockTotal);
+        console.log('   - Stock surtido:', stockSurtido);
+
+        // ✅ VALIDACIÓN 1: stock_surtido no puede exceder stock_total
         if (stockSurtido > stockTotal) {
             const errorMsg = `El stock surtido (${stockSurtido}) no puede exceder el stock total (${stockTotal})`;
             console.error('❌ [CLIENT] ERROR DE VALIDACIÓN:', errorMsg);
@@ -1173,19 +1181,35 @@ async saveProductChanges(productId) {
             return;
         }
 
-        // 🔍 NUEVO: Guardar datos anteriores para el log
+        // ✅ CALCULAR stock_almacenado CORRECTAMENTE
+        const stockAlmacenado = stockTotal - stockSurtido;
+
+        console.log('✅ [CLIENT] Stock almacenado calculado:', stockAlmacenado);
+
+        // ✅ VALIDACIÓN 2: Verificar que la suma sea correcta
+        if (stockSurtido + stockAlmacenado !== stockTotal) {
+            const errorMsg = `Error de cálculo: ${stockSurtido} + ${stockAlmacenado} = ${stockSurtido + stockAlmacenado}, pero debería ser ${stockTotal}`;
+            console.error('❌ [CLIENT] ERROR DE CONSISTENCIA:', errorMsg);
+            uiManager.showAlert(errorMsg, 'danger');
+            return;
+        }
+
+        // 🔍 Guardar datos anteriores para el log
         const datosAnteriores = {
-            stock: product.stock,
-            stock_surtido: product.stock_surtido,
+            stock: stockTotal,
+            stock_surtido: product.stock_surtido || 0,
             stock_almacenado: (product.stock || 0) - (product.stock_surtido || 0)
         };
 
+        // ✅ PREPARAR DATOS PARA ENVIAR (CON LOS 3 VALORES)
         const updateData = {
             stock: stockTotal,
-            stock_surtido: stockSurtido
+            stock_surtido: stockSurtido,
+            stock_almacenado: stockAlmacenado
         };
 
-        console.log('📤 [CLIENT] Enviando datos al servidor...');
+        console.log('📤 [CLIENT] Datos a enviar al servidor:');
+        console.log(JSON.stringify(updateData, null, 2));
 
         // Mostrar indicador de carga
         const saveBtn = document.querySelector(`.save-changes-btn[data-id="${productId}"]`);
@@ -1222,6 +1246,10 @@ async saveProductChanges(productId) {
         }
 
         console.log('✅ [CLIENT] Producto actualizado en servidor');
+        console.log('📥 [CLIENT] Datos recibidos del servidor:');
+        console.log('   - Stock:', response.product.stock);
+        console.log('   - Stock surtido:', response.product.stock_surtido);
+        console.log('   - Stock almacenado:', response.product.stock_almacenado);
 
         // Actualizar cache local INMEDIATAMENTE con datos del servidor
         const index = this.products.findIndex(p => p._id === productId);
@@ -1229,7 +1257,8 @@ async saveProductChanges(productId) {
             this.products[index] = {
                 ...this.products[index],
                 stock: response.product.stock,
-                stock_surtido: response.product.stock_surtido
+                stock_surtido: response.product.stock_surtido,
+                stock_almacenado: response.product.stock_almacenado
             };
             console.log('✅ [CLIENT] Cache local actualizado INMEDIATAMENTE');
         }
@@ -1240,7 +1269,8 @@ async saveProductChanges(productId) {
             this.filteredProducts[filteredIndex] = {
                 ...this.filteredProducts[filteredIndex],
                 stock: response.product.stock,
-                stock_surtido: response.product.stock_surtido
+                stock_surtido: response.product.stock_surtido,
+                stock_almacenado: response.product.stock_almacenado
             };
             console.log('✅ [CLIENT] filteredProducts actualizado');
         }
@@ -1249,49 +1279,45 @@ async saveProductChanges(productId) {
         this.modifiedProducts.delete(productId);
         this.updateSaveAllButton();
 
-        // 📊 NUEVO: REGISTRAR LOG DE ACTUALIZACIÓN EXITOSA
+        // 📊 REGISTRAR LOG
         const datosNuevos = {
-    nombre: product.name,
-    barcode: product.barcode,
-    stock: response.product.stock, // Total (para referencia)
-    stock_surtido: response.product.stock_surtido,
-    stock_almacenado: (response.product.stock || 0) - (response.product.stock_surtido || 0),
-    formula: {
-        sphere: product.sphere || 'N/A',
-        cylinder: product.cylinder || 'N/A',
-        addition: product.addition || 'N/A'
-    },
-    modificacion: 'Redistribución de stock entre Surtido y Almacenado'
-};
+            nombre: product.name,
+            barcode: product.barcode,
+            stock: response.product.stock,
+            stock_surtido: response.product.stock_surtido,
+            stock_almacenado: response.product.stock_almacenado,
+            formula: {
+                sphere: product.sphere || 'N/A',
+                cylinder: product.cylinder || 'N/A',
+                addition: product.addition || 'N/A'
+            },
+            modificacion: 'Redistribución de stock entre Surtido y Almacenado'
+        };
 
-// Determinar cambios específicos ENFOCADO EN DISTRIBUCIÓN
-const cambios = [];
+        const cambios = [];
 
-if (datosAnteriores.stock_surtido !== datosNuevos.stock_surtido) {
-    const diff = datosNuevos.stock_surtido - datosAnteriores.stock_surtido;
-    const signo = diff > 0 ? '+' : '';
-    cambios.push(`Surtido: ${datosAnteriores.stock_surtido} → ${datosNuevos.stock_surtido} (${signo}${diff})`);
-}
+        if (datosAnteriores.stock_surtido !== datosNuevos.stock_surtido) {
+            const diff = datosNuevos.stock_surtido - datosAnteriores.stock_surtido;
+            const signo = diff > 0 ? '+' : '';
+            cambios.push(`Surtido: ${datosAnteriores.stock_surtido} → ${datosNuevos.stock_surtido} (${signo}${diff})`);
+        }
 
-if (datosAnteriores.stock_almacenado !== datosNuevos.stock_almacenado) {
-    const diff = datosNuevos.stock_almacenado - datosAnteriores.stock_almacenado;
-    const signo = diff > 0 ? '+' : '';
-    cambios.push(`Almacenado: ${datosAnteriores.stock_almacenado} → ${datosNuevos.stock_almacenado} (${signo}${diff})`);
-}
+        if (datosAnteriores.stock_almacenado !== datosNuevos.stock_almacenado) {
+            const diff = datosNuevos.stock_almacenado - datosAnteriores.stock_almacenado;
+            const signo = diff > 0 ? '+' : '';
+            cambios.push(`Almacenado: ${datosAnteriores.stock_almacenado} → ${datosNuevos.stock_almacenado} (${signo}${diff})`);
+        }
 
-// Si cambió el total (raro, pero posible)
-if (datosAnteriores.stock !== datosNuevos.stock) {
-    cambios.push(`Total: ${datosAnteriores.stock} → ${datosNuevos.stock}`);
-}
-
-await activityLogger.log({
-    tipo: 'PRODUCTO',
-    accion: `Redistribución de stock: ${product.name} - ${cambios.join(' | ')}`,
-    entidad: 'Producto',
-    entidad_id: productId,
-    datos_anteriores: datosAnteriores,
-    datos_nuevos: datosNuevos
-});
+        if (window.activityLogger) {
+            await window.activityLogger.log({
+                tipo: 'PRODUCTO',
+                accion: `Redistribución de stock: ${product.name} - ${cambios.join(' | ')}`,
+                entidad: 'Producto',
+                entidad_id: productId,
+                datos_anteriores: datosAnteriores,
+                datos_nuevos: datosNuevos
+            });
+        }
 
         // Mensaje de éxito
         let successMsg = 'Stock actualizado correctamente';
@@ -1328,17 +1354,18 @@ await activityLogger.log({
         console.error('Error completo:', error);
         console.error('========================================\n');
 
-        // 📊 NUEVO: REGISTRAR LOG DE ERROR
-        await activityLogger.log({
-            tipo: 'PRODUCTO',
-            accion: `Error al actualizar stock: ${product?.name || 'Producto desconocido'} - ${error.message}`,
-            entidad: 'Producto',
-            entidad_id: productId,
-            datos_nuevos: {
-                error: error.message,
-                timestamp: new Date().toISOString()
-            }
-        });
+        if (window.activityLogger) {
+            await window.activityLogger.log({
+                tipo: 'PRODUCTO',
+                accion: `Error al actualizar stock: ${product?.name || 'Producto desconocido'} - ${error.message}`,
+                entidad: 'Producto',
+                entidad_id: productId,
+                datos_nuevos: {
+                    error: error.message,
+                    timestamp: new Date().toISOString()
+                }
+            });
+        }
 
         // Restaurar botón
         const saveBtn = document.querySelector(`.save-changes-btn[data-id="${productId}"]`);
@@ -1357,6 +1384,8 @@ await activityLogger.log({
             errorMsg = 'Error: El servidor no respondió a tiempo';
         } else if (error.message.includes('stock surtido')) {
             errorMsg = error.message;
+        } else if (error.message.includes('Inconsistencia')) {
+            errorMsg = 'Error de cálculo interno. Por favor reporte este problema.';
         } else if (error.message.includes('Network') || error.message.includes('Failed to fetch')) {
             errorMsg = 'Error de conexión: Verifica tu conexión a internet';
         } else if (error.message) {
@@ -1366,7 +1395,6 @@ await activityLogger.log({
         uiManager.showAlert(errorMsg, 'danger');
     }
 },
-
 async saveAllChanges() {
     if (this.modifiedProducts.size === 0) {
         uiManager.showAlert('No hay cambios para guardar', 'info');
@@ -1392,10 +1420,11 @@ async saveAllChanges() {
             failed: []
         };
 
-        // 🔍 NUEVO: Recopilar datos para log masivo
         const productosModificados = [];
 
-        // Guardar productos uno por uno
+        // ====================================================================
+        // ✅ BUCLE CORREGIDO: Guardar productos uno por uno
+        // ====================================================================
         for (const productId of productsToSave) {
             const product = this.products.find(p => p._id === productId);
             
@@ -1407,37 +1436,71 @@ async saveAllChanges() {
 
             console.log(`\n📝 [CLIENT] Guardando producto ${product.name} (${product.barcode})`);
 
-            // Guardar datos anteriores
+            // Guardar datos anteriores para log
             const datosAnteriores = {
-                stock: product.stock,
-                stock_surtido: product.stock_surtido
+                stock: product.stock || 0,
+                stock_surtido: product.stock_surtido || 0,
+                stock_almacenado: (product.stock || 0) - (product.stock_surtido || 0)
             };
 
             try {
+                // ============================================================
+                // ✅ CORRECCIÓN PRINCIPAL: CALCULAR LOS 3 VALORES
+                // ============================================================
+                
                 const stockTotal = parseInt(product.stock) || 0;
                 const stockSurtido = parseInt(product.stock_surtido) || 0;
 
+                console.log(`   📊 Valores actuales:`);
+                console.log(`      Stock total: ${stockTotal}`);
+                console.log(`      Stock surtido: ${stockSurtido}`);
+
+                // ✅ VALIDACIÓN 1: stock_surtido no puede exceder stock_total
                 if (stockSurtido > stockTotal) {
                     throw new Error(`Stock surtido (${stockSurtido}) excede stock total (${stockTotal})`);
                 }
 
+                // ✅ CALCULAR stock_almacenado
+                const stockAlmacenado = stockTotal - stockSurtido;
+
+                console.log(`      Stock almacenado (calculado): ${stockAlmacenado}`);
+
+                // ✅ VALIDACIÓN 2: Verificar consistencia matemática
+                const suma = stockSurtido + stockAlmacenado;
+                if (suma !== stockTotal) {
+                    throw new Error(
+                        `Error de cálculo: ${stockSurtido} + ${stockAlmacenado} = ${suma}, pero debería ser ${stockTotal}`
+                    );
+                }
+
+                console.log(`   ✅ Validación pasada: ${stockSurtido} + ${stockAlmacenado} = ${stockTotal}`);
+
+                // ✅ PREPARAR DATOS CON LOS 3 VALORES
                 const updateData = {
                     stock: stockTotal,
-                    stock_surtido: stockSurtido
+                    stock_surtido: stockSurtido,
+                    stock_almacenado: stockAlmacenado
                 };
 
+                console.log(`   📤 Enviando:`, updateData);
+
+                // ============================================================
+                // ENVIAR AL SERVIDOR
+                // ============================================================
+                
                 const response = await window.api.updateProductStock(productId, updateData);
 
                 if (response && response.success) {
                     console.log(`   ✅ Guardado exitosamente`);
                     
-                    // Actualizar cache inmediatamente
+                    // Actualizar cache inmediatamente con datos del servidor
                     const index = this.products.findIndex(p => p._id === productId);
                     if (index !== -1 && response.product) {
                         this.products[index] = {
                             ...this.products[index],
                             stock: response.product.stock,
-                            stock_surtido: response.product.stock_surtido
+                            stock_surtido: response.product.stock_surtido,
+                            stock_almacenado: response.product.stock_almacenado
                         };
                     }
 
@@ -1447,7 +1510,8 @@ async saveAllChanges() {
                         this.filteredProducts[filteredIndex] = {
                             ...this.filteredProducts[filteredIndex],
                             stock: response.product.stock,
-                            stock_surtido: response.product.stock_surtido
+                            stock_surtido: response.product.stock_surtido,
+                            stock_almacenado: response.product.stock_almacenado
                         };
                     }
 
@@ -1457,21 +1521,21 @@ async saveAllChanges() {
                         changes: response.changes
                     });
 
-                    // 📊 NUEVO: Agregar a lista para log
+                    // Agregar a lista para log
                     productosModificados.push({
-                      nombre: product.name,
-                      barcode: product.barcode,
-                      anterior: {
-                      surtido: datosAnteriores.stock_surtido,
-                      almacenado: (datosAnteriores.stock || 0) - (datosAnteriores.stock_surtido || 0)
-                      },
-                      nuevo: {
-                      surtido: response.product.stock_surtido,
-                      almacenado: (response.product.stock || 0) - (response.product.stock_surtido || 0)
-                      },
-                      cambio_surtido: response.product.stock_surtido - datosAnteriores.stock_surtido,
-                      cambio_almacenado: ((response.product.stock || 0) - (response.product.stock_surtido || 0)) - ((datosAnteriores.stock || 0) - (datosAnteriores.stock_surtido || 0))
-});
+                        nombre: product.name,
+                        barcode: product.barcode,
+                        anterior: {
+                            surtido: datosAnteriores.stock_surtido,
+                            almacenado: datosAnteriores.stock_almacenado
+                        },
+                        nuevo: {
+                            surtido: response.product.stock_surtido,
+                            almacenado: response.product.stock_almacenado
+                        },
+                        cambio_surtido: response.product.stock_surtido - datosAnteriores.stock_surtido,
+                        cambio_almacenado: response.product.stock_almacenado - datosAnteriores.stock_almacenado
+                    });
 
                     this.modifiedProducts.delete(productId);
 
@@ -1489,6 +1553,10 @@ async saveAllChanges() {
             }
         }
 
+        // ====================================================================
+        // RESUMEN Y LOGS
+        // ====================================================================
+        
         console.log('\n========================================');
         console.log('📊 [CLIENT] RESUMEN DE GUARDADO');
         console.log('========================================');
@@ -1496,9 +1564,9 @@ async saveAllChanges() {
         console.log('❌ Fallidos:', results.failed.length);
         console.log('========================================\n');
 
-        // 📊 NUEVO: REGISTRAR LOG MASIVO DE ACTUALIZACIÓN
-        if (results.successful.length > 0) {
-            await activityLogger.log({
+        // Registrar log masivo si hubo éxitos
+        if (results.successful.length > 0 && window.activityLogger) {
+            await window.activityLogger.log({
                 tipo: 'PRODUCTO',
                 accion: `Actualización masiva de stock de ${results.successful.length} productos en referencia: ${this.currentReference}`,
                 entidad: 'Productos (Lote)',
@@ -1506,16 +1574,16 @@ async saveAllChanges() {
                 datos_nuevos: {
                     referencia: this.currentReference,
                     productos_count: results.successful.length,
-                    productos_detalle: productosModificados.slice(0, 10), // Primeros 10
+                    productos_detalle: productosModificados.slice(0, 10),
                     total_modificados: results.successful.length,
                     timestamp: new Date().toISOString()
                 }
             });
         }
 
-        // 📊 NUEVO: REGISTRAR ERRORES SI LOS HAY
-        if (results.failed.length > 0) {
-            await activityLogger.log({
+        // Registrar errores si los hay
+        if (results.failed.length > 0 && window.activityLogger) {
+            await window.activityLogger.log({
                 tipo: 'PRODUCTO',
                 accion: `Errores en actualización masiva: ${results.failed.length} productos fallaron`,
                 entidad: 'Productos (Errores)',
@@ -1560,17 +1628,18 @@ async saveAllChanges() {
     } catch (error) {
         console.error('💥 [CLIENT] Error crítico en saveAllChanges:', error);
         
-        // 📊 NUEVO: REGISTRAR ERROR CRÍTICO
-        await activityLogger.log({
-            tipo: 'PRODUCTO',
-            accion: `Error crítico en actualización masiva de stock`,
-            entidad: 'Sistema',
-            datos_nuevos: {
-                error: error.message,
-                referencia: this.currentReference,
-                stack: error.stack
-            }
-        });
+        if (window.activityLogger) {
+            await window.activityLogger.log({
+                tipo: 'PRODUCTO',
+                accion: `Error crítico en actualización masiva de stock`,
+                entidad: 'Sistema',
+                datos_nuevos: {
+                    error: error.message,
+                    referencia: this.currentReference,
+                    stack: error.stack
+                }
+            });
+        }
         
         uiManager.showAlert(`Error crítico: ${error.message}`, 'danger');
         this.updateSaveAllButton();

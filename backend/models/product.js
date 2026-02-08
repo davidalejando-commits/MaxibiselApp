@@ -29,19 +29,19 @@ const productSchema = new mongoose.Schema({
         type: Number,
         required: true,
         default: 0,
-        min: 0
+        
     },
     stock_surtido: {
         type: Number,
         required: true,
         default: 0,
-        min: 0
+        
     },
     stock_almacenado: {
         type: Number,
         required: true,
         default: 0,
-        min: 0
+        
     },
     barcode: {
         type: String,
