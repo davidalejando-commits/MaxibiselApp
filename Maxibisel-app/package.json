@@ -12,12 +12,14 @@
     "pack": "electron-builder --dir"
   },
   "dependencies": {
-    "axios": "^1.9.0",
-    "electron-store": "^8.2.0"
+    "axios": "^1.6.8",
+    "electron-store": "^8.2.0",
+    "proxy-from-env": "^2.1.0"
   },
   "devDependencies": {
     "electron": "^28.3.3",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "nodemon": "^3.1.14"
   },
   "build": {
     "appId": "com.maxibisel.inventario",
@@ -29,7 +31,8 @@
       "main.js",
       "preload.js",
       "renderer/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/**/*"
     ],
     "extraResources": [
       {
@@ -46,16 +49,20 @@
       }
     ],
     "asar": false,
-    "win": {                                    
+    "win": {
       "icon": "renderer/assets/LogoMMini.ico",
       "target": [
         {
-          "target": "nsis",      
-          "arch": ["x64"]
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         },
         {
-          "target": "portable",  
-          "arch": ["x64"]
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
