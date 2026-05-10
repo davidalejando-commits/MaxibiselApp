@@ -21,13 +21,13 @@ class FacturaLocal {
 
       let numero = 1;
       if (row && row.numero_factura) {
-        const match = row.numero_factura.match(/FAC(\d+)/);
+        const match = row.numero_factura.match(/REM(\d+)/);
         if (match) {
           numero = parseInt(match[1]) + 1;
         }
       }
 
-      const numeroFactura = `FAC${numero.toString().padStart(6, '0')}`;
+      const numeroFactura = `REM${numero.toString().padStart(6, '0')}`;
       console.log('✅ [FacturaLocal] Número generado:', numeroFactura);
       return numeroFactura;
     } catch (error) {
