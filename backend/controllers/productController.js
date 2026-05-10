@@ -1,9 +1,6 @@
 const Product = require('../models/product');
 const Transaction = require('../models/transaction');
 
-// ============================================================================
-// FUNCIÓN MEJORADA: updateProductStock
-// ============================================================================
 exports.updateProductStock = async (req, res) => {
     const productId = req.params.id;
     const { stock, stock_surtido, stock_almacenado } = req.body; // ✅ Agregar stock_almacenado
@@ -16,9 +13,6 @@ exports.updateProductStock = async (req, res) => {
     console.log('⏰ Timestamp:', new Date().toISOString());
     
     try {
-        // ====================================================================
-        // PASO 1: VALIDACIONES INICIALES
-        // ====================================================================
         if (stock === undefined && stock_surtido === undefined && stock_almacenado === undefined) {
             console.error('❌ [STOCK-UPDATE] ERROR: No se proporcionaron datos para actualizar');
             return res.status(400).json({
@@ -27,8 +21,6 @@ exports.updateProductStock = async (req, res) => {
                 error: 'MISSING_STOCK_DATA'
             });
         }
-
-        // ✅ CAMBIO: Permitir números negativos
         const validarNumero = (valor, nombreCampo) => {
             if (valor === undefined) return null;
             
@@ -41,8 +33,6 @@ exports.updateProductStock = async (req, res) => {
                     receivedValue: valor
                 };
             }
-            
-            // ✅ PERMITIR NEGATIVOS (eliminar validación >= 0)
             if (numero < 0) {
                 console.warn(`⚠️ [STOCK-UPDATE] ADVERTENCIA: ${nombreCampo} es negativo: ${numero}`);
             }
@@ -50,7 +40,6 @@ exports.updateProductStock = async (req, res) => {
             return { error: false, value: numero };
         };
 
-        // Validar stock
         if (stock !== undefined) {
             const validacion = validarNumero(stock, 'stock');
             if (validacion.error) {
@@ -63,7 +52,6 @@ exports.updateProductStock = async (req, res) => {
             }
         }
 
-        // Validar stock_surtido
         if (stock_surtido !== undefined) {
             const validacion = validarNumero(stock_surtido, 'stock_surtido');
             if (validacion.error) {
@@ -76,7 +64,6 @@ exports.updateProductStock = async (req, res) => {
             }
         }
 
-        // Validar stock_almacenado
         if (stock_almacenado !== undefined) {
             const validacion = validarNumero(stock_almacenado, 'stock_almacenado');
             if (validacion.error) {
@@ -89,9 +76,6 @@ exports.updateProductStock = async (req, res) => {
             }
         }
 
-        // ====================================================================
-        // PASO 2: OBTENER PRODUCTO ACTUAL
-        // ====================================================================
         console.log('🔍 [STOCK-UPDATE] Buscando producto en BD...');
         const oldProduct = await Product.findById(productId);
         
@@ -112,9 +96,6 @@ exports.updateProductStock = async (req, res) => {
         console.log('   - Stock surtido actual:', oldProduct.stock_surtido);
         console.log('   - Stock almacenado actual:', oldProduct.stock_almacenado);
 
-        // ====================================================================
-        // PASO 3: CALCULAR NUEVOS VALORES
-        // ====================================================================
         const newStock = stock !== undefined ? parseInt(stock) : oldProduct.stock;
         const newStockSurtido = stock_surtido !== undefined ? parseInt(stock_surtido) : oldProduct.stock_surtido;
         const newStockAlmacenado = stock_almacenado !== undefined ? parseInt(stock_almacenado) : oldProduct.stock_almacenado;
@@ -124,8 +105,6 @@ exports.updateProductStock = async (req, res) => {
         console.log('   - Nuevo stock surtido:', newStockSurtido);
         console.log('   - Nuevo stock almacenado:', newStockAlmacenado);
 
-        // ✅ CAMBIO: Permitir stock_surtido mayor que stock si ambos son negativos
-        // Solo validar consistencia lógica
         const sumaParciales = newStockSurtido + newStockAlmacenado;
         if (sumaParciales !== newStock) {
             console.error('❌ [STOCK-UPDATE] ERROR: Inconsistencia en suma de stocks');
@@ -147,7 +126,6 @@ exports.updateProductStock = async (req, res) => {
             });
         }
 
-        // ✅ ADVERTENCIA si hay valores negativos
         const advertencias = [];
         if (newStock < 0) {
             advertencias.push(`Stock total negativo: ${newStock}`);
@@ -164,9 +142,6 @@ exports.updateProductStock = async (req, res) => {
             advertencias.forEach(adv => console.warn('   -', adv));
         }
 
-        // ====================================================================
-        // PASO 4: PREPARAR DATOS DE ACTUALIZACIÓN
-        // ====================================================================
         const updateData = {
             stock: newStock,
             stock_surtido: newStockSurtido,
@@ -177,9 +152,6 @@ exports.updateProductStock = async (req, res) => {
         console.log('📝 [STOCK-UPDATE] Datos de actualización preparados:');
         console.log(JSON.stringify(updateData, null, 2));
 
-        // ====================================================================
-        // PASO 5: EJECUTAR ACTUALIZACIÓN EN BD
-        // ====================================================================
         console.log('💾 [STOCK-UPDATE] Ejecutando actualización en MongoDB...');
         
         const updatedProduct = await Product.findByIdAndUpdate(
@@ -187,7 +159,7 @@ exports.updateProductStock = async (req, res) => {
             { $set: updateData },
             {
                 new: true,
-                runValidators: false, // ✅ Desactivar validadores para permitir negativos
+                runValidators: false, 
                 lean: false
             }
         );
@@ -203,9 +175,6 @@ exports.updateProductStock = async (req, res) => {
 
         console.log('✅ [STOCK-UPDATE] Producto actualizado en BD correctamente');
 
-        // ====================================================================
-        // PASO 6: VERIFICAR ACTUALIZACIÓN
-        // ====================================================================
         console.log('🔍 [STOCK-UPDATE] Verificando actualización...');
         const verifiedProduct = await Product.findById(productId).lean();
         
@@ -218,7 +187,6 @@ exports.updateProductStock = async (req, res) => {
             });
         }
 
-        // Verificar valores
         const verificationErrors = [];
         
         if (verifiedProduct.stock !== newStock) {
@@ -247,9 +215,6 @@ exports.updateProductStock = async (req, res) => {
 
         console.log('✅ [STOCK-UPDATE] Verificación exitosa - Datos correctos en BD');
 
-        // ====================================================================
-        // PASO 7: REGISTRAR TRANSACCIÓN
-        // ====================================================================
         if (newStock !== oldProduct.stock) {
             try {
                 console.log('📝 [STOCK-UPDATE] Registrando transacción...');
@@ -272,9 +237,6 @@ exports.updateProductStock = async (req, res) => {
             }
         }
 
-        // ====================================================================
-        // PASO 8: EMITIR EVENTOS SOCKET.IO
-        // ====================================================================
         if (req.app.get('io')) {
             try {
                 const io = req.app.get('io');
@@ -300,10 +262,6 @@ exports.updateProductStock = async (req, res) => {
                 console.warn('⚠️ [STOCK-UPDATE] Advertencia: Error al emitir eventos:', socketError.message);
             }
         }
-
-        // ====================================================================
-        // PASO 9: RESPONDER AL CLIENTE
-        // ====================================================================
         const changes = {
             previousStock: oldProduct.stock,
             newStock: verifiedProduct.stock,
@@ -350,9 +308,6 @@ exports.updateProductStock = async (req, res) => {
         });
     }
 };
-// ============================================================================
-// FUNCIÓN AUXILIAR: Obtener todos los productos (también mejorada)
-// ============================================================================
 exports.getAllProducts = async (req, res) => {
     try {
         console.log('\n📋 [GET-PRODUCTS] Obteniendo todos los productos...');
@@ -381,9 +336,7 @@ exports.getAllProducts = async (req, res) => {
         });
     }
 };
-// ============================================================================
-// FUNCIÓN: Obtener producto por código de barras
-// ============================================================================
+
 exports.getProductByBarcode = async (req, res) => {
     try {
         const { barcode } = req.params;
@@ -422,9 +375,6 @@ exports.getProductByBarcode = async (req, res) => {
     }
 };
 
-// ============================================================================
-// OTRAS FUNCIONES QUE TAMBIÉN FALTAN
-// ============================================================================
 exports.getProductById = async (req, res) => {
     try {
         const product = await Product.findById(req.params.id).lean();

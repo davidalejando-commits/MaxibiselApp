@@ -1,12 +1,10 @@
 const dbManager = require('../config/database');
 
 class FacturaLocal {
-  // ✅ OBTENER CONEXIÓN SQLite
   static getDB() {
     return dbManager.getSQLite();
   }
 
-  // ✅ GENERAR NÚMERO CONSECUTIVO
   static async generarNumero() {
     try {
       console.log('🔢 [FacturaLocal] Generando número de factura...');
@@ -38,7 +36,6 @@ class FacturaLocal {
     }
   }
 
-  // ✅ CREAR FACTURA
   static async create(data) {
     try {
       console.log('💾 [FacturaLocal] Creando factura...');
@@ -46,11 +43,10 @@ class FacturaLocal {
       const db = this.getDB();
       const now = new Date().toISOString();
 
-      // Iniciar transacción
       await db.run('BEGIN TRANSACTION');
 
       try {
-        // Insertar factura principal
+
         const facturaSQL = `
           INSERT INTO facturas (
             numero_factura,
@@ -94,8 +90,6 @@ class FacturaLocal {
         const facturaId = result.lastID;
 
         console.log('✅ [FacturaLocal] Factura insertada con ID:', facturaId);
-
-        // Insertar productos
         if (data.productos && data.productos.length > 0) {
           const productoSQL = `
             INSERT INTO factura_productos (
@@ -122,16 +116,12 @@ class FacturaLocal {
 
           console.log(`✅ [FacturaLocal] ${data.productos.length} productos insertados`);
         }
-
-        // Commit transacción
         await db.run('COMMIT');
 
-        // Obtener factura completa
         const factura = await this.getById(facturaId);
         return factura;
 
       } catch (error) {
-        // Rollback en caso de error
         await db.run('ROLLBACK');
         throw error;
       }
@@ -141,7 +131,6 @@ class FacturaLocal {
     }
   }
 
-  // ✅ OBTENER TODAS LAS FACTURAS
   static async getAll(options = {}) {
     try {
       console.log('\n📦 [FacturaLocal] ========== OBTENIENDO FACTURAS ==========');
@@ -186,7 +175,6 @@ class FacturaLocal {
         return [];
       }
 
-      // Parsear cada factura y obtener sus productos
       const facturas = await Promise.all(
         rows.map(async (row) => {
           const productos = await this.getProductosByFacturaId(row.id);
@@ -205,7 +193,6 @@ class FacturaLocal {
     }
   }
 
-  // ✅ OBTENER FACTURA POR ID
   static async getById(id) {
     try {
       console.log('🔍 [FacturaLocal] Buscando factura por ID:', id);
@@ -230,8 +217,6 @@ class FacturaLocal {
       throw error;
     }
   }
-
-  // ✅ OBTENER PRODUCTOS DE UNA FACTURA
   static async getProductosByFacturaId(facturaId) {
     try {
       const db = this.getDB();
@@ -255,7 +240,6 @@ class FacturaLocal {
     }
   }
 
-  // ✅ ACTUALIZAR FACTURA
   static async update(id, data) {
     try {
       console.log('✏️ [FacturaLocal] Actualizando factura:', id);
@@ -303,7 +287,6 @@ class FacturaLocal {
     }
   }
 
-  // ✅ ANULAR FACTURA
   static async anular(id) {
     try {
       console.log('🚫 [FacturaLocal] Anulando factura:', id);
@@ -327,14 +310,12 @@ class FacturaLocal {
     }
   }
 
-  // ✅ ELIMINAR FACTURA
   static async delete(id) {
     try {
       console.log('🗑️ [FacturaLocal] Eliminando factura ID:', id);
 
       const db = this.getDB();
       
-      // Obtener factura antes de eliminar
       const factura = await this.getById(id);
       
       if (!factura) {
@@ -344,7 +325,6 @@ class FacturaLocal {
 
       console.log('✅ [FacturaLocal] Factura encontrada:', factura.numeroFactura);
 
-      // Eliminar (los productos se eliminan automáticamente por CASCADE)
       const sql = 'DELETE FROM facturas WHERE id = ?';
       const result = await db.run(sql, [id]);
 
@@ -362,7 +342,6 @@ class FacturaLocal {
     }
   }
 
-  // ✅ PARSEAR FILA DE BASE DE DATOS
   static parseRow(row, productos = []) {
     if (!row) {
       console.warn('⚠️ [FacturaLocal] Intento de parsear row nulo');

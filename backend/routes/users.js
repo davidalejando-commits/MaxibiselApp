@@ -1,9 +1,7 @@
-//Rutas para usuarios
 const express = require('express');
 const router = express.Router();
 const User = require('../models/user');
 
-// Middleware para verificar permisos de administrador
 const isAdmin = (req, res, next) => {
     if (req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Acceso denegado. Se requieren privilegios de administrador' });
@@ -11,7 +9,6 @@ const isAdmin = (req, res, next) => {
     next();
 };
 
-// Obtener todos los usuarios (solo admin)
 router.get('/', isAdmin, async (req, res) => {
     try {
         const users = await User.find().select('-password');
@@ -21,28 +18,24 @@ router.get('/', isAdmin, async (req, res) => {
     }
 });
 
-// Crear un nuevo usuario (solo admin)
 router.post('/', isAdmin, async (req, res) => {
     try {
         const { username, password, fullName, role } = req.body;
 
-        // Verificar si el usuario ya existe
         const existingUser = await User.findOne({ username });
         if (existingUser) {
             return res.status(400).json({ message: 'El nombre de usuario ya está en uso' });
         }
 
-        // Crear nuevo usuario
         const user = new User({
             username,
-            password, // Se hará hash en el hook pre-save
+            password, 
             fullName,
-            role: role || 'employee' // Por defecto, rol de empleado
+            role: role || 'employee' 
         });
 
         await user.save();
 
-        // No incluir contraseña en la respuesta
         const userResponse = {
             _id: user._id,
             username: user.username,
@@ -56,7 +49,6 @@ router.post('/', isAdmin, async (req, res) => {
     }
 });
 
-// Obtener un usuario por ID (solo admin)
 router.get('/:id', isAdmin, async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('-password');
@@ -71,30 +63,24 @@ router.get('/:id', isAdmin, async (req, res) => {
     }
 });
 
-// Actualizar un usuario (solo admin, o el propio usuario para datos limitados)
 router.put('/:id', async (req, res) => {
     try {
         const userId = req.params.id;
 
-        // Solo los admins pueden editar a otros usuarios
         if (req.user.role !== 'admin' && req.user.id !== userId) {
             return res.status(403).json({ message: 'No tienes permiso para editar este usuario' });
         }
 
-        // Datos que se pueden actualizar
         const updateData = {};
 
-        // Si es admin, puede cambiar el rol
         if (req.user.role === 'admin' && req.body.role) {
             updateData.role = req.body.role;
         }
 
-        // Cualquier usuario puede cambiar su nombre completo
         if (req.body.fullName) {
             updateData.fullName = req.body.fullName;
         }
 
-        // Cambio de contraseña (se hará hash en el hook)
         if (req.body.password) {
             updateData.password = req.body.password;
         }
@@ -115,10 +101,8 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// Eliminar un usuario (solo admin)
 router.delete('/:id', isAdmin, async (req, res) => {
     try {
-        // Evitar que se elimine a sí mismo
         if (req.user.id === req.params.id) {
             return res.status(400).json({ message: 'No puedes eliminar tu propia cuenta' });
         }

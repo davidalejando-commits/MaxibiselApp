@@ -1,7 +1,6 @@
-//Gestión de usuarios
+
 export const userManager = {
     init() {
-        // Esta función se implementaría con la lógica para usuarios
         const usersView = document.getElementById('users-view');
 
         usersView.innerHTML = `

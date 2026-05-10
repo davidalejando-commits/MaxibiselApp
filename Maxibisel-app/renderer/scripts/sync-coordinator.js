@@ -1,4 +1,3 @@
-// sync-coordinator.js - Coordinador central de sincronización
 import { dataSync } from './dataSync.js';
 import { eventManager } from './eventManager.js';
 
@@ -14,10 +13,8 @@ export const syncCoordinator = {
 
         console.log('🎯 Inicializando SyncCoordinator...');
 
-        // Configurar listeners centralizados
         this.setupCentralListeners();
-        
-        // Configurar WebSocket listeners
+
         this.setupWebSocketSync();
 
         this.isInitialized = true;
@@ -25,19 +22,16 @@ export const syncCoordinator = {
     },
 
     setupCentralListeners() {
-        // Escuchar eventos de actualización de productos desde CUALQUIER fuente
         eventManager.on('data:product:updated', (product) => {
             console.log('🔄 SyncCoordinator: Producto actualizado', product._id);
             this.broadcastProductUpdate(product);
         });
 
-        // Escuchar eventos de actualización de stock
         eventManager.on('data:product:stock-updated', (data) => {
             console.log('📦 SyncCoordinator: Stock actualizado', data.productId);
             this.broadcastStockUpdate(data);
         });
 
-        // Escuchar eventos externos (de WebSocket)
         eventManager.on('external:product-updated', (product) => {
             console.log('🌐 SyncCoordinator: Actualización externa recibida', product._id);
             this.handleExternalUpdate(product);
@@ -59,11 +53,9 @@ export const syncCoordinator = {
 
         console.log('🌐 Configurando sincronización WebSocket...');
 
-        // Listener para productos actualizados desde servidor
         window.socket.on('product:updated', (product) => {
             console.log('📡 WebSocket: Producto actualizado recibido', product._id);
-            
-            // Emitir como evento externo para que todas las vistas se enteren
+
             eventManager.emit('external:product-updated', {
                 ...product,
                 sourceView: 'websocket',
@@ -71,7 +63,6 @@ export const syncCoordinator = {
             });
         });
 
-        // Listener para stock actualizado desde servidor
         window.socket.on('product:stock-updated', (data) => {
             console.log('📡 WebSocket: Stock actualizado recibido', data);
             
@@ -85,7 +76,6 @@ export const syncCoordinator = {
         console.log('✅ WebSocket configurado');
     },
 
-    // Broadcast a TODAS las vistas cuando un producto se actualiza
     broadcastProductUpdate(product) {
         if (!product || !product._id) {
             console.error('❌ Producto inválido para broadcast');
@@ -94,31 +84,24 @@ export const syncCoordinator = {
 
         console.log('📢 Broadcasting actualización de producto:', product._id);
 
-        // Actualizar cache en dataSync
         if (dataSync && typeof dataSync.updateCacheFromServerEvent === 'function') {
             dataSync.updateCacheFromServerEvent('products', product);
         }
 
-        // Notificar a todos los suscriptores registrados
         this.notifyAllSubscribers('product:updated', product);
 
-        // Emitir evento de sincronización completada
         eventManager.emit('sync:product-synced', {
             productId: product._id,
             timestamp: Date.now()
         });
     },
 
-    // Broadcast para actualizaciones de stock
     broadcastStockUpdate(data) {
         console.log('📢 Broadcasting actualización de stock:', data.productId);
 
-        // Actualizar cache
         if (data.product && dataSync && typeof dataSync.updateCacheFromServerEvent === 'function') {
             dataSync.updateCacheFromServerEvent('products', data.product);
         }
-
-        // Notificar suscriptores
         this.notifyAllSubscribers('stock:updated', data);
 
         eventManager.emit('sync:stock-synced', {
@@ -127,19 +110,15 @@ export const syncCoordinator = {
         });
     },
 
-    // Manejar actualizaciones externas (de otros usuarios/pestañas)
     handleExternalUpdate(product) {
         console.log('🔄 Procesando actualización externa:', product._id);
 
-        // Actualizar cache
         if (dataSync && typeof dataSync.updateCacheFromServerEvent === 'function') {
             dataSync.updateCacheFromServerEvent('products', product);
         }
 
-        // Notificar a todas las vistas para que se actualicen
         this.notifyAllSubscribers('product:updated', product);
 
-        // Mostrar notificación al usuario
         if (window.uiManager && typeof window.uiManager.showToast === 'function') {
             window.uiManager.showToast('Producto actualizado desde otra ubicación', 'info');
         }
@@ -155,7 +134,6 @@ export const syncCoordinator = {
         this.notifyAllSubscribers('stock:updated', data);
     },
 
-    // Registrar suscriptor (vista)
     subscribe(viewName, callback) {
         if (!viewName || typeof callback !== 'function') {
             console.error('❌ Parámetros inválidos para subscribe');
@@ -171,14 +149,12 @@ export const syncCoordinator = {
 
         console.log(`📝 Vista ${viewName} suscrita (ID: ${subscriberId})`);
 
-        // Retornar función de desuscripción
         return () => {
             this.subscribers.delete(subscriberId);
             console.log(`🗑️ Vista ${viewName} desuscrita`);
         };
     },
 
-    // Notificar a todos los suscriptores
     notifyAllSubscribers(eventType, data) {
         let notifiedCount = 0;
 
@@ -194,17 +170,14 @@ export const syncCoordinator = {
         console.log(`📊 ${notifiedCount} vistas notificadas para ${eventType}`);
     },
 
-    // Forzar sincronización completa
     async forceGlobalSync() {
         console.log('🔄 Forzando sincronización global...');
 
         try {
-            // Recargar datos desde servidor
             if (dataSync && typeof dataSync.forceSyncFromServer === 'function') {
                 await dataSync.forceSyncFromServer('products');
             }
 
-            // Notificar a todas las vistas
             this.notifyAllSubscribers('force:refresh', null);
 
             console.log('✅ Sincronización global completada');
@@ -215,8 +188,6 @@ export const syncCoordinator = {
             return false;
         }
     },
-
-    // Estadísticas
     getStats() {
         return {
             isInitialized: this.isInitialized,
@@ -231,14 +202,11 @@ export const syncCoordinator = {
 
     destroy() {
         console.log('🧹 Destruyendo SyncCoordinator...');
-        
-        // Remover listeners de WebSocket
         if (window.socket) {
             window.socket.off('product:updated');
             window.socket.off('product:stock-updated');
         }
 
-        // Limpiar suscriptores
         this.subscribers.clear();
         
         this.isInitialized = false;
@@ -246,7 +214,6 @@ export const syncCoordinator = {
     }
 };
 
-// Utilidad global para debugging
 window.debugSyncCoordinator = () => {
     console.group('🔍 SYNC COORDINATOR DEBUG');
     console.table(syncCoordinator.getStats());

@@ -1,4 +1,3 @@
-// Archivo principal 
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const axios = require('axios');
@@ -7,7 +6,6 @@ const { spawn, exec } = require('child_process');
 const net = require('net');
 const fs = require('fs');
 
-// Para almacenar configuraciones y tokens
 const store = new Store();
 
 let mainWindow;
@@ -15,19 +13,15 @@ let loadingWindow;
 let backendProcess = null;
 let isBackendReady = false;
 let backendPort = 5000;
-let isShuttingDown = false; // Prevenir ciclos infinitos
+let isShuttingDown = false; 
 
-// Configuración de desarrollo/producción
 const isDev = process.env.NODE_ENV === 'development';
 
-// NUEVO: Configurar el ícono de la app ANTES de que se muestre
 app.setName('Sistema de Inventario Óptico');
 
-// Función para matar procesos en puerto específico - MEJORADA
 function killProcessOnPort(port) {
     return new Promise((resolve) => {
         if (process.platform === 'win32') {
-            // Windows: comando más específico y confiable
             const command = `netstat -ano | findstr :${port} | findstr LISTENING`;
             exec(command, (error, stdout) => {
                 if (!error && stdout) {
@@ -52,7 +46,6 @@ function killProcessOnPort(port) {
                 }
             });
         } else {
-            // Unix/Linux/Mac
             exec(`lsof -ti:${port}`, (error, stdout) => {
                 if (!error && stdout) {
                     const pids = stdout.trim().split('\n').filter(pid => pid);
@@ -72,8 +65,6 @@ function killProcessOnPort(port) {
         }
     });
 }
-
-// Función simple para verificar si un puerto está disponible
 function isPortFree(port) {
     return new Promise((resolve) => {
         const server = net.createServer();
@@ -95,8 +86,6 @@ function isPortFree(port) {
         });
     });
 }
-
-// Función para encontrar puerto disponible
 async function findFreePort(startPort = 5000) {
     for (let port = startPort; port < startPort + 5; port++) {
         // Primero verificar si está libre
@@ -104,11 +93,9 @@ async function findFreePort(startPort = 5000) {
             return port;
         }
 
-        // Si está ocupado, intentar liberarlo
         console.log(`Puerto ${port} ocupado, intentando liberarlo...`);
         await killProcessOnPort(port);
 
-        // Verificar nuevamente
         if (await isPortFree(port)) {
             console.log(`Puerto ${port} liberado exitosamente`);
             return port;
@@ -117,7 +104,6 @@ async function findFreePort(startPort = 5000) {
     throw new Error('No se encontró un puerto disponible');
 }
 
-// Función para verificar salud del backend
 async function checkBackendHealth(port) {
     try {
         const response = await axios.get(`http://127.0.0.1:${port}/api/health`, {
@@ -130,7 +116,6 @@ async function checkBackendHealth(port) {
     }
 }
 
-// Función para buscar backend existente
 async function findExistingBackend() {
     for (let port = 5000; port < 5005; port++) {
         if (await checkBackendHealth(port)) {
@@ -143,7 +128,6 @@ async function findExistingBackend() {
     return false;
 }
 
-// NUEVA: Función para actualizar mensaje de loading
 function updateLoadingMessage(message) {
     if (loadingWindow && !loadingWindow.isDestroyed()) {
         loadingWindow.webContents.executeJavaScript(`
@@ -152,18 +136,13 @@ function updateLoadingMessage(message) {
                 messageEl.textContent = '${message}';
             }
         `).catch(() => {
-            // Ignorar errores si la ventana no está lista
         });
     }
 }
-
-// Función para iniciar backend
 async function startBackend() {
     try {
         console.log('🚀 Iniciando backend...');
         updateLoadingMessage('Verificando servidor existente...');
-
-        // Verificar si ya existe un backend funcional
         if (await findExistingBackend()) {
             updateLoadingMessage('Servidor encontrado, conectando...');
             return true;
@@ -171,10 +150,9 @@ async function startBackend() {
 
         updateLoadingMessage('Buscando archivos del servidor...');
 
-        // Buscar carpeta del backend
         const backendPaths = [
-            path.join(process.resourcesPath, 'backend'), // PRODUCCIÓN
-            path.join(__dirname, '..', 'backend'),        // DESARROLLO
+            path.join(process.resourcesPath, 'backend'), 
+            path.join(__dirname, '..', 'backend'),   
             path.join(__dirname, 'backend'),
             path.join(process.cwd(), 'backend')
         ];
@@ -193,11 +171,8 @@ async function startBackend() {
 
         updateLoadingMessage('Preparando servidor...');
 
-        // Encontrar puerto libre
         backendPort = await findFreePort(5000);
         console.log(`Usando puerto: ${backendPort}`);
-
-        // Configurar variables de entorno
         const env = {
             ...process.env,
             PORT: backendPort.toString(),
@@ -206,12 +181,9 @@ async function startBackend() {
         };
 
         updateLoadingMessage('Iniciando servidor backend...');
-
-        // Determinar comando según entorno (start para producción, dev para desarrollo)
         const backendCommand = app.isPackaged ? 'start' : 'dev';
         const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
-        // Iniciar proceso del backend
         backendProcess = spawn(npmCommand, ['run', backendCommand], {
             cwd: backendPath,
             env: env,
@@ -219,13 +191,10 @@ async function startBackend() {
             detached: false
         });
 
-        // Almacenar PID para limpieza posterior
         if (backendProcess.pid) {
             store.set('backend_pid', backendProcess.pid);
             console.log(`Backend PID almacenado: ${backendProcess.pid}`);
         }
-
-        // Manejar salida del backend
         backendProcess.stdout.on('data', (data) => {
             const output = data.toString().trim();
             if (output) console.log('Backend:', output);
@@ -253,14 +222,12 @@ async function startBackend() {
         });
 
         updateLoadingMessage('Esperando respuesta del servidor...');
-
-        // Esperar a que el backend esté listo
         for (let attempt = 1; attempt <= 30; attempt++) {
             if (await checkBackendHealth(backendPort)) {
                 console.log('✅ Backend listo!');
                 isBackendReady = true;
                 updateLoadingMessage('¡Servidor listo! Iniciando aplicación...');
-                await new Promise(resolve => setTimeout(resolve, 500)); // Pausa breve para mostrar mensaje
+                await new Promise(resolve => setTimeout(resolve, 500)); 
                 return true;
             }
             updateLoadingMessage(`Conectando con servidor (${attempt}/30)...`);
@@ -277,7 +244,6 @@ async function startBackend() {
     }
 }
 
-// Crear ventana principal - MEJORADA con ícono personalizado
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1200,
@@ -285,7 +251,7 @@ function createWindow() {
         minWidth: 800,
         minHeight: 600,
         icon: path.join(__dirname, 'renderer', 'assets', 'LogoMMini.png'),
-        show: false, // No mostrar hasta que esté completamente cargada
+        show: false, 
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
@@ -309,7 +275,6 @@ function createWindow() {
     });
 }
 
-// MEJORADA: Ventana de carga con diseño atractivo y mensajes informativos
 function showLoadingWindow() {
     const iconPath = path.join(__dirname, 'renderer', 'assets', 'LogoMMini.png');
 
@@ -320,18 +285,16 @@ function showLoadingWindow() {
         alwaysOnTop: true,
         resizable: false,
         center: true,
-        icon: iconPath, // Aplicar el ícono personalizado también aquí
+        icon: iconPath, 
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            webSecurity: false // Permitir recursos locales
+            webSecurity: false 
         }
     });
 
-    // Crear archivo HTML temporal para la ventana de loading
     const loadingHtmlPath = path.join(__dirname, 'loading.html');
 
-    // Verificar si el logo existe y crear el HTML
     let logoHTML = '';
     if (fs.existsSync(iconPath)) {
         try {
@@ -477,13 +440,9 @@ function showLoadingWindow() {
     <div class="version">v1.0.0</div>
 </body>
 </html>`;
-
-    // Escribir el archivo HTML temporal
     try {
         fs.writeFileSync(loadingHtmlPath, htmlContent);
         loadingWindow.loadFile(loadingHtmlPath);
-
-        // Limpiar el archivo temporal después de cargar
         loadingWindow.webContents.once('did-finish-load', () => {
             setTimeout(() => {
                 try {
@@ -498,17 +457,14 @@ function showLoadingWindow() {
 
     } catch (error) {
         console.error('Error al crear ventana de loading:', error);
-        // Fallback simple si hay error
         loadingWindow.loadURL('data:text/html,<html><body style="background:#667eea;color:white;display:flex;justify-content:center;align-items:center;height:100vh;font-family:Arial;"><div style="text-align:center;"><h2>Sistema de Inventario</h2><p>Iniciando aplicación...</p></div></body></html>');
     }
 }
 
-// Configurar URL de la API
 function getApiUrl() {
     return `http://127.0.0.1:${backendPort}/api`;
 }
 
-// Función de cierre limpio - Evitando ciclos infinitos
 async function cleanShutdown() {
     if (isShuttingDown) {
         console.log('Cierre ya en progreso...');
@@ -558,8 +514,6 @@ async function cleanShutdown() {
         process.exit(0);
     }
 }
-
-// Configurar eventos de aplicación
 app.whenReady().then(async () => {
     console.log('🚀 Aplicación iniciada');
 
@@ -587,7 +541,6 @@ app.whenReady().then(async () => {
     });
 });
 
-// Eventos de cierre - CORREGIDOS
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         cleanShutdown();
@@ -601,13 +554,10 @@ app.on('before-quit', (event) => {
     }
 });
 
-// Manejar señales del sistema
 process.on('SIGINT', cleanShutdown);
 process.on('SIGTERM', cleanShutdown);
 
-// Configurar manejadores IPC
 function setupIpcHandlers() {
-    // Login - CORREGIDO
     ipcMain.handle('api:login', async (event, credentials) => {
         if (!isBackendReady) {
             return {
@@ -629,7 +579,6 @@ function setupIpcHandlers() {
                 hasUser: !!response.data.user
             });
 
-            // Guardar token INMEDIATAMENTE
             if (response.data.token) {
                 store.set('authToken', response.data.token);
                 console.log('✅ Token guardado en store (main)');
@@ -653,7 +602,6 @@ function setupIpcHandlers() {
         }
     });
 
-    // ✅ CORRECCIÓN CRÍTICA: Handler de API requests
     ipcMain.handle('api:request', async (event, { method, endpoint, data, requiresAuth = true }) => {
         console.log('\n📡 [MAIN] ========== INICIO REQUEST ==========');
         console.log(`📡 [MAIN] ${method.toUpperCase()} /${endpoint}`);
@@ -667,7 +615,6 @@ function setupIpcHandlers() {
         }
 
         try {
-            // Obtener token desde el store
             const token = requiresAuth ? store.get('authToken') : null;
 
             if (requiresAuth && !token) {
@@ -705,7 +652,6 @@ function setupIpcHandlers() {
             console.log(`✅ [MAIN] Response Data:`, JSON.stringify(response.data).substring(0, 200));
             console.log('📡 [MAIN] ========== FIN REQUEST ==========\n');
             
-            // ✅ CORRECCIÓN: Siempre retornar response.data
             return response.data;
             
         } catch (error) {
@@ -716,14 +662,12 @@ function setupIpcHandlers() {
             console.error('💥 [MAIN] Error message:', error.message);
             console.error('💥 [MAIN] =========================================\n');
 
-            // Si es error 401, limpiar token
             if (error.response?.status === 401 && requiresAuth) {
                 console.warn('⚠️ [MAIN] Token inválido, limpiando store...');
                 store.delete('authToken');
                 store.delete('user');
             }
             
-            // ✅ CORRECCIÓN CRÍTICA: NO lanzar error, retornar objeto con estructura
             return {
                 success: false,
                 message: error.response?.data?.message || error.message || 'Error de conexión',
@@ -732,8 +676,6 @@ function setupIpcHandlers() {
             };
         }
     });
-
-    // Salud del backend
     ipcMain.handle('api:health', async () => {
         return {
             status: 'Ready',
@@ -742,7 +684,6 @@ function setupIpcHandlers() {
         };
     });
 
-    // Manejadores de store - CON LOGS
     ipcMain.handle('store:get', async (event, key) => {
         const value = store.get(key);
         console.log(`📦 Store GET: ${key} = ${value ? 'exists' : 'null'}`);
@@ -767,7 +708,6 @@ function setupIpcHandlers() {
         return true;
     });
 
-    // Configuración de la app
     ipcMain.handle('app:getConfig', async () => ({
         version: app.getVersion(),
         name: app.getName(),
@@ -776,14 +716,12 @@ function setupIpcHandlers() {
         apiUrl: getApiUrl()
     }));
 
-    // Reiniciar app
     ipcMain.handle('app:restart', async () => {
         app.relaunch();
         cleanShutdown();
     });
 }
 
-// Manejo de errores - CORREGIDO
 process.on('uncaughtException', (error) => {
     console.error('Error no capturado:', error);
     if (!isShuttingDown) {

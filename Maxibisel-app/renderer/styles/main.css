@@ -4,7 +4,7 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f5f5f5;
-    padding-top: 56px; /* Compensar altura del navbar fijo */
+    padding-top: 56px;
 }
 
 /* ========================================
@@ -23,7 +23,6 @@ body {
     font-weight: 600;
 }
 
-/* Estilo base para los links del navbar */
 .navbar-nav .nav-link {
     position: relative;
     padding: 0.5rem 1rem;
@@ -31,13 +30,11 @@ body {
     color: rgba(255, 255, 255, 0.85) !important;
 }
 
-/* Efecto hover */
 .navbar-nav .nav-link:hover {
     color: rgba(255, 255, 255, 1) !important;
     transform: translateY(-2px);
 }
 
-/* Indicador de vista activa - línea inferior animada */
 .navbar-nav .nav-link::after {
     content: '';
     position: absolute;
@@ -52,7 +49,6 @@ body {
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
-/* Vista activa - línea visible con animación */
 .navbar-nav .nav-link.active {
     color: #ffffff !important;
     font-weight: 600;
@@ -63,16 +59,20 @@ body {
     animation: glow 2s ease-in-out infinite;
 }
 
-/* Animación de brillo sutil */
 @keyframes glow {
-    0%, 100% {
-        box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
-    }
-    50% {
-        box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
-    }
+    0%, 100% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.3); }
+    50%       { box-shadow: 0 0 15px rgba(255, 255, 255, 0.6); }
 }
 
+.navbar .btn:hover,
+.navbar .navbar-toggler:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================
+   CARDS GENERALES
+   ======================================== */
 .card {
     border-radius: 8px;
     border: none;
@@ -82,27 +82,124 @@ body {
     border-radius: 8px 8px 0 0 !important;
 }
 
-.btn-icon {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
-
+/* ========================================
+   ANIMACIÓN DE VISTAS
+   ======================================== */
 .view-container {
     animation: fadeIn 0.3s;
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
 /* ========================================
-   ESTILOS BASE PARA TABLAS (COMPARTIDOS)
+   BOTONES — ESTILOS BASE Y EFECTOS GLOBALES
+   ======================================== */
+.btn-icon {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+button,
+.btn,
+.action-btn,
+.modal-btn,
+.qty-btn,
+.remove-btn,
+.remove-lens,
+.export-btn,
+input[type="button"],
+input[type="submit"],
+.quantity-btn {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+button:hover:not(:disabled),
+.btn:hover:not(:disabled),
+.action-btn:hover,
+.modal-btn:hover,
+.export-btn:hover,
+input[type="button"]:hover:not(:disabled),
+input[type="submit"]:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+button:disabled,
+.btn:disabled,
+.action-btn:disabled,
+.modal-btn:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+button:active:not(:disabled),
+.btn:active:not(:disabled),
+.action-btn:active,
+.modal-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.btn-sm:hover,
+.btn-icon:hover,
+.qty-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary:hover,
+.save-btn:hover,
+.confirm-btn:hover  { box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3); }
+.btn-success:hover  { box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3); }
+.btn-danger:hover,
+.remove-btn:hover,
+.remove-lens:hover  { box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3); }
+.btn-secondary:hover,
+.cancel-btn:hover,
+.cancel-modal-btn:hover { box-shadow: 0 4px 12px rgba(127, 140, 141, 0.3); }
+.btn-warning:hover  { box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3); }
+.btn-info:hover     { box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3); }
+
+.btn-outline-primary:hover  { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2); }
+.btn-outline-success:hover  { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2); }
+.btn-outline-danger:hover   { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2); }
+.btn-outline-warning:hover  { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2); }
+.btn-outline-info:hover     { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(23, 162, 184, 0.2); }
+.btn-outline-secondary:hover{ transform: translateY(-2px); box-shadow: 0 4px 12px rgba(127, 140, 141, 0.2); }
+.btn-link:hover             { transform: translateY(-1px); text-decoration: none; }
+
+.btn i,
+.action-btn i,
+.modal-btn i { transition: transform 0.3s ease; }
+.btn:hover i,
+.action-btn:hover i,
+.modal-btn:hover i { transform: scale(1.1); }
+
+.btn-floating:hover    { transform: translateY(-3px) scale(1.05); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2); }
+.quick-action-btn:hover{ transform: translateY(-2px) scale(1.02); box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2); }
+.cta-button:hover      { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(52, 152, 219, 0.4); }
+
+*[role="button"]:hover,
+.clickable:hover { transform: translateY(-1px); transition: all 0.3s ease; }
+
+@keyframes subtle-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4); }
+    70%  { box-shadow: 0 0 0 6px rgba(52, 152, 219, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); }
+}
+
+.btn-primary.pulse { animation: subtle-pulse 2s infinite; }
+
+/* ========================================
+   TABLAS — ESTILOS BASE COMPARTIDOS
    ======================================== */
 .table-base {
     font-size: 0.95rem;
@@ -113,13 +210,12 @@ body {
 
 .table-base thead th {
     font-weight: 600;
-    border-bottom-width: 1px;
+    border-bottom: 2px solid #dee2e6;
     text-align: center;
     vertical-align: middle;
     position: sticky;
     top: 0;
     z-index: 10;
-    border-bottom: 2px solid #dee2e6;
     box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
@@ -129,18 +225,20 @@ body {
     transition: background-color 0.2s ease;
 }
 
-/* Alineación a la izquierda para columnas de texto */
+/* Alinear izquierda las primeras dos columnas (texto) */
+.table-base thead th:nth-child(1),
+.table-base thead th:nth-child(2),
 .table-base tbody td:nth-child(1),
 .table-base tbody td:nth-child(2) {
     text-align: left;
 }
 
-.table-base thead th:nth-child(1),
-.table-base thead th:nth-child(2) {
-    text-align: left;
-}
+.table-base tbody tr { transition: background-color 0.2s ease; }
+.table-base tbody tr:hover { background-color: #f5f5f5; }
+.table-base tbody tr:nth-child(odd)  { background-color: #ffffff; }
+.table-base tbody tr:nth-child(even) { background-color: #f9f9f9; }
 
-/* Contenedor base para tablas con scroll */
+/* Contenedor con scroll */
 .table-container-base {
     overflow-y: auto;
     overflow-x: hidden;
@@ -149,45 +247,42 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Efectos hover en las filas (base) */
-.table-base tbody tr {
-    transition: background-color 0.2s ease;
-}
+.table-container-base::-webkit-scrollbar { width: 8px; }
+.table-container-base::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+.table-container-base::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+.table-container-base::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-.table-base tbody tr:hover {
-    background-color: #f5f5f5;
-}
+/* ========================================
+   INDICADORES DE STOCK
+   ======================================== */
+.stock-high   { color: #28a745; font-weight: 600; }
+.stock-medium { color: #ffc107; font-weight: 600; }
+.stock-low    { color: #dc3545; font-weight: 600; }
 
-/* Alternar colores de filas (zebra striping) */
-.table-base tbody tr:nth-child(odd) {
-    background-color: #ffffff;
-}
-
-.table-base tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-/* Personalizar la barra de scroll (base) */
-.table-container-base::-webkit-scrollbar {
-    width: 8px;
-}
-
-.table-container-base::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-.table-container-base::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 4px;
-}
-
-.table-container-base::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
+.stock-warning {
+    color: #e74c3c;
+    font-weight: bold;
+    margin-left: 10px;
+    font-size: 0.9em;
 }
 
 /* ========================================
-   ESTILOS ESPECÍFICOS - TABLA DE PRODUCTOS
+   ETIQUETAS DE FILTROS
+   ======================================== */
+.filter-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    margin-right: 0.25rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 12px;
+    background-color: #e2f6ff;
+    color: #0d6efd;
+}
+
+/* ========================================
+   VISTA DE PRODUCTOS
    ======================================== */
 #products-view {
     height: calc(100vh - 100px);
@@ -233,13 +328,12 @@ body {
 #products-view .table thead th {
     background-color: #f8f9fa;
     font-weight: 600;
-    border-bottom-width: 1px;
+    border-bottom: 2px solid #dee2e6;
     text-align: center;
     vertical-align: middle;
     position: sticky;
     top: 0;
     z-index: 10;
-    border-bottom: 2px solid #dee2e6;
     box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
@@ -250,102 +344,7 @@ body {
 }
 
 /* ========================================
-   ESTILOS ESPECÍFICOS - TABLA DE SURTIDOS
-   ======================================== */
-#transactions-view .table-container {
-    background: white;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    animation: fadeInTransaction 0.5s ease;
-    max-height: 75vh;
-    min-height: 600px;
-    overflow-y: auto;
-    overflow-x: hidden;
-}
-
-#transactions-view .table {
-    font-size: 0.95rem;
-    border-collapse: separate;
-    border-spacing: 0;
-    margin-bottom: 0;
-    width: 100%;
-}
-
-#transactions-view .table thead th {
-    background: #eff3f8;
-    color: #2d3748;
-    padding: 15px;
-    text-align: center;
-    vertical-align: middle;
-    font-weight: 600;
-    border-bottom-width: 1px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    border-bottom: 2px solid #dee2e6;
-    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
-}
-
-#transactions-view .table tbody td {
-    padding: 15px;
-    border-bottom: 1px solid #e2e8f0;
-    text-align: center;
-    vertical-align: middle;
-}
-
-#transactions-view .table thead th:nth-child(1),
-#transactions-view .table thead th:nth-child(2) {
-    text-align: left;
-}
-
-#transactions-view .table tbody td:nth-child(1),
-#transactions-view .table tbody td:nth-child(2) {
-    text-align: left;
-}
-
-#transactions-view .table thead th:nth-child(8),
-#transactions-view .table thead th:nth-child(9) {
-    text-align: center;
-}
-
-#transactions-view .table tbody td:nth-child(8),
-#transactions-view .table tbody td:nth-child(9) {
-    text-align: center;
-}
-
-#transactions-view .table tbody tr:hover td {
-    background: #f8fafcab;
-}
-
-/* ========================================
-   INDICADORES DE STOCK
-   ======================================== */
-.stock-high {
-    color: #28a745;
-    font-weight: 600;
-}
-
-.stock-medium {
-    color: #ffc107;
-    font-weight: 600;
-}
-
-.stock-low {
-    color: #dc3545;
-    font-weight: 600;
-}
-
-.stock-warning {
-    color: #e74c3c;
-    font-weight: bold;
-    margin-left: 10px;
-    font-size: 0.9em;
-}
-
-/* ========================================
-   ESTILOS PARA ESCÁNER DE CÓDIGOS DE BARRAS
+   ESCÁNER DE CÓDIGOS DE BARRAS
    ======================================== */
 #scanner-video {
     max-height: 300px;
@@ -361,29 +360,8 @@ body {
 }
 
 /* ========================================
-   ETIQUETAS DE FILTROS
+   VISTA DE VENTAS — LAYOUT PRINCIPAL
    ======================================== */
-.filter-badge {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    margin-right: 0.25rem;
-    margin-bottom: 0.25rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    border-radius: 12px;
-    background-color: #e2f6ff;
-    color: #0d6efd;
-}
-
-/* ========================================
-   ESTILOS PARA LA VISTA DE VENTAS
-   ======================================== */
-body.sale {
-    background-color: #f5f5f5;
-    padding: 20px;
-    color: #333;
-}
-
 .container-sale {
     display: flex;
     justify-content: space-between;
@@ -395,20 +373,25 @@ body.sale {
 }
 
 .panel {
-    background-color: #fff;
-    border-radius: 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background: rgb(248, 248, 248);
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
     padding: 20px;
     flex: 1;
     display: flex;
     flex-direction: column;
     max-width: 50%;
-    background: rgb(248, 248, 248);
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+    border: 1px solid rgba(102, 126, 234, 0.1);
+    transition: all 0.3s ease;
 }
 
+.panel:hover {
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Header de paneles */
 .panel-header {
     flex-shrink: 0;
     padding: 25px 30px;
@@ -421,7 +404,6 @@ body.sale {
     border-bottom: none !important;
 }
 
-/* ✅ Efecto de brillo animado en ambos headers */
 .panel-header::before {
     content: '';
     position: absolute;
@@ -433,11 +415,61 @@ body.sale {
     animation: pulseGlow 4s ease-in-out infinite;
 }
 
+@keyframes pulseGlow {
+    0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+    50%       { transform: scale(1.1) rotate(180deg); opacity: 0.3; }
+}
+
+.panel-header .search-container {
+    margin: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.panel-header .search-input {
+    width: 100%;
+    padding: 12px 20px 12px 45px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50px;
+    font-size: 15px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.panel-header .search-input:focus {
+    border-color: white;
+    background: white;
+    outline: none;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.panel-header .search-input::placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+/* Icono de búsqueda dentro del header */
+.panel-header .search-container::before {
+    content: '\F52A';
+    font-family: 'bootstrap-icons';
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #667eea;
+    font-size: 1.2rem;
+    z-index: 2;
+    pointer-events: none;
+}
+
 .panel-title {
     margin: 0 0 15px 0;
     font-size: 1.4rem;
     font-weight: 700;
-    color: white !important; /* ✅ Texto blanco en ambos paneles */
+    color: white !important;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -456,12 +488,8 @@ body.sale {
 }
 
 @keyframes floatIcon {
-    0%, 100% { 
-        transform: translateY(0); 
-    }
-    50% { 
-        transform: translateY(-5px); 
-    }
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-5px); }
 }
 
 .panel-footer {
@@ -471,22 +499,16 @@ body.sale {
     background: #f8f9fa00;
 }
 
-.search-container {
-    margin-bottom: 20px;
-    margin: 0;
-}
+/* Búsqueda genérica (fuera del header) */
+.search-container { margin-bottom: 20px; }
 
 .search-input {
     width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 16px;
-    transition: all 0.3s;
     padding: 10px 15px;
     border: 1px solid #ddd;
     border-radius: 5px;
     font-size: 14px;
+    transition: all 0.3s;
 }
 
 .search-input:focus {
@@ -495,6 +517,7 @@ body.sale {
     box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
 }
 
+/* Contenedores con scroll */
 .results-container {
     flex-grow: 1;
     overflow-y: auto;
@@ -511,24 +534,12 @@ body.sale {
     max-height: calc(100vh - 400px);
 }
 
-.scrollable-content::-webkit-scrollbar {
-    width: 8px;
-}
+.scrollable-content::-webkit-scrollbar { width: 8px; }
+.scrollable-content::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+.scrollable-content::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+.scrollable-content::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-.scrollable-content::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-.scrollable-content::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 4px;
-}
-
-.scrollable-content::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
+/* Items del buscador de productos */
 .lens-item {
     background: #f8f9fa;
     border: 1px solid #e0e0e0;
@@ -544,11 +555,7 @@ body.sale {
     border-color: #007bff;
 }
 
-.lens-item:last-child {
-    border-bottom: 1px solid #e0e0e0 !important;
-    margin-bottom: 8px;
-}
-
+/* Carrito de venta */
 .selected-container {
     flex-grow: 1;
     overflow-y: auto;
@@ -562,6 +569,7 @@ body.sale {
 .selected-lens {
     background: #f8f9fa;
     border: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0 !important;
     border-radius: 5px;
     padding: 10px;
     margin-bottom: 6px;
@@ -569,12 +577,6 @@ body.sale {
     align-items: center;
     justify-content: space-between;
     gap: 15px;
-    border-bottom: 1px solid #e0e0e0 !important;
-}
-
-.selected-lens:last-child {
-    border-bottom: 1px solid #e0e0e0 !important;
-    margin-bottom: 6px;
 }
 
 .lens-info {
@@ -585,10 +587,7 @@ body.sale {
     min-width: 0;
 }
 
-.lens-details-compact {
-    flex: 1;
-    min-width: 0;
-}
+.lens-details-compact { flex: 1; min-width: 0; }
 
 .lens-details-compact h4,
 .lens-details-compact h6 {
@@ -616,6 +615,7 @@ body.sale {
     gap: 10px;
 }
 
+/* Control de cantidad */
 .quantity-control {
     display: flex;
     align-items: center;
@@ -658,6 +658,7 @@ body.sale {
     font-weight: 600;
 }
 
+/* Botones de eliminar */
 .remove-btn {
     background-color: #e74c3c;
     color: white;
@@ -669,9 +670,7 @@ body.sale {
     transition: background-color 0.2s;
 }
 
-.remove-btn:hover {
-    background-color: #c0392b;
-}
+.remove-btn:hover { background-color: #c0392b; }
 
 .remove-lens {
     background: #dc3545;
@@ -688,51 +687,32 @@ body.sale {
     flex-shrink: 0;
 }
 
-.remove-lens:hover {
-    background: #c82333;
-}
+.remove-lens:hover { background: #c82333; }
 
+/* Botones de acción del carrito */
 .action-buttons {
     display: flex;
-    justify-content: space-between;
     gap: 10px;
     justify-content: flex-end;
 }
 
 .action-btn {
-    padding: 12px 20px;
-    border: none;
-    border-radius: 6px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    flex-grow: 1;
     padding: 12px 24px;
     border: none;
     border-radius: 5px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
+    flex-grow: 1;
 }
 
-.save-btn {
-    background: #0d6efd;
-    color: white;
-}
+.save-btn   { background: #0d6efd; color: white; }
+.save-btn:hover { background: #1100ff; }
 
-.save-btn:hover {
-    background: #1100ff;
-}
+.cancel-btn { background: #6c757d; color: white; }
+.cancel-btn:hover { background: #5a6268; }
 
-.cancel-btn {
-    background: #6c757d;
-    color: white;
-}
-
-.cancel-btn:hover {
-    background: #5a6268;
-}
-
+/* Total y contador */
 .total-section {
     text-align: right;
     font-size: 1.1rem;
@@ -744,8 +724,8 @@ body.sale {
 .selected-counter {
     display: flex;
     align-items: center;
-    background: white !important; /* ✅ Fondo blanco para contrastar */
-    color: #667eea !important; /* ✅ Texto azul */
+    background: white !important;
+    color: #667eea !important;
     padding: 10px 20px;
     border-radius: 50px;
     font-weight: 700;
@@ -763,8 +743,13 @@ body.sale {
 .selected-counter i {
     font-size: 1.2rem;
     margin-right: 8px;
-    animation: pulse 2s ease-in-out infinite;
     color: #667eea !important;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.1); }
 }
 
 #selectedCount {
@@ -778,568 +763,151 @@ body.sale {
     background-clip: text;
 }
 
-
 /* ========================================
-   ESTILOS PARA MODALES BASE
+   TOGGLE DE BODEGA
    ======================================== */
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
+.warehouse-option {
+    flex-shrink: 0;
+    padding: 20px 30px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-top: 2px solid rgba(102, 126, 234, 0.1);
+    transition: all 0.3s ease;
 }
 
-.modal-content {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    width: 400px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-
-.modal-title {
-    font-size: 1.4em;
-    margin-bottom: 15px;
-    color: #2c3e50;
-}
-
-.modal-message {
-    margin-bottom: 20px;
-    line-height: 1.5;
-}
-
-.modal-buttons {
+.warehouse-toggle {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    gap: 15px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.3s ease;
+}
+
+.warehouse-toggle:hover .warehouse-label {
+    color: #667eea;
+    transform: translateX(5px);
+}
+
+.warehouse-toggle input[type="checkbox"] {
+    width: 50px;
+    height: 26px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: #cbd5e0;
+    border-radius: 50px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: none;
+    outline: none;
+}
+
+.warehouse-toggle input[type="checkbox"]::before {
+    content: '';
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: white;
+    top: 2px;
+    left: 2px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.warehouse-toggle input[type="checkbox"]:checked {
+    background: linear-gradient(135deg, #667eea 0%, #2042e9 100%);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 0 10px rgba(74, 102, 226, 0.3);
+}
+
+.warehouse-toggle input[type="checkbox"]:checked::before {
+    left: 26px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.warehouse-toggle input[type="checkbox"]:hover { transform: scale(1.05); }
+
+.warehouse-label {
+    display: flex;
+    align-items: center;
     gap: 10px;
-}
-
-.modal-btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.confirm-btn {
-    background-color: #3498db;
-    color: white;
-}
-
-.confirm-btn:hover {
-    background-color: #2980b9;
-}
-
-.cancel-modal-btn {
-    background-color: #95a5a6;
-    color: white;
-}
-
-.cancel-modal-btn:hover {
-    background-color: #7f8c8d;
-}
-
-.show {
-    display: flex;
-}
-
-/* ========================================
-   ESTILOS PARA MODAL DE CONFIRMACIÓN
-   ======================================== */
-/* ========================================
-   FORZAR ESTILOS DEL MODAL DE CONFIRMACIÓN
-   ======================================== */
-#confirm-delete-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-#confirm-delete-modal.show {
-    display: flex !important;
-}
-
-#confirm-delete-modal .modal-content {
-    background-color: #fff !important;
-    padding: 35px 30px !important;
-    border-radius: 16px !important;
-    width: 380px !important;
-    max-width: 90vw !important;
-    min-width: 320px !important;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25) !important;
-    transform: scale(0.9);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-#confirm-delete-modal.show .modal-content {
-    transform: scale(1) !important;
-    animation: modalBounceIn 0.4s ease-out;
-}
-
-@keyframes modalBounceIn {
-    0% {
-        transform: scale(0.9);
-        opacity: 0;
-    }
-    50% {
-        transform: scale(1.02);
-    }
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-#confirm-delete-modal .modal-title {
-    font-size: 1.5em !important;
-    margin-bottom: 18px !important;
-    color: #2c3e50 !important;
-    text-align: center !important;
-    font-weight: 700 !important;
-    line-height: 1.3 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-#confirm-delete-modal .modal-title i {
-    margin-right: 8px;
-    font-size: 1.3em;
-}
-
-#confirm-delete-modal .modal-message {
-    margin-bottom: 28px !important;
-    line-height: 1.6 !important;
-    font-size: 1em !important;
-    color: #555 !important;
-    text-align: center !important;
-    word-wrap: break-word !important;
-    max-width: 100% !important;
-}
-
-#confirm-delete-modal .modal-buttons {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    gap: 12px !important;
-    margin-top: 20px !important;
-}
-
-#confirm-delete-modal .modal-btn {
-    padding: 14px 24px !important;
-    border: none !important;
-    border-radius: 10px !important;
-    cursor: pointer !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    width: 100% !important;
-    transition: all 0.3s ease !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 8px !important;
-}
-
-#confirm-delete-modal .confirm-btn {
-    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%) !important;
-    color: white !important;
-}
-
-#confirm-delete-modal .confirm-btn:hover {
-    background: linear-gradient(135deg, #2980b9 0%, #1f6ea8 100%) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(52, 152, 219, 0.4) !important;
-}
-
-#confirm-delete-modal .cancel-modal-btn {
-    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%) !important;
-    color: white !important;
-}
-
-#confirm-delete-modal .cancel-modal-btn:hover {
-    background: linear-gradient(135deg, #7f8c8d 0%, #6c7a7b 100%) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(127, 140, 141, 0.4) !important;
-}
-
-#confirm-delete-modal .modal-btn:active {
-    transform: translateY(0) !important;
-}
-
-/* Responsive para el modal */
-@media (max-width: 480px) {
-    #confirm-delete-modal .modal-content {
-        width: 340px !important;
-        padding: 30px 25px !important;
-    }
-    
-    #confirm-delete-modal .modal-title {
-        font-size: 1.3em !important;
-    }
-    
-    #confirm-delete-modal .modal-message {
-        font-size: 0.95em !important;
-    }
-}
-
-/* ========================================
-   ESTILOS ESPECÍFICOS PARA SISTEMA DE REMISIONES
-   ======================================== */
-
-/* Modales de remisión */
-.remision-modal .modal-content {
-    max-width: 900px;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-}
-
-.remision-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    border-bottom: 2px solid #e9ecef;
-}
-
-.remision-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1.5rem;
-}
-
-.remision-section {
-    margin-bottom: 2rem;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-radius: 8px;
-}
-
-.remision-section h4 {
-    color: #495057;
-    margin-bottom: 1rem;
-    font-size: 1.1rem;
-}
-
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-}
-
-.form-group label {
     font-weight: 600;
-    margin-bottom: 0.5rem;
-    display: block;
-}
-
-.form-group input,
-.form-group textarea {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-}
-
-.productos-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-}
-
-.productos-table th,
-.productos-table td {
-    padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.productos-table th {
-    background: #e9ecef;
-    font-weight: 600;
-}
-
-.totales-section {
-    margin-top: 1rem;
-    padding: 1rem;
-    background: white;
-    border-radius: 8px;
-}
-
-.total-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-}
-
-.total-row.final {
-    border-top: 2px solid #495057;
-    font-weight: 700;
-    font-size: 1.2rem;
-    color: #667eea;
-}
-
-.remision-item {
-    padding: 1rem;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-    transition: box-shadow 0.2s;
-}
-
-.remision-item:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.remision-footer {
-    padding: 1rem 1.5rem;
-    border-top: 1px solid #e9ecef;
-    display: flex;
-    gap: 1rem;
-    justify-content: flex-end;
-}
-
-/* Vista previa de remisión */
-.preview-modal-content {
-    max-width: 900px;
-    max-height: 95vh;
-    width: 95%;
-}
-
-
-
-.preview-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 2rem;
-    background: #e9ecef;
-}
-
-.preview-footer {
-    padding: 1rem 1.5rem;
-    border-top: 2px solid #e9ecef;
-    display: flex;
-    gap: 1rem;
-    justify-content: flex-end;
-    background: #f8f9fa;
-}
-
-/* Documento de remisión para impresión */
-.remision-document {
-    background: white;
-    padding: 2rem;
-    max-width: 800px;
-    margin: 0 auto;
-    font-family: Arial, sans-serif;
-    color: #333;
-}
-
-.remision-header-doc {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    margin-bottom: 2rem;
-}
-
-.empresa-info h2 {
-    margin: 0 0 0.5rem 0;
-    color: #2c3e50;
-}
-
-.empresa-info p {
-    margin: 0.25rem 0;
-    font-size: 0.9rem;
-}
-
-.remision-info {
-    text-align: right;
-}
-
-.remision-info h3 {
-    margin: 0;
-    color: #667eea;
-    font-size: 1.8rem;
-}
-
-.remision-info p {
-    margin: 0.25rem 0;
-}
-
-.separator {
-    border: none;
-    border-top: 2px solid #e9ecef;
-    margin: 1.5rem 0;
-}
-
-.cliente-section h4,
-.productos-section h4,
-.observaciones-section h4 {
-    color: #495057;
-    margin-bottom: 1rem;
+    color: #1982ec;
     font-size: 1rem;
-    border-bottom: 2px solid #667eea;
-    padding-bottom: 0.5rem;
+    transition: all 0.3s ease;
 }
 
-.cliente-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-}
-
-.cliente-grid div {
-    font-size: 0.9rem;
-}
-
-.remision-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-}
-
-.remision-table th,
-.remision-table td {
-    padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.remision-table th {
-    background: #f8f9fa;
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: #495057;
-}
-
-.remision-table td {
-    font-size: 0.9rem;
-}
-
-.remision-table td small {
-    color: #6c757d;
-    font-size: 0.8rem;
-}
-
-.totales-section-doc {
-    margin-top: 2rem;
-    display: flex;
-    justify-content: flex-end;
-}
-
-.totales-grid {
-    min-width: 300px;
-}
-
-.total-row.final-total {
-    border-top: 2px solid #2c3e50;
-    margin-top: 0.5rem;
-    padding-top: 1rem;
-    font-weight: 700;
-    font-size: 1.2rem;
+.warehouse-label i {
+    font-size: 1.3rem;
     color: #667eea;
+    transition: all 0.3s ease;
 }
 
-.observaciones-section {
-    margin-top: 2rem;
-}
-
-.observaciones-section p {
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 4px;
-    font-size: 0.9rem;
-}
-
-.firmas-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3rem;
-    margin-top: 3rem;
-}
-
-.firma-box {
-    text-align: center;
-}
-
-.firma-line {
-    border-top: 2px solid #333;
-    margin-bottom: 0.5rem;
-}
-
-.firma-box p {
-    margin: 0;
-    font-size: 0.9rem;
-    color: #6c757d;
-}
-
-.footer-note {
-    text-align: center;
-    margin-top: 2rem;
-    padding-top: 1rem;
-    border-top: 1px solid #e9ecef;
-}
-
-.footer-note p {
-    margin: 0;
-    font-size: 0.8rem;
-    color: #6c757d;
-}
-
-/* Botón cerrar modal */
-.close-modal {
-    background: transparent;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: #6c757d;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-}
-
-.close-modal:hover {
-    color: #dc3545;
+.warehouse-toggle:hover .warehouse-label i {
     transform: scale(1.1);
-}
-
-/* Estilos para impresión */
-@media print {
-    .remision-document {
-        padding: 1rem;
-    }
-    
-    @page {
-        margin: 1cm;
-    }
-    
-    .preview-header,
-    .preview-footer,
-    .remision-footer {
-        display: none !important;
-    }
+    color: #0040ff;
 }
 
 /* ========================================
-   ESTILOS ESPECÍFICOS PARA TRANSACCIONES
+   VISTA DE SURTIDOS / TRANSACCIONES
    ======================================== */
+#transactions-view .table-container {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    animation: fadeInTransaction 0.5s ease;
+    max-height: 75vh;
+    min-height: 600px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+@keyframes fadeInTransaction {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+#transactions-view .table {
+    font-size: 0.95rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 0;
+    width: 100%;
+}
+
+#transactions-view .table thead th {
+    background: #eff3f8;
+    color: #2d3748;
+    padding: 15px;
+    text-align: center;
+    vertical-align: middle;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+#transactions-view .table tbody td {
+    padding: 15px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: center;
+    vertical-align: middle;
+}
+
+#transactions-view .table thead th:nth-child(1),
+#transactions-view .table thead th:nth-child(2),
+#transactions-view .table tbody td:nth-child(1),
+#transactions-view .table tbody td:nth-child(2) {
+    text-align: left;
+}
+
+#transactions-view .table tbody tr:hover td { background: #f8fafcab; }
+
 #transactions-view .header-section {
     background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
     padding: 30px;
@@ -1349,16 +917,8 @@ body.sale {
     margin-bottom: 20px;
 }
 
-#transactions-view .header-section h1 {
-    font-size: 2.5rem;
-    font-weight: 300;
-    margin-bottom: 10px;
-}
-
-#transactions-view .header-section p {
-    opacity: 0.9;
-    font-size: 1.1rem;
-}
+#transactions-view .header-section h1 { font-size: 2.5rem; font-weight: 300; margin-bottom: 10px; }
+#transactions-view .header-section p  { opacity: 0.9; font-size: 1.1rem; }
 
 #transactions-view .search-section {
     padding: 30px;
@@ -1420,11 +980,7 @@ body.sale {
     align-items: center;
 }
 
-#transactions-view .no-selection .icon {
-    font-size: 4rem;
-    margin-bottom: 20px;
-    opacity: 0.5;
-}
+#transactions-view .no-selection .icon { font-size: 4rem; margin-bottom: 20px; opacity: 0.5; }
 
 #transactions-view .table-header {
     display: flex;
@@ -1435,11 +991,7 @@ body.sale {
     border-bottom: 1px solid #e2e8f0;
 }
 
-#transactions-view .table-title {
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: #000000;
-}
+#transactions-view .table-title { font-size: 1.3rem; font-weight: 600; color: #000000; }
 
 #transactions-view .export-btn {
     background: linear-gradient(135deg, #41e620 0%, #12ff12 100%);
@@ -1461,7 +1013,6 @@ body.sale {
 }
 
 #transactions-view .table-wrapper {
-    height: calc(100% - 80px);
     overflow-y: auto;
     overflow-x: auto;
     scrollbar-width: thin;
@@ -1471,31 +1022,14 @@ body.sale {
     max-height: calc(100vh - 350px);
 }
 
-#transactions-view .table-wrapper::-webkit-scrollbar {
-    width: 8px;
-}
-
-#transactions-view .table-wrapper::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-#transactions-view .table-wrapper::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 4px;
-}
-
-#transactions-view .table-wrapper::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
-#transactions-view .table-wrapper table {
-    margin-bottom: 0;
-    width: 100%;
-}
+#transactions-view .table-wrapper::-webkit-scrollbar { width: 8px; }
+#transactions-view .table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+#transactions-view .table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+#transactions-view .table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+#transactions-view .table-wrapper table { margin-bottom: 0; width: 100%; }
 
 #transactions-view .search-bar-container {
-    padding: 15px 20px 10px 20px;
+    padding: 15px 20px 10px;
     background: #f8f9fa;
     border-bottom: 1px solid #e2e8f0;
     flex-shrink: 0;
@@ -1519,10 +1053,7 @@ body.sale {
     box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
 }
 
-#transactions-view .search-bar::placeholder {
-    color: #94a3b8;
-    font-style: italic;
-}
+#transactions-view .search-bar::placeholder { color: #94a3b8; font-style: italic; }
 
 #transactions-view .quantity-controls {
     display: flex;
@@ -1544,23 +1075,11 @@ body.sale {
     justify-content: center;
 }
 
-#transactions-view .quantity-btn.minus {
-    background: #fed7d7;
-    color: #c53030;
-}
-
-#transactions-view .quantity-btn.minus:hover {
-    background: #feb2b2;
-}
-
-#transactions-view .quantity-btn.plus {
-    background: #c6f6d5;
-    color: #2f855a;
-}
-
-#transactions-view .quantity-btn.plus:hover {
-    background: #9ae6b4;
-}
+#transactions-view .quantity-btn.minus { background: #fed7d7; color: #c53030; }
+#transactions-view .quantity-btn.minus:hover { background: #feb2b2; box-shadow: 0 4px 12px rgba(197, 48, 48, 0.3); }
+#transactions-view .quantity-btn.plus  { background: #c6f6d5; color: #2f855a; }
+#transactions-view .quantity-btn.plus:hover  { background: #9ae6b4; box-shadow: 0 4px 12px rgba(47, 133, 90, 0.3); }
+#transactions-view .quantity-btn:hover { transform: translateY(-2px); }
 
 #transactions-view .quantity-input {
     width: 80px;
@@ -1571,28 +1090,12 @@ body.sale {
     font-weight: 600;
 }
 
-#transactions-view .quantity-input:focus {
-    outline: none;
-    border-color: #4facfe;
-}
+#transactions-view .quantity-input:focus { outline: none; border-color: #4facfe; }
 
-#transactions-view .save-changes-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-}
+#transactions-view .save-changes-btn { display: flex; align-items: center; justify-content: center; margin: 0 auto; }
 
-#transactions-view .edit-icon {
-    color: #f6ad55;
-    cursor: pointer;
-    font-size: 1.2rem;
-    transition: color 0.2s ease;
-}
-
-#transactions-view .edit-icon:hover {
-    color: #ed8936;
-}
+#transactions-view .edit-icon { color: #f6ad55; cursor: pointer; font-size: 1.2rem; transition: color 0.2s ease; }
+#transactions-view .edit-icon:hover { color: #ed8936; }
 
 #transactions-view .reference-badge {
     background: white;
@@ -1603,276 +1106,566 @@ body.sale {
     font-size: 2rem;
 }
 
-#transactions-view .status-indicator {
+#transactions-view .status-indicator { display: flex; align-items: center; gap: 8px; justify-content: center; }
+
+#transactions-view .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+#transactions-view .status-dot.good     { background: #48bb78; }
+#transactions-view .status-dot.low      { background: #ed8936; }
+#transactions-view .status-dot.critical { background: #f56565; }
+
+#transactions-view .d-flex.align-items-center { justify-content: center; }
+#transactions-view td span { display: inline-flex; align-items: center; gap: 5px; }
+
+/* ========================================
+   MODALES — BASE
+   ======================================== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    width: 400px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.modal-title {
+    font-size: 1.4em;
+    margin-bottom: 15px;
+    color: #2c3e50;
+}
+
+.modal-message { margin-bottom: 20px; line-height: 1.5; }
+
+.modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+
+.modal-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.confirm-btn         { background-color: #3498db; color: white; }
+.confirm-btn:hover   { background-color: #2980b9; }
+.cancel-modal-btn    { background-color: #95a5a6; color: white; }
+.cancel-modal-btn:hover { background-color: #7f8c8d; }
+
+.show { display: flex; }
+
+/* Botón cerrar modal */
+.close-modal {
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6c757d;
+    padding: 0;
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
-    gap: 8px;
     justify-content: center;
+    transition: all 0.2s ease;
 }
 
-#transactions-view .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-}
+.close-modal:hover { color: #dc3545; transform: scale(1.1); }
 
-#transactions-view .status-dot.good {
-    background: #48bb78;
-}
-
-#transactions-view .status-dot.low {
-    background: #ed8936;
-}
-
-#transactions-view .status-dot.critical {
-    background: #f56565;
-}
-
-#transactions-view .d-flex.align-items-center {
-    justify-content: center;
-}
-
-#transactions-view td span {
-    display: inline-flex;
+/* ========================================
+   MODAL DE CONFIRMACIÓN (eliminar / salidas)
+   — #confirm-delete-modal y #confirmModal
+     comparten los mismos estilos
+   ======================================== */
+#confirm-delete-modal,
+#confirmModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
     align-items: center;
-    gap: 5px;
+    justify-content: center;
+    z-index: 9999;
 }
 
-@keyframes fadeInTransaction {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
+#confirm-delete-modal.show,
+#confirmModal.show {
+    display: flex !important;
+}
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+#confirm-delete-modal .modal-content,
+#confirmModal .modal-content {
+    background-color: #fff !important;
+    padding: 35px 30px !important;
+    border-radius: 16px !important;
+    width: 380px !important;
+    max-width: 90vw !important;
+    min-width: 320px !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25) !important;
+    transform: scale(0.9);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#confirm-delete-modal.show .modal-content,
+#confirmModal.show .modal-content {
+    transform: scale(1) !important;
+    animation: modalBounceIn 0.4s ease-out;
+}
+
+@keyframes modalBounceIn {
+    0%   { transform: scale(0.9); opacity: 0; }
+    50%  { transform: scale(1.02); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+#confirm-delete-modal .modal-title,
+#confirmModal .modal-title {
+    font-size: 1.5em !important;
+    margin-bottom: 18px !important;
+    color: #2c3e50 !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+    line-height: 1.3 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#confirm-delete-modal .modal-title i,
+#confirmModal .modal-title i { margin-right: 8px; font-size: 1.3em; }
+
+#confirm-delete-modal .modal-message,
+#confirmModal .modal-message {
+    margin-bottom: 28px !important;
+    line-height: 1.6 !important;
+    font-size: 1em !important;
+    color: #555 !important;
+    text-align: center !important;
+    word-wrap: break-word !important;
+    max-width: 100% !important;
+}
+
+#confirm-delete-modal .modal-buttons,
+#confirmModal .modal-buttons {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    margin-top: 20px !important;
+}
+
+#confirm-delete-modal .modal-btn,
+#confirmModal .modal-btn {
+    padding: 14px 24px !important;
+    border: none !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    width: 100% !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+}
+
+#confirm-delete-modal .confirm-btn,
+#confirmModal .confirm-btn {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%) !important;
+    color: white !important;
+}
+
+#confirm-delete-modal .confirm-btn:hover,
+#confirmModal .confirm-btn:hover {
+    background: linear-gradient(135deg, #2980b9 0%, #1f6ea8 100%) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(52, 152, 219, 0.4) !important;
+}
+
+#confirm-delete-modal .cancel-modal-btn,
+#confirmModal .cancel-modal-btn {
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%) !important;
+    color: white !important;
+}
+
+#confirm-delete-modal .cancel-modal-btn:hover,
+#confirmModal .cancel-modal-btn:hover {
+    background: linear-gradient(135deg, #7f8c8d 0%, #6c7a7b 100%) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(127, 140, 141, 0.4) !important;
+}
+
+#confirm-delete-modal .modal-btn:active,
+#confirmModal .modal-btn:active { transform: translateY(0) !important; }
+
+/* ========================================
+   SHARED — DOCUMENTO (remisiones y facturas)
+   Selectores compartidos entre ambos módulos
+   ======================================== */
+.separator {
+    border: none;
+    border-top: 2px solid #e9ecef;
+    margin: 1.5rem 0;
+}
+
+.empresa-info h2 { margin: 0 0 0.5rem 0; color: #2c3e50; }
+.empresa-info p  { margin: 0.25rem 0; font-size: 0.9rem; }
+
+.cliente-section h4,
+.productos-section h4,
+.observaciones-section h4 {
+    color: #495057;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #3498db; /* unificado: remisiones usaba #667eea, facturas #3498db — se mantiene el de facturas como estándar */
+}
+
+.cliente-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.cliente-grid div { font-size: 0.9rem; }
+
+.observaciones-section { margin-top: 2rem; }
+
+.observaciones-section p {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.firmas-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    margin-top: 3rem;
+}
+
+.firma-box { text-align: center; }
+.firma-line { border-top: 2px solid #333; margin-bottom: 0.5rem; }
+.firma-box p { margin: 0; font-size: 0.9rem; color: #6c757d; }
+
+.footer-note { text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e9ecef; }
+.footer-note p { margin: 0; font-size: 0.8rem; color: #6c757d; }
+
+/* Preview compartido */
+.preview-modal-content {
+    max-width: 900px;
+    max-height: 95vh;
+    width: 95%;
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 2px solid #e9ecef;
+    background: #f8f9fa;
+}
+
+.preview-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+    background: #e9ecef;
+}
+
+.preview-footer {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    padding: 1rem 1.5rem;
+    border-top: 2px solid #e9ecef;
+    background: #f8f9fa;
+}
+
+/* Totales compartidos */
+.totales-section-doc {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.totales-grid { min-width: 300px; }
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+}
+
+.total-row.final,
+.total-row.final-total {
+    border-top: 2px solid #2c3e50;
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    font-weight: 700;
+    font-size: 1.2rem;
 }
 
 /* ========================================
-   EFECTOS GLOBALES PARA TODOS LOS BOTONES
+   MÓDULO DE REMISIONES
    ======================================== */
-button,
-.btn,
-.action-btn,
-.modal-btn,
-.qty-btn,
-.remove-btn,
-.remove-lens,
-.export-btn,
-input[type="button"],
-input[type="submit"],
-.quantity-btn {
-    transition: all 0.3s ease;
-    cursor: pointer;
+.remision-modal .modal-content {
+    max-width: 900px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
 }
 
-button:hover:not(:disabled),
-.btn:hover:not(:disabled),
-.action-btn:hover,
-.modal-btn:hover,
-.export-btn:hover,
-input[type="button"]:hover:not(:disabled),
-input[type="submit"]:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.remision-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 2px solid #e9ecef;
 }
 
-.btn-primary:hover,
-.save-btn:hover,
-.confirm-btn:hover,
-.action-btn.save-btn:hover {
-    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+.remision-body { flex: 1; overflow-y: auto; padding: 1.5rem; }
+
+.remision-section {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
 }
 
-.btn-success:hover,
-.export-btn:hover {
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+.remision-section h4 { color: #495057; margin-bottom: 1rem; font-size: 1.1rem; }
+
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+
+.form-group label { font-weight: 600; margin-bottom: 0.5rem; display: block; }
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
 }
 
-.btn-danger:hover,
-.remove-btn:hover,
-.remove-lens:hover {
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+.productos-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+.productos-table th,
+.productos-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #dee2e6; }
+.productos-table th { background: #e9ecef; font-weight: 600; }
+
+.remision-item {
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: box-shadow 0.2s;
 }
 
-.btn-secondary:hover,
-.cancel-btn:hover,
-.cancel-modal-btn:hover {
-    box-shadow: 0 4px 12px rgba(127, 140, 141, 0.3);
+.remision-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+.remision-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
 }
 
-.btn-warning:hover {
-    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+/* Documento de remisión */
+.remision-document {
+    background: white;
+    padding: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+    font-family: Arial, sans-serif;
+    color: #333;
 }
 
-.btn-info:hover {
-    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+.remision-header-doc {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
 }
 
-.btn-sm:hover,
-.btn-icon:hover,
-.qty-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
+.remision-info { text-align: right; }
+.remision-info h3 { margin: 0; color: #667eea; font-size: 1.8rem; }
+.remision-info p  { margin: 0.25rem 0; }
 
-#transactions-view .quantity-btn:hover {
-    transform: translateY(-2px);
-}
+.remision-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+.remision-table th,
+.remision-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #dee2e6; }
+.remision-table th { background: #f8f9fa; font-weight: 600; font-size: 0.85rem; color: #495057; }
+.remision-table td { font-size: 0.9rem; }
+.remision-table td small { color: #6c757d; font-size: 0.8rem; }
 
-#transactions-view .quantity-btn.minus:hover {
-    box-shadow: 0 4px 12px rgba(197, 48, 48, 0.3);
-}
-
-#transactions-view .quantity-btn.plus:hover {
-    box-shadow: 0 4px 12px rgba(47, 133, 90, 0.3);
-}
-
-button:disabled,
-.btn:disabled,
-.action-btn:disabled,
-.modal-btn:disabled,
-input[type="button"]:disabled,
-input[type="submit"]:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-    transform: none !important;
-    box-shadow: none !important;
-}
-
-button:active:not(:disabled),
-.btn:active:not(:disabled),
-.action-btn:active,
-.modal-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-}
-
-.btn-outline-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
-}
-
-.btn-outline-success:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
-}
-
-.btn-outline-danger:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
-}
-
-.btn-outline-warning:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
-}
-
-.btn-outline-info:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.2);
-}
-
-.btn-outline-secondary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(127, 140, 141, 0.2);
-}
-
-.btn-link:hover {
-    transform: translateY(-1px);
-    text-decoration: none;
-}
-
-.navbar .btn:hover,
-.navbar .navbar-toggler:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.btn i,
-.action-btn i,
-.modal-btn i {
-    transition: transform 0.3s ease;
-}
-
-.btn:hover i,
-.action-btn:hover i,
-.modal-btn:hover i {
-    transform: scale(1.1);
-}
-
-.btn-floating:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-}
-
-.quick-action-btn:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
-}
-
-@keyframes subtle-pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4);
-    }
-
-    70% {
-        box-shadow: 0 0 0 6px rgba(52, 152, 219, 0);
-    }
-
-    100% {
-        box-shadow: 0 0 0 0 rgba(52, 152, 219, 0);
-    }
-}
-
-.btn-primary.pulse {
-    animation: subtle-pulse 2s infinite;
-}
-
-.cta-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(52, 152, 219, 0.4);
-}
-
-*[role="button"]:hover,
-.clickable:hover {
-    transform: translateY(-1px);
-    transition: all 0.3s ease;
-}
+.total-row.final { color: #667eea; }
 
 /* ========================================
-   ESTILOS PARA CENTRAR FORMULARIO DE LOGIN
+   MÓDULO DE FACTURACIÓN
    ======================================== */
 
-/* ✅ SOLO aplicar cuando el contenedor de autenticación está visible */
+/* Modal de decisión */
+.factura-decision { max-width: 500px; padding: 30px; }
+.factura-decision .modal-title { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+.factura-decision .modal-title i { font-size: 2rem; color: #3498db; }
+.factura-decision .modal-message { text-align: center; font-size: 1.1rem; margin-bottom: 30px; color: #555; }
+.factura-decision .modal-buttons { display: flex; flex-direction: column; gap: 12px; }
+.factura-decision .modal-btn { width: 100%; padding: 14px 20px; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.factura-decision .secondary-btn { background: #6c757d; color: white; }
+.factura-decision .secondary-btn:hover { background: #5a6268; }
+
+/* Formulario de factura */
+.factura-form { max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; }
+.factura-form .modal-title { margin: 0; font-size: 1.4rem; color: #2c3e50; }
+.factura-form .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
+
+.factura-form .form-section { margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
+.factura-form .form-section h4 { color: #495057; margin-bottom: 15px; font-size: 1.1rem; border-bottom: 2px solid #3498db; padding-bottom: 8px; }
+
+.factura-form .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+.factura-form .form-group { display: flex; flex-direction: column; }
+.factura-form .form-group label { font-weight: 600; margin-bottom: 6px; color: #2c3e50; }
+.factura-form .required { color: #e74c3c; }
+.factura-form .form-control { padding: 10px 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.95rem; }
+.factura-form .form-control:focus { border-color: #3498db; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1); outline: none; }
+
+.factura-form .modal-footer { display: flex; gap: 10px; justify-content: flex-end; padding: 20px; border-top: 1px solid #e9ecef; background: #f8f9fa; }
+
+/* Lista precios */
+.productos-precios-list { display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto; }
+
+.precio-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border: 1px solid #dee2e6; border-radius: 6px; }
+.precio-item .producto-info { flex: 1; display: flex; flex-direction: column; }
+.precio-item .producto-info strong { font-size: 0.95rem; color: #2c3e50; }
+.precio-item .producto-info small { color: #6c757d; font-size: 0.85rem; }
+.precio-item .cantidad-precio { display: flex; align-items: center; gap: 10px; }
+.precio-item .cantidad-precio span { font-weight: 600; color: #495057; }
+.precio-input { width: 140px !important; text-align: right; }
+
+/* Totales preview */
+.totales-preview { background: white; padding: 15px; border-radius: 6px; }
+.totales-preview .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 1rem; }
+.totales-preview .total-row.final { border-top: 2px solid #2c3e50; margin-top: 10px; padding-top: 12px; font-weight: 700; font-size: 1.3rem; color: #3498db; }
+
+/* Documento de factura */
+.factura-document {
+    background: white;
+    padding: 40px;
+    max-width: 800px;
+    margin: 0 auto;
+    font-family: Arial, sans-serif;
+    color: #333;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.factura-header-doc { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+
+.factura-info { text-align: right; }
+.factura-info h3 { margin: 0 0 15px; color: #3498db; font-size: 2.2rem; font-weight: 700; }
+.factura-info p  { margin: 4px 0; font-size: 0.95rem; }
+
+.factura-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+.factura-table th,
+.factura-table td { padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }
+.factura-table th { background: #f8f9fa; font-weight: 600; font-size: 0.9rem; color: #495057; }
+.factura-table td { font-size: 0.9rem; }
+.factura-table td:nth-child(1), .factura-table th:nth-child(1) { text-align: center; width: 60px; }
+.factura-table td:nth-child(3), .factura-table td:nth-child(4),
+.factura-table th:nth-child(3), .factura-table th:nth-child(4) { text-align: right; }
+.factura-table td small { color: #6c757d; font-size: 0.8rem; }
+
+.total-row.final-total { color: #3498db; }
+
+/* Badges de estado */
+.badge { padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+.badge-pendiente { background: #ffc107; color: #000; }
+.badge-pagada    { background: #28a745; color: white; }
+.badge-anulada   { background: #dc3545; color: white; }
+
+/* Modal historial facturas */
+.historial-modal { max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; }
+.historial-modal .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
+
+.historial-list { display: flex; flex-direction: column; gap: 15px; }
+
+.factura-item { background: white; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; transition: all 0.3s ease; }
+.factura-item:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); transform: translateY(-2px); }
+
+.factura-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e9ecef; }
+.factura-item-header h5 { margin: 0; color: #2c3e50; font-size: 1.2rem; }
+.factura-item-body { margin-bottom: 15px; }
+.factura-item-body p { margin: 6px 0; font-size: 0.95rem; color: #555; }
+.factura-item-footer { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 60px 20px; color: #6c757d; }
+.empty-state i { font-size: 4rem; margin-bottom: 20px; opacity: 0.5; }
+.empty-state p { font-size: 1.1rem; }
+
+/* Scroll historial */
+#historial-facturas-modal .modal-content > div:nth-child(2)::-webkit-scrollbar { width: 8px; }
+#historial-facturas-modal .modal-content > div:nth-child(2)::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+#historial-facturas-modal .modal-content > div:nth-child(2)::-webkit-scrollbar-thumb { background: #8187a7c7; border-radius: 4px; }
+#historial-facturas-modal .modal-content > div:nth-child(2)::-webkit-scrollbar-thumb:hover { background: #8187a7c7; }
+
+@keyframes fadeInFactura {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Animación escalonada de facturas */
+#historial-facturas-modal .modal-content > div:nth-child(2) > div > div { animation: fadeInFactura 0.3s ease forwards; }
+#historial-facturas-modal .modal-content > div:nth-child(2) > div > div:nth-child(1) { animation-delay: 0s; }
+#historial-facturas-modal .modal-content > div:nth-child(2) > div > div:nth-child(2) { animation-delay: 0.05s; }
+#historial-facturas-modal .modal-content > div:nth-child(2) > div > div:nth-child(3) { animation-delay: 0.1s; }
+#historial-facturas-modal .modal-content > div:nth-child(2) > div > div:nth-child(4) { animation-delay: 0.15s; }
+#historial-facturas-modal .modal-content > div:nth-child(2) > div > div:nth-child(5) { animation-delay: 0.2s; }
+
+/* Botón historial */
+#ver-historial-facturas-btn { margin-top: 15px; width: 100%; max-width: 300px; }
+
+/* ========================================
+   LOGIN / AUTENTICACIÓN
+   ======================================== */
 #auth-container:not(.d-none) {
     position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
+    top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    min-height: 100vh !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     padding: 20px !important;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.70) 0%, rgba(255, 255, 255, 0.70) 100%), 
-                url('../assets/Logo.png') center center no-repeat !important;
-    background-size: 80% auto !important;
+    background:
+        linear-gradient(135deg, rgba(255,255,255,0.70) 0%, rgba(255,255,255,0.70) 100%),
+        url('../assets/Logo.png') center center / 80% auto no-repeat !important;
     background-attachment: fixed !important;
     margin: 0 !important;
     max-width: 100% !important;
     z-index: 9999 !important;
 }
 
-/* ✅ Ocultar el resto del contenido cuando login está visible */
-body:has(#auth-container:not(.d-none)) #app-container {
-    display: none !important;
-}
+body:has(#auth-container:not(.d-none)) #app-container { display: none !important; }
 
 #auth-container .row {
     width: 100% !important;
@@ -1902,33 +1695,25 @@ body:has(#auth-container:not(.d-none)) #app-container {
     width: 100%;
 }
 
-#auth-container .card-body {
-    padding: 40px;
-    background: transparent !important;
-}
+#auth-container .card-body { padding: 40px; background: transparent !important; }
 
 #auth-container .card-header {
-    background: linear-gradient(135deg, rgba(52, 152, 219, 0.85) 0%, rgba(41, 128, 185, 0.85) 100%) !important;
+    background: linear-gradient(135deg, rgba(52,152,219,0.85) 0%, rgba(41,128,185,0.85) 100%) !important;
     border-radius: 20px 20px 0 0 !important;
     padding: 25px;
     border: none;
     backdrop-filter: blur(10px);
 }
+
 #auth-container .card-header h3 {
     margin: 0;
     font-size: 2rem;
     font-weight: 700;
     letter-spacing: 2px;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
-
-#auth-container .form-label {
-    font-weight: 600;
-    color: #2c3e50;
-    margin-bottom: 8px;
-    font-size: 0.95rem;
-}
+#auth-container .form-label { font-weight: 600; color: #2c3e50; margin-bottom: 8px; font-size: 0.95rem; }
 
 #auth-container .form-control {
     border-radius: 8px;
@@ -1963,26 +1748,15 @@ body:has(#auth-container:not(.d-none)) #app-container {
 #auth-container .btn-primary::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
     transition: left 0.5s ease;
 }
 
-#auth-container .btn-primary:hover::before {
-    left: 100%;
-}
-
-#auth-container .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
-}
-
-#auth-container .btn-primary:active {
-    transform: translateY(0);
-}
+#auth-container .btn-primary:hover::before { left: 100%; }
+#auth-container .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(52,152,219,0.4); }
+#auth-container .btn-primary:active { transform: translateY(0); }
 
 #auth-container .alert-danger {
     border-radius: 8px;
@@ -1994,1573 +1768,185 @@ body:has(#auth-container:not(.d-none)) #app-container {
 }
 
 @keyframes slideInLogin {
-    from {
-        opacity: 0;
-        transform: translateY(-30px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+    from { opacity: 0; transform: translateY(-30px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes shakeError {
-    0%, 20%, 40%, 60%, 80%, 100% {
-        transform: translateX(0);
-    }
-    10%, 30%, 50%, 70%, 90% {
-        transform: translateX(-5px);
-    }
-}
-
-/* Responsive para login */
-@media (max-width: 768px) {
-    #auth-container:not(.d-none) {
-        padding: 15px !important;
-    }
-
-    #auth-container .col-md-6 {
-        max-width: 100%;
-        padding: 0 10px;
-    }
-
-    #auth-container .card-body {
-        padding: 30px 25px;
-    }
-
-    #auth-container .card-header {
-        padding: 20px;
-    }
-
-    #auth-container .card-header h3 {
-        font-size: 1.7rem;
-        letter-spacing: 1px;
-    }
-}
-
-@media (max-width: 480px) {
-    #auth-container:not(.d-none) {
-        padding: 10px !important;
-    }
-
-    #auth-container .card-body {
-        padding: 25px 20px;
-    }
-
-    #auth-container .card-header h3 {
-        font-size: 1.5rem;
-    }
-
-    #auth-container .form-control {
-        padding: 10px 12px;
-        font-size: 0.95rem;
-    }
-
-    #auth-container .btn-primary {
-        padding: 10px 20px;
-        font-size: 1rem;
-    }
+    0%, 20%, 40%, 60%, 80%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90%      { transform: translateX(-5px); }
 }
 
 /* ========================================
-   MEDIA QUERIES - RESPONSIVE
+   MODAL DE STOCK
    ======================================== */
+.stock-preview-update { animation: pulse 0.3s ease-in-out; }
 
-/* Tablets y móviles grandes */
-@media (max-width: 768px) {
-    #transactions-view .header-section h1 {
-        font-size: 2rem;
-    }
+.btn-group .btn { transition: all 0.2s ease; }
+.btn-group .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
 
-    #transactions-view .content-section {
-        padding: 15px;
-    }
+.badge.fs-5 { font-size: 1.5rem !important; padding: 0.5rem 1rem; }
 
-    #transactions-view .table-header {
-        flex-direction: column;
-        gap: 15px;
-        align-items: stretch;
-    }
-
-    #transactions-view .export-btn {
-        width: 100%;
-        justify-content: center;
-    }
-
-    #transactions-view .quantity-controls {
-        flex-wrap: wrap;
-        gap: 5px;
-    }
-
-    #transactions-view .quantity-btn {
-        width: 30px;
-        height: 30px;
-    }
-
-    #transactions-view .quantity-input {
-        width: 60px;
-    }
-
-    #transactions-view .table-container {
-        max-height: 85vh;
-        min-height: 400px;
-    }
-
-    #transactions-view .table-wrapper {
-        min-height: 350px;
-        padding-bottom: 25px;
-    }
-
-    #confirmModal .modal-content {
-        width: 400px;
-        padding: 25px;
-    }
-
-    #confirmModal .modal-title {
-        font-size: 1.4em;
-    }
-
-    #confirmModal .modal-message {
-        font-size: 1em;
-    }
-
-    #confirmModal .modal-buttons {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    #confirmModal .modal-btn {
-        width: 100%;
-    }
-
-    #auth-container {
-        padding: 15px;
-    }
-
-    #auth-container .col-md-6 {
-        max-width: 100%;
-        padding: 0 10px;
-    }
-
-    #auth-container .card-body {
-        padding: 30px 25px;
-    }
-
-    #auth-container .card-header {
-        padding: 20px;
-    }
-
-    #auth-container .card-header h3 {
-        font-size: 1.7rem;
-        letter-spacing: 1px;
-    }
-
-    button:hover:not(:disabled),
-    .btn:hover:not(:disabled),
-    .action-btn:hover,
-    .modal-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    }
-
-    .btn-sm:hover,
-    .btn-icon:hover,
-    .qty-btn:hover {
-        transform: translateY(-0.5px);
-        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
-    }
-}
-
-/* Móviles pequeños */
-@media (max-width: 480px) {
-    #transactions-view .search-section {
-        padding: 15px;
-    }
-
-    #transactions-view .header-section {
-        padding: 20px;
-    }
-
-    #transactions-view .header-section h1 {
-        font-size: 1.8rem;
-    }
-
-    #transactions-view .table-container {
-        max-height: 90vh;
-        min-height: 300px;
-    }
-
-    #transactions-view .table-wrapper {
-        min-height: 300px;
-        padding-bottom: 20px;
-    }
-
-    #transactions-view #products-table th,
-    #transactions-view #products-table td {
-        padding: 10px 8px;
-        font-size: 0.9rem;
-    }
-
-    #confirmModal .modal-content {
-        width: 320px;
-        padding: 20px;
-    }
-
-    #confirmModal .modal-title {
-        font-size: 1.3em;
-        margin-bottom: 15px;
-    }
-
-    #confirmModal .modal-message {
-        font-size: 0.95em;
-        margin-bottom: 25px;
-    }
-
-    #auth-container {
-        padding: 10px;
-    }
-
-    #auth-container .card-body {
-        padding: 25px 20px;
-    }
-
-    #auth-container .card-header h3 {
-        font-size: 1.5rem;
-    }
-
-    #auth-container .form-control {
-        padding: 10px 12px;
-        font-size: 0.95rem;
-    }
-
-    #auth-container .btn-primary {
-        padding: 10px 20px;
-        font-size: 1rem;
-    }
-}
-
-/* Forzar fondo blanco */
-html,
-body {
-    background: white !important;
-}
-
-body.login-page {
-    background: white !important;
-}
-
-#auth-container {
-    background: white !important;
-}
+#stock-add-container,
+#stock-direct-update-container { transition: opacity 0.3s ease; }
 
 /* ========================================
-   ESTILOS PARA SISTEMA DE FACTURACIÓN
-   Agregar al final de main.css
+   ACTIVITY LOGGER
    ======================================== */
-
-/* Modal de decisión de factura */
-.factura-decision {
-  max-width: 500px;
-  padding: 30px;
-}
-
-.factura-decision .modal-title {
-  text-align: center;
-  color: #2c3e50;
-  margin-bottom: 20px;
-}
-
-.factura-decision .modal-title i {
-  font-size: 2rem;
-  color: #3498db;
-}
-
-.factura-decision .modal-message {
-  text-align: center;
-  font-size: 1.1rem;
-  margin-bottom: 30px;
-  color: #555;
-}
-
-.factura-decision .modal-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.factura-decision .modal-btn {
-  width: 100%;
-  padding: 14px 20px;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-.factura-decision .secondary-btn {
-  background: #6c757d;
-  color: white;
-}
-
-.factura-decision .secondary-btn:hover {
-  background: #5a6268;
-}
-
-/* Modal de formulario de factura */
-.factura-form {
-  max-width: 800px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-}
-
-
-
-.factura-form .modal-title {
-  margin: 0;
-  font-size: 1.4rem;
-  color: #2c3e50;
-}
-
-.factura-form .modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-}
-
-.factura-form .form-section {
-  margin-bottom: 25px;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-}
-
-.factura-form .form-section h4 {
-  color: #495057;
-  margin-bottom: 15px;
-  font-size: 1.1rem;
-  border-bottom: 2px solid #3498db;
-  padding-bottom: 8px;
-}
-
-.factura-form .form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-}
-
-.factura-form .form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.factura-form .form-group label {
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: #2c3e50;
-}
-
-.factura-form .required {
-  color: #e74c3c;
-}
-
-.factura-form .form-control {
-  padding: 10px 12px;
-  border: 1px solid #ced4da;
-  border-radius: 6px;
-  font-size: 0.95rem;
-}
-
-.factura-form .form-control:focus {
-  border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-  outline: none;
-}
-
-/* Lista de productos con precios */
-.productos-precios-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.precio-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  background: white;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
-}
-
-.precio-item .producto-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.precio-item .producto-info strong {
-  font-size: 0.95rem;
-  color: #2c3e50;
-}
-
-.precio-item .producto-info small {
-  color: #6c757d;
-  font-size: 0.85rem;
-}
-
-.precio-item .cantidad-precio {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.precio-item .cantidad-precio span {
-  font-weight: 600;
-  color: #495057;
-}
-
-.precio-input {
-  width: 140px !important;
-  text-align: right;
-}
-
-/* Totales preview */
-.totales-preview {
-  background: white;
-  padding: 15px;
-  border-radius: 6px;
-}
-
-.totales-preview .total-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  font-size: 1rem;
-}
-
-.totales-preview .total-row.final {
-  border-top: 2px solid #2c3e50;
-  margin-top: 10px;
-  padding-top: 12px;
-  font-weight: 700;
-  font-size: 1.3rem;
-  color: #3498db;
-}
-
-.factura-form .modal-footer {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  padding: 20px;
-  border-top: 1px solid #e9ecef;
-  background: #f8f9fa;
-}
-
-/* Modal de vista previa */
-.preview-modal-content {
-  max-width: 900px;
-  max-height: 95vh;
-  width: 95%;
-  display: flex;
-  flex-direction: column;
-}
-
-.preview-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 2px solid #e9ecef;
-  background: #f8f9fa;
-}
-
-.preview-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 30px;
-  background: #e9ecef;
-}
-
-.preview-footer {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  padding: 20px;
-  border-top: 2px solid #e9ecef;
-  background: #f8f9fa;
-}
-
-/* Documento de factura */
-.factura-document {
-  background: white;
-  padding: 40px;
-  max-width: 800px;
-  margin: 0 auto;
-  font-family: Arial, sans-serif;
-  color: #333;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.factura-header-doc {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
-  margin-bottom: 30px;
-}
-
-.empresa-info h2 {
-  margin: 0 0 10px 0;
-  color: #2c3e50;
-  font-size: 1.8rem;
-}
-
-.empresa-info p {
-  margin: 4px 0;
-  font-size: 0.9rem;
-  color: #555;
-}
-
-.factura-info {
-  text-align: right;
-}
-
-.factura-info h3 {
-  margin: 0 0 15px 0;
-  color: #3498db;
-  font-size: 2.2rem;
-  font-weight: 700;
-}
-
-.factura-info p {
-  margin: 4px 0;
-  font-size: 0.95rem;
-}
-
-.separator {
-  border: none;
-  border-top: 2px solid #e9ecef;
-  margin: 25px 0;
-}
-
-.cliente-section h4,
-.productos-section h4,
-.observaciones-section h4 {
-  color: #495057;
-  margin-bottom: 15px;
-  font-size: 1.1rem;
-  border-bottom: 2px solid #3498db;
-  padding-bottom: 8px;
-}
-
-.cliente-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.cliente-grid div {
-  font-size: 0.9rem;
-}
-
-.cliente-grid strong {
-  color: #2c3e50;
-}
-
-.factura-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 15px;
-}
-
-.factura-table th,
-.factura-table td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid #dee2e6;
-}
-
-.factura-table th {
-  background: #f8f9fa;
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: #495057;
-}
-
-.factura-table td {
-  font-size: 0.9rem;
-}
-
-.factura-table td:nth-child(1),
-.factura-table th:nth-child(1) {
-  text-align: center;
-  width: 60px;
-}
-
-.factura-table td:nth-child(3),
-.factura-table td:nth-child(4),
-.factura-table th:nth-child(3),
-.factura-table th:nth-child(4) {
-  text-align: right;
-}
-
-.factura-table td small {
-  color: #6c757d;
-  font-size: 0.8rem;
-}
-
-.totales-section-doc {
-  margin-top: 30px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.totales-grid {
-  min-width: 300px;
-}
-
-.totales-grid .total-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  font-size: 1rem;
-}
-
-.totales-grid .final-total {
-  border-top: 2px solid #2c3e50;
-  margin-top: 10px;
-  padding-top: 15px;
-  font-weight: 700;
-  font-size: 1.3rem;
-  color: #3498db;
-}
-
-.observaciones-section {
-  margin-top: 25px;
-}
-
-.observaciones-section p {
-  background: #f8f9fa;
-  padding: 15px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-
-.firmas-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 50px;
-  margin-top: 60px;
-}
-
-.firma-box {
-  text-align: center;
-}
-
-.firma-line {
-  border-top: 2px solid #333;
-  margin-bottom: 10px;
-}
-
-.firma-box p {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #6c757d;
-}
-
-.footer-note {
-  text-align: center;
-  margin-top: 40px;
-  padding-top: 20px;
-  border-top: 1px solid #e9ecef;
-}
-
-.footer-note p {
-  margin: 0;
-  font-size: 0.8rem;
-  color: #6c757d;
-}
-
-/* Badges de estado */
-.badge {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.badge-pendiente {
-  background: #ffc107;
-  color: #000;
-}
-
-.badge-pagada {
-  background: #28a745;
-  color: white;
-}
-
-.badge-anulada {
-  background: #dc3545;
-  color: white;
-}
-
-/* Modal de historial */
-.historial-modal {
-  max-width: 900px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.historial-modal .modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-}
-
-.historial-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.factura-item {
-  background: white;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 20px;
-  transition: all 0.3s ease;
-}
-
-.factura-item:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
-}
-
-.factura-item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.factura-item-header h5 {
-  margin: 0;
-  color: #2c3e50;
-  font-size: 1.2rem;
-}
-
-.factura-item-body {
-  margin-bottom: 15px;
-}
-
-.factura-item-body p {
-  margin: 6px 0;
-  font-size: 0.95rem;
-  color: #555;
-}
-
-.factura-item-footer {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-/* Estado vacío */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: #6c757d;
-}
-
-.empty-state i {
-  font-size: 4rem;
-  margin-bottom: 20px;
-  opacity: 0.5;
-}
-
-.empty-state p {
-  font-size: 1.1rem;
-}
-
-/* Botón cerrar modal */
-.close-modal {
-  background: transparent;
-  border: none;
-  font-size: 2rem;
-  cursor: pointer;
-  color: #6c757d;
-  padding: 0;
-  width: 35px;
-  height: 35px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  line-height: 1;
-}
-
-.close-modal:hover {
-  color: #dc3545;
-  transform: scale(1.1);
-}
-
-/* Botón de historial en la vista */
-#ver-historial-facturas-btn {
-  margin-top: 15px;
-  width: 100%;
-  max-width: 300px;
-}
-
-/* Estilos para impresión */
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  
-  .factura-document,
-  .factura-document * {
-    visibility: visible;
-  }
-  
-  .factura-document {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 20px;
-    box-shadow: none;
-  }
-  
-  .preview-header,
-  .preview-footer,
-  .modal-footer,
-  .close-modal {
-    display: none !important;
-  }
-  
-  @page {
-    margin: 1cm;
-    size: letter;
-  }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .factura-form,
-  .preview-modal-content,
-  .historial-modal {
-    max-width: 95%;
-    width: 95%;
-  }
-  
-  .factura-header-doc {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-  
-  .factura-info {
-    text-align: left;
-  }
-  
-  .cliente-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .firmas-section {
-    grid-template-columns: 1fr;
-    gap: 40px;
-  }
-  
-  .precio-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  
-  .precio-item .cantidad-precio {
-    width: 100%;
-    justify-content: space-between;
-  }
-  
-  .factura-decision .modal-buttons {
-    gap: 10px;
-  }
-  
-  .factura-item-footer {
-    flex-direction: column;
-  }
-  
-  .factura-item-footer .btn {
-    width: 100%;
-  }
-}
-
+.log-item { transition: all 0.2s ease; }
+.log-item:hover { transform: translateX(4px); }
+
+#activity-log-modal .modal-body::-webkit-scrollbar { width: 8px; }
+#activity-log-modal .modal-body::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+#activity-log-modal .modal-body::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+#activity-log-modal .modal-body::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* ========================================
+   ALERTAS ANIMADAS
+   ======================================== */
 @keyframes slideInDown {
-    from {
-        transform: translateY(-100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
+    from { transform: translateY(-100%); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes slideOutUp {
-    from {
-        transform: translateY(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateY(-100%);
-        opacity: 0;
-    }
+    from { transform: translateY(0); opacity: 1; }
+    to   { transform: translateY(-100%); opacity: 0; }
 }
 
-#alert-container .alert {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-}
+#alert-container .alert { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important; }
 
 /* ========================================
-   Solo toggle de bodega y headers mejorados
+   IMPRESIÓN
    ======================================== */
+@media print {
+    .remision-document,
+    .factura-document { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; box-shadow: none; }
 
-/* ========================================
-   1. TOGGLE DE BODEGA MEJORADO
-   ======================================== */
+    body * { visibility: hidden; }
 
-.warehouse-option {
-    flex-shrink: 0;
-    padding: 20px 30px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-top: 2px solid rgba(102, 126, 234, 0.1);
-    transition: all 0.3s ease;
-}
+    .remision-document *,
+    .factura-document * { visibility: visible; }
 
-.warehouse-toggle {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    cursor: pointer;
-    user-select: none;
-    transition: all 0.3s ease;
-}
+    .preview-header,
+    .preview-footer,
+    .remision-footer,
+    .modal-footer,
+    .close-modal { display: none !important; }
 
-.warehouse-toggle:hover .warehouse-label {
-    color: #667eea;
-    transform: translateX(5px);
-}
-
-/* Checkbox estilo switch moderno */
-.warehouse-toggle input[type="checkbox"] {
-    width: 50px;
-    height: 26px;
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background: #cbd5e0;
-    border-radius: 50px;
-    position: relative;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-    border: none;
-    outline: none;
-}
-
-/* Bolita del switch */
-.warehouse-toggle input[type="checkbox"]::before {
-    content: '';
-    position: absolute;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: white;
-    top: 2px;
-    left: 2px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-/* Estado activado */
-.warehouse-toggle input[type="checkbox"]:checked {
-    background: linear-gradient(135deg, #667eea 0%, #2042e9 100%);
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 0 10px rgba(74, 102, 226, 0.3);
-}
-
-.warehouse-toggle input[type="checkbox"]:checked::before {
-    left: 26px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-}
-
-/* Efecto hover en el checkbox */
-.warehouse-toggle input[type="checkbox"]:hover {
-    transform: scale(1.05);
-}
-
-/* Label del toggle */
-.warehouse-label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 600;
-    color: #1982ec;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-}
-
-.warehouse-label i {
-    font-size: 1.3rem;
-    color: #667eea;
-    transition: all 0.3s ease;
-}
-
-.warehouse-toggle:hover .warehouse-label i {
-    transform: scale(1.1);
-    color: #0040ff;
-}
-
-/* ========================================
-   2. HEADERS DE PANELES MEJORADOS
-   ======================================== */
-
-.panel-header {
-    flex-shrink: 0;
-    padding: 25px 30px;
-    background: linear-gradient(135deg, #667eea 0%, #257cff 100%) !important;
-    color: white !important;
-    position: relative;
-    overflow: hidden;
-    border-radius: 10px 10px 0 0;
-    box-shadow: 0 4px 15px rgba(88, 118, 253, 0.2);
-    border-bottom: none !important; /* ✅ Eliminar borde gris */
-}
-
-/* ✅ NUEVO: Asegurar que NO haya override del background */
-#sales-view .panel-header,
-.container-sale .panel-header {
-    background: linear-gradient(135deg, #667eea 0%, #257cff 100%) !important;
-    color: white !important;
-    border-bottom: none !important;
-}
-
-/* Efecto de brillo animado en el fondo */
-.panel-header::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
-    animation: pulseGlow 4s ease-in-out infinite;
-}
-
-@keyframes pulseGlow {
-    0%, 100% { 
-        transform: scale(1) rotate(0deg); 
-        opacity: 0.5; 
-    }
-    50% { 
-        transform: scale(1.1) rotate(180deg); 
-        opacity: 0.3; 
-    }
-}
-
-.panel-title {
-    margin: 0 0 15px 0;
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: white;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    position: relative;
-    z-index: 1;
-    letter-spacing: 0.5px;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    border-bottom: none; /* Quitar borde anterior */
-    padding-bottom: 0;
-}
-
-.panel-title i {
-    font-size: 1.6rem;
-    animation: floatIcon 3s ease-in-out infinite;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-}
-
-@keyframes floatIcon {
-    0%, 100% { 
-        transform: translateY(0); 
-    }
-    50% { 
-        transform: translateY(-5px); 
-    }
-}
-
-/* Mejorar la búsqueda dentro del header */
-.panel-header .search-container {
-    margin: 0;
-    position: relative;
-    z-index: 1;
-}
-
-.panel-header .search-input {
-    width: 100%;
-    padding: 12px 20px 12px 45px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50px;
-    font-size: 15px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
-
-.panel-header .search-input:focus {
-    border-color: white;
-    background: white;
-    outline: none;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-    transform: translateY(-2px);
-}
-
-.panel-header .search-input::placeholder {
-    color: #999;
-    font-style: italic;
-}
-
-/* Icono de búsqueda */
-.panel-header .search-container::before {
-    content: '\F52A';
-    font-family: 'bootstrap-icons';
-    position: absolute;
-    left: 18px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #667eea;
-    font-size: 1.2rem;
-    z-index: 2;
-    pointer-events: none;
-}
-
-/* ========================================
-   3. CONTADOR DE SELECCIONADOS MEJORADO (BONUS)
-   ======================================== */
-
-.selected-counter {
-    display: flex;
-    align-items: center;
-    background: white;
-    color: #667eea;
-    padding: 10px 20px;
-    border-radius: 50px;
-    font-weight: 700;
-    font-size: 1rem;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.25);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 2px solid rgba(255, 255, 255, 0.5);
-}
-
-.selected-counter:hover {
-    transform: scale(1.05) translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
-}
-
-.selected-counter i {
-    font-size: 1.2rem;
-    margin-right: 8px;
-    animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { 
-        transform: scale(1); 
-    }
-    50% { 
-        transform: scale(1.1); 
-    }
-}
-
-#selectedCount {
-    min-width: 25px;
-    text-align: center;
-    font-size: 1.2rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #667eea 0%, #0011ff 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-/* ========================================
-   4. AJUSTES AL PANEL BASE (OPCIONAL)
-   ======================================== */
-
-.panel {
-    border-radius: 15px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-    transition: all 0.3s ease;
-    border: 1px solid rgba(102, 126, 234, 0.1);
-}
-
-.panel:hover {
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
-    transform: translateY(-2px);
+    @page { margin: 1cm; size: letter; }
 }
 
 /* ========================================
    RESPONSIVE
    ======================================== */
-
 @media (max-width: 768px) {
-    .panel-header {
-        padding: 20px;
-    }
-    
-    .panel-title {
-        font-size: 1.2rem;
-        gap: 10px;
-    }
-    
-    .panel-title i {
-        font-size: 1.4rem;
-    }
-    
-    .warehouse-option {
-        padding: 15px 20px;
-    }
-    
-    .warehouse-toggle {
-        gap: 12px;
-    }
-    
-    .warehouse-label {
-        font-size: 0.9rem;
-    }
-    
-    .selected-counter {
-        padding: 8px 16px;
-        font-size: 0.9rem;
-    }
+    /* Transacciones */
+    #transactions-view .header-section h1 { font-size: 2rem; }
+    #transactions-view .content-section   { padding: 15px; }
+    #transactions-view .table-header      { flex-direction: column; gap: 15px; align-items: stretch; }
+    #transactions-view .export-btn        { width: 100%; justify-content: center; }
+    #transactions-view .quantity-controls { flex-wrap: wrap; gap: 5px; }
+    #transactions-view .quantity-btn      { width: 30px; height: 30px; }
+    #transactions-view .quantity-input    { width: 60px; }
+    #transactions-view .table-container   { max-height: 85vh; min-height: 400px; }
+    #transactions-view .table-wrapper     { min-height: 350px; padding-bottom: 25px; }
+
+    /* Modales de confirmación */
+    #confirm-delete-modal .modal-content,
+    #confirmModal .modal-content { width: 400px !important; padding: 25px !important; }
+    #confirm-delete-modal .modal-title,
+    #confirmModal .modal-title   { font-size: 1.4em !important; }
+    #confirm-delete-modal .modal-message,
+    #confirmModal .modal-message { font-size: 1em !important; }
+    #confirm-delete-modal .modal-buttons,
+    #confirmModal .modal-buttons { flex-direction: column; gap: 10px; }
+    #confirm-delete-modal .modal-btn,
+    #confirmModal .modal-btn     { width: 100%; }
+
+    /* Login */
+    #auth-container:not(.d-none) { padding: 15px !important; }
+    #auth-container .col-md-6    { max-width: 100%; padding: 0 10px; }
+    #auth-container .card-body   { padding: 30px 25px; }
+    #auth-container .card-header { padding: 20px; }
+    #auth-container .card-header h3 { font-size: 1.7rem; letter-spacing: 1px; }
+
+    /* Facturas y remisiones */
+    .factura-form,
+    .preview-modal-content,
+    .historial-modal { max-width: 95%; width: 95%; }
+
+    .factura-header-doc { grid-template-columns: 1fr; gap: 20px; }
+    .factura-info        { text-align: left; }
+    .cliente-grid        { grid-template-columns: 1fr; }
+    .firmas-section      { grid-template-columns: 1fr; gap: 40px; }
+
+    .precio-item { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .precio-item .cantidad-precio { width: 100%; justify-content: space-between; }
+
+    .factura-item-footer { flex-direction: column; }
+    .factura-item-footer .btn { width: 100%; }
+
+    #historial-facturas-modal .modal-content { width: 98% !important; margin: 10px !important; }
+    #historial-facturas-modal .modal-content > div:nth-child(2) { padding: 15px !important; }
+
+    /* Botones hover menos agresivos en móvil */
+    button:hover:not(:disabled),
+    .btn:hover:not(:disabled),
+    .action-btn:hover,
+    .modal-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+
+    .btn-sm:hover,
+    .btn-icon:hover,
+    .qty-btn:hover { transform: translateY(-0.5px); box-shadow: 0 1px 6px rgba(0,0,0,0.15); }
+
+    /* Panel headers */
+    .panel-header  { padding: 20px; }
+    .panel-title   { font-size: 1.2rem; gap: 10px; }
+    .panel-title i { font-size: 1.4rem; }
+
+    /* Toggle bodega */
+    .warehouse-option { padding: 15px 20px; }
+    .warehouse-toggle { gap: 12px; }
+    .warehouse-label  { font-size: 0.9rem; }
+    .selected-counter { padding: 8px 16px; font-size: 0.9rem; }
 }
 
 @media (max-width: 480px) {
-    .panel-header {
-        padding: 15px;
+    /* Transacciones */
+    #transactions-view .search-section  { padding: 15px; }
+    #transactions-view .header-section  { padding: 20px; }
+    #transactions-view .header-section h1 { font-size: 1.8rem; }
+    #transactions-view .table-container { max-height: 90vh; min-height: 300px; }
+    #transactions-view .table-wrapper   { min-height: 300px; padding-bottom: 20px; }
+    #transactions-view #products-table th,
+    #transactions-view #products-table td { padding: 10px 8px; font-size: 0.9rem; }
+
+    /* Modales de confirmación */
+    #confirm-delete-modal .modal-content,
+    #confirmModal .modal-content { width: 340px !important; padding: 30px 25px !important; }
+    #confirm-delete-modal .modal-title,
+    #confirmModal .modal-title   { font-size: 1.3em !important; }
+    #confirm-delete-modal .modal-message,
+    #confirmModal .modal-message { font-size: 0.95em !important; }
+
+    /* Login */
+    #auth-container:not(.d-none) { padding: 10px !important; }
+    #auth-container .card-body   { padding: 25px 20px; }
+    #auth-container .card-header h3 { font-size: 1.5rem; }
+    #auth-container .form-control { padding: 10px 12px; font-size: 0.95rem; }
+    #auth-container .btn-primary  { padding: 10px 20px; font-size: 1rem; }
+
+    /* Facturas */
+    #historial-facturas-modal div[style*="grid-template-columns: repeat(2, 1fr)"] {
+        grid-template-columns: 1fr !important;
     }
-    
-    .panel-title {
-        font-size: 1.1rem;
-    }
-    
-    .warehouse-toggle input[type="checkbox"] {
-        width: 45px;
-        height: 24px;
-    }
-    
-    .warehouse-toggle input[type="checkbox"]::before {
-        width: 20px;
-        height: 20px;
-    }
-    
-    .warehouse-toggle input[type="checkbox"]:checked::before {
-        left: 23px;
-    }
-}
 
-/* ========================================
-   ESTILOS PARA MODAL DE STOCK MEJORADO
-   ======================================== */
-.stock-preview-update {
-    animation: pulse 0.3s ease-in-out;
-}
+    /* Toggle bodega */
+    .panel-header  { padding: 15px; }
+    .panel-title   { font-size: 1.1rem; }
 
-@keyframes pulse {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.1);
-    }
-}
-
-.btn-group .btn {
-    transition: all 0.2s ease;
-}
-
-.btn-group .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.badge.fs-5 {
-    font-size: 1.5rem !important;
-    padding: 0.5rem 1rem;
-}
-
-#stock-add-container,
-#stock-direct-update-container {
-    transition: opacity 0.3s ease;
-}
-
-
-/* Activity Logger Styles */
-.log-item {
-  transition: all 0.2s ease;
-}
-
-.log-item:hover {
-  transform: translateX(4px);
-}
-
-#activity-log-modal .modal-body::-webkit-scrollbar {
-  width: 8px;
-}
-
-#activity-log-modal .modal-body::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
-}
-
-#activity-log-modal .modal-body::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 10px;
-}
-
-#activity-log-modal .modal-body::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* ===== FIX PARA HISTORIAL DE FACTURAS ===== */
-
-/* Contenedor principal de facturas */
-#historial-facturas-modal .modal-content > div:nth-child(2) {
-  padding: 20px 24px !important;
-  background: #f8f9fa !important;
-}
-
-/* Asegurar espaciado correcto entre facturas */
-#historial-facturas-modal .modal-content > div:nth-child(2) > div > div {
-  margin-bottom: 15px !important;
-}
-
-/* Última factura sin margen inferior */
-#historial-facturas-modal .modal-content > div:nth-child(2) > div > div:last-child {
-  margin-bottom: 0 !important;
-}
-
-/* Mejorar scroll del contenedor */
-#historial-facturas-modal .modal-content > div:nth-child(2)::-webkit-scrollbar {
-  width: 8px;
-}
-
-#historial-facturas-modal .modal-content > div:nth-child(2)::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-#historial-facturas-modal .modal-content > div:nth-child(2)::-webkit-scrollbar-thumb {
-  background: #8187a7c7;
-  border-radius: 4px;
-}
-
-#historial-facturas-modal .modal-content > div:nth-child(2)::-webkit-scrollbar-thumb:hover {
-  background: #8187a7c7;
-}
-
-/* Animación suave al cargar facturas */
-@keyframes fadeInFactura {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Aplicar animación escalonada */
-#historial-facturas-modal .modal-content > div:nth-child(2) > div > div {
-  animation: fadeInFactura 0.3s ease forwards;
-}
-
-#historial-facturas-modal .modal-content > div:nth-child(2) > div > div:nth-child(1) {
-  animation-delay: 0s;
-}
-
-#historial-facturas-modal .modal-content > div:nth-child(2) > div > div:nth-child(2) {
-  animation-delay: 0.05s;
-}
-
-#historial-facturas-modal .modal-content > div:nth-child(2) > div > div:nth-child(3) {
-  animation-delay: 0.1s;
-}
-
-#historial-facturas-modal .modal-content > div:nth-child(2) > div > div:nth-child(4) {
-  animation-delay: 0.15s;
-}
-
-#historial-facturas-modal .modal-content > div:nth-child(2) > div > div:nth-child(5) {
-  animation-delay: 0.2s;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  #historial-facturas-modal .modal-content {
-    width: 98% !important;
-    margin: 10px !important;
-  }
-  
-  #historial-facturas-modal .modal-content > div:nth-child(2) {
-    padding: 15px !important;
-  }
-  
-  /* Ajustar grid de información en móviles */
-  #historial-facturas-modal div[style*="grid-template-columns: repeat(2, 1fr)"] {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-/* Estado vacío */
-#historial-facturas-modal div[style*="text-align: center; padding: 60px"] {
-  animation: fadeInFactura 0.5s ease;
-}
-
-/* ========================================
-   ESTILOS PARA MODAL DE CONFIRMACIÓN EN SALIDAS
-   ======================================== */
-#confirmModal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-#confirmModal.show {
-    display: flex !important;
-}
-
-#confirmModal .modal-content {
-    background-color: #fff !important;
-    padding: 35px 30px !important;
-    border-radius: 16px !important;
-    width: 380px !important;
-    max-width: 90vw !important;
-    min-width: 320px !important;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25) !important;
-    transform: scale(0.9);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-#confirmModal.show .modal-content {
-    transform: scale(1) !important;
-    animation: modalBounceIn 0.4s ease-out;
-}
-
-#confirmModal .modal-title {
-    font-size: 1.5em !important;
-    margin-bottom: 18px !important;
-    color: #2c3e50 !important;
-    text-align: center !important;
-    font-weight: 700 !important;
-    line-height: 1.3 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-#confirmModal .modal-title i {
-    margin-right: 8px;
-    font-size: 1.3em;
-}
-
-#confirmModal .modal-message {
-    margin-bottom: 28px !important;
-    line-height: 1.6 !important;
-    font-size: 1em !important;
-    color: #555 !important;
-    text-align: center !important;
-    word-wrap: break-word !important;
-    max-width: 100% !important;
-}
-
-#confirmModal .modal-buttons {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    gap: 12px !important;
-    margin-top: 20px !important;
-}
-
-#confirmModal .modal-btn {
-    padding: 14px 24px !important;
-    border: none !important;
-    border-radius: 10px !important;
-    cursor: pointer !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    width: 100% !important;
-    transition: all 0.3s ease !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 8px !important;
-}
-
-#confirmModal .confirm-btn {
-    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%) !important;
-    color: white !important;
-}
-
-#confirmModal .confirm-btn:hover {
-    background: linear-gradient(135deg, #2980b9 0%, #1f6ea8 100%) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(52, 152, 219, 0.4) !important;
-}
-
-#confirmModal .cancel-modal-btn {
-    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%) !important;
-    color: white !important;
-}
-
-#confirmModal .cancel-modal-btn:hover {
-    background: linear-gradient(135deg, #7f8c8d 0%, #6c7a7b 100%) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(127, 140, 141, 0.4) !important;
-}
-
-#confirmModal .modal-btn:active {
-    transform: translateY(0) !important;
-}
-
-/* Responsive */
-@media (max-width: 480px) {
-    #confirmModal .modal-content {
-        width: 340px !important;
-        padding: 30px 25px !important;
-    }
-    
-    #confirmModal .modal-title {
-        font-size: 1.3em !important;
-    }
-    
-    #confirmModal .modal-message {
-        font-size: 0.95em !important;
-    }
+    .warehouse-toggle input[type="checkbox"] { width: 45px; height: 24px; }
+    .warehouse-toggle input[type="checkbox"]::before { width: 20px; height: 20px; }
+    .warehouse-toggle input[type="checkbox"]:checked::before { left: 23px; }
 }

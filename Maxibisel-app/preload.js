@@ -1,13 +1,9 @@
-//Script de precarga - Versión CORREGIDA para FACTURAS
 const { contextBridge, ipcRenderer } = require('electron');
 
-// ✅ FUNCIÓN MEJORADA: No lanza error si success no está presente
 async function handleApiRequest(config) {
     try {
         const response = await ipcRenderer.invoke('api:request', config);
         
-        // ✅ CORRECCIÓN: Solo lanzar error si success está explícitamente en false
-        // Si success no existe, asumimos que es exitoso
         if (response && response.success === false) {
             const error = new Error(response.message || 'Error en la solicitud');
             error.response = response;
@@ -22,7 +18,6 @@ async function handleApiRequest(config) {
 }
 
 contextBridge.exposeInMainWorld('api', {
-    // === AUTENTICACIÓN ===
     login: async (credentials) => {
         try {
             const result = await ipcRenderer.invoke('api:login', credentials);
@@ -44,8 +39,6 @@ contextBridge.exposeInMainWorld('api', {
         method: 'post',
         endpoint: 'auth/logout'
     }),
-
-    // === PRODUCTOS ===
     getProducts: () => handleApiRequest({
         method: 'get',
         endpoint: 'products'
@@ -84,7 +77,6 @@ contextBridge.exposeInMainWorld('api', {
         data: stockData
     }),
 
-    // === USUARIOS ===
     getUsers: () => handleApiRequest({
         method: 'get',
         endpoint: 'users'
@@ -112,7 +104,6 @@ contextBridge.exposeInMainWorld('api', {
         endpoint: `users/${id}`
     }),
 
-    // === TRANSACCIONES ===
     getTransactions: (params) => {
         const queryParams = params ? new URLSearchParams(params).toString() : '';
         const endpoint = queryParams ? `transactions?${queryParams}` : 'transactions';
@@ -134,14 +125,12 @@ contextBridge.exposeInMainWorld('api', {
         data: transactionData
     }),
 
-    // === VENTAS ===
     createSale: (saleData) => handleApiRequest({
         method: 'post',
         endpoint: 'transactions',
         data: { ...saleData, type: 'sale' }
     }),
 
-    // === REMISIONES ===
     getRemisiones: (params) => {
         const queryParams = params ? new URLSearchParams(params).toString() : '';
         const endpoint = queryParams ? `remisiones?${queryParams}` : 'remisiones';
@@ -174,9 +163,6 @@ contextBridge.exposeInMainWorld('api', {
         endpoint: `remisiones/${id}`
     }),
     
-    // === FACTURAS - VERSIÓN CORREGIDA ===
-    
-    // ✅ Obtener todas las facturas (CORREGIDO)
     getFacturas: (params) => {
         const queryParams = params ? new URLSearchParams(params).toString() : '';
         const endpoint = queryParams ? `facturas?${queryParams}` : 'facturas';
@@ -188,7 +174,6 @@ contextBridge.exposeInMainWorld('api', {
         });
     },
 
-    // ✅ Obtener factura por ID (CORREGIDO)
     getFactura: (id) => {
         console.log('📄 [PRELOAD] Solicitando factura:', id);
         return handleApiRequest({
@@ -197,7 +182,6 @@ contextBridge.exposeInMainWorld('api', {
         });
     },
 
-    // ✅ Crear factura (CORREGIDO)
     createFactura: (facturaData) => {
         console.log('💰 [PRELOAD] Creando factura...');
         return handleApiRequest({
@@ -206,8 +190,6 @@ contextBridge.exposeInMainWorld('api', {
             data: facturaData
         });
     },
-
-    // ✅ Actualizar factura (CORREGIDO)
     updateFactura: (id, facturaData) => {
         console.log('✏️ [PRELOAD] Actualizando factura:', id);
         return handleApiRequest({
@@ -217,7 +199,6 @@ contextBridge.exposeInMainWorld('api', {
         });
     },
 
-    // ✅ Anular factura (CORREGIDO)
     anularFactura: (id) => {
         console.log('🚫 [PRELOAD] Anulando factura:', id);
         return handleApiRequest({
@@ -225,8 +206,6 @@ contextBridge.exposeInMainWorld('api', {
             endpoint: `facturas/${id}/anular`
         });
     },
-
-    // ✅ Eliminar factura (CORREGIDO)
     deleteFactura: (id) => {
         console.log('🗑️ [PRELOAD] Eliminando factura:', id);
         return handleApiRequest({
@@ -234,8 +213,6 @@ contextBridge.exposeInMainWorld('api', {
             endpoint: `facturas/${id}`
         });
     },
-
-    // ✅ Obtener estadísticas de facturas (CORREGIDO)
     getFacturasStats: async () => {
         try {
             console.log('📊 [PRELOAD] Solicitando estadísticas de facturas...');
@@ -264,10 +241,8 @@ contextBridge.exposeInMainWorld('api', {
         }
     },
 
-    // === HEALTH CHECK ===
     health: () => ipcRenderer.invoke('api:health'),
 
-    // === STORE (tokens y configuración) ===
     store: {
         get: (key) => ipcRenderer.invoke('store:get', key),
         set: (key, value) => ipcRenderer.invoke('store:set', key, value),
@@ -276,7 +251,6 @@ contextBridge.exposeInMainWorld('api', {
     }
 });
 
-// Exponer métodos de utilidad para el frontend
 contextBridge.exposeInMainWorld('electron', {
     platform: process.platform,
     versions: process.versions,
@@ -291,7 +265,6 @@ contextBridge.exposeInMainWorld('electron', {
     }
 });
 
-// Exponer constantes útiles
 contextBridge.exposeInMainWorld('constants', {
     TRANSACTION_TYPES: {
         PURCHASE: 'purchase',
@@ -313,7 +286,6 @@ contextBridge.exposeInMainWorld('constants', {
     }
 });
 
-// Logging seguro para desarrollo
 if (process.env.NODE_ENV === 'development') {
     contextBridge.exposeInMainWorld('devTools', {
         log: (...args) => console.log('[PRELOAD]', ...args),
@@ -322,7 +294,6 @@ if (process.env.NODE_ENV === 'development') {
     });
 }
 
-// Manejo de errores no capturados en preload
 process.on('uncaughtException', (error) => {
     console.error('❌ Error no capturado en preload:', error);
 });

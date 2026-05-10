@@ -1,13 +1,11 @@
 const FacturaLocal = require('../models/facturaLocal');
 
-// ✅ CREAR FACTURA (usando SQLite)
 exports.createFactura = async (req, res) => {
   try {
     console.log('\n💰 [FACTURA CONTROLLER] Creando nueva factura...');
 
     const { empresa, cliente, productos, observaciones, salidaId } = req.body;
 
-    // Validaciones
     if (!cliente || !cliente.nombre) {
       return res.status(400).json({
         success: false,
@@ -22,10 +20,8 @@ exports.createFactura = async (req, res) => {
       });
     }
 
-    // Generar número consecutivo
     const numeroFactura = await FacturaLocal.generarNumero();
 
-    // Calcular totales
     let subtotal = 0;
     const productosConSubtotal = productos.map(prod => {
       const subtotalProd = prod.cantidad * prod.precioUnitario;
@@ -38,7 +34,6 @@ exports.createFactura = async (req, res) => {
 
     const descuento = req.body.descuento || 0;
     
-    // IVA por defecto es 0 (sin IVA)
     let iva = 0;
     if (req.body.iva !== undefined && req.body.iva !== null) {
       iva = parseFloat(req.body.iva) || 0;
@@ -48,7 +43,6 @@ exports.createFactura = async (req, res) => {
 
     console.log('💵 [FACTURA] Totales:', { subtotal, descuento, iva, total });
 
-    // Crear factura
     const factura = await FacturaLocal.create({
       empresa: empresa || getEmpresaPorDefecto(),
       numeroFactura,
@@ -81,8 +75,6 @@ exports.createFactura = async (req, res) => {
     });
   }
 };
-
-// ✅ OBTENER TODAS LAS FACTURAS - VERSIÓN CORREGIDA
 exports.getAllFacturas = async (req, res) => {
   try {
     console.log('\n📋 [FACTURA CONTROLLER] ========== OBTENIENDO FACTURAS ==========');
@@ -100,12 +92,10 @@ exports.getAllFacturas = async (req, res) => {
 
     console.log('📋 [FACTURA CONTROLLER] Opciones de búsqueda:', options);
 
-    // Llamar al modelo
     const facturas = await FacturaLocal.getAll(options);
 
     console.log(`✅ [FACTURA CONTROLLER] ${facturas.length} facturas obtenidas`);
     
-    // ✅ CRÍTICO: Asegurar que siempre retorna un array
     const facturasArray = Array.isArray(facturas) ? facturas : [];
     
     console.log('📋 [FACTURA CONTROLLER] Respuesta preparada:', {
@@ -133,12 +123,11 @@ exports.getAllFacturas = async (req, res) => {
       success: false,
       message: 'Error al obtener facturas',
       error: error.message,
-      facturas: [] // ✅ Retornar array vacío en caso de error
+      facturas: [] 
     });
   }
 };
 
-// ✅ OBTENER FACTURA POR ID - VERSIÓN CORREGIDA
 exports.getFacturaById = async (req, res) => {
   try {
     console.log('\n🔍 [FACTURA CONTROLLER] Buscando factura:', req.params.id);
@@ -170,7 +159,6 @@ exports.getFacturaById = async (req, res) => {
   }
 };
 
-// ✅ ACTUALIZAR FACTURA
 exports.updateFactura = async (req, res) => {
   try {
     console.log('\n✏️ [FACTURA CONTROLLER] Actualizando factura:', req.params.id);
@@ -204,7 +192,6 @@ exports.updateFactura = async (req, res) => {
   }
 };
 
-// ✅ ANULAR FACTURA
 exports.anularFactura = async (req, res) => {
   try {
     console.log('\n🚫 [FACTURA CONTROLLER] Anulando factura:', req.params.id);
@@ -237,13 +224,11 @@ exports.anularFactura = async (req, res) => {
   }
 };
 
-// ✅ ELIMINAR FACTURA - VERSIÓN FINAL
 exports.deleteFactura = async (req, res) => {
   try {
     console.log('\n🗑️ [FACTURA CONTROLLER] ========== INICIO ELIMINACIÓN ==========');
     console.log('🗑️ [FACTURA CONTROLLER] ID recibido:', req.params.id);
     
-    // PASO 1: Obtener factura ANTES de eliminar
     const factura = await FacturaLocal.getById(req.params.id);
 
     if (!factura) {
@@ -255,8 +240,7 @@ exports.deleteFactura = async (req, res) => {
     }
 
     console.log('✅ [FACTURA CONTROLLER] Factura encontrada:', factura.numeroFactura);
-    
-    // PASO 2: Guardar datos de la factura
+
     const facturaData = {
       _id: factura._id,
       numeroFactura: factura.numeroFactura,
@@ -271,8 +255,7 @@ exports.deleteFactura = async (req, res) => {
       cliente: facturaData.cliente?.nombre || 'N/A',
       total: facturaData.total
     });
-    
-    // PASO 3: Eliminar de SQLite
+
     console.log('🔄 [FACTURA CONTROLLER] Eliminando de SQLite...');
     const eliminado = await FacturaLocal.delete(req.params.id);
     
@@ -287,7 +270,6 @@ exports.deleteFactura = async (req, res) => {
     console.log('✅ [FACTURA CONTROLLER] Factura eliminada correctamente');
     console.log('🗑️ [FACTURA CONTROLLER] ========== FIN ELIMINACIÓN ==========\n');
 
-    // PASO 4: Responder con éxito
     res.status(200).json({
       success: true,
       message: 'Factura eliminada correctamente',
@@ -308,7 +290,6 @@ exports.deleteFactura = async (req, res) => {
   }
 };
 
-// ✅ FUNCIÓN AUXILIAR
 function getEmpresaPorDefecto() {
   return {
     nombre: 'MAXI BISEL',

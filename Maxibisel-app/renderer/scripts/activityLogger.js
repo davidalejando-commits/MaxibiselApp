@@ -11,23 +11,18 @@ export const activityLogger = {
     
     console.log('📊 Inicializando Activity Logger...');
     
-    // 1. Cargar logs locales primero
     this.loadLogsFromLocalStorage();
     
-    // 2. Limpiar logs antiguos (más de 30 días)
     this.cleanOldLocalLogs(30);
-    
-    // 3. Configurar botón
+
     this.setupEventListeners();
     
-    // 4. Procesar logs pendientes si hay token
     if (this.hasValidToken()) {
       setTimeout(() => {
         this.processPendingLogs();
       }, 1000);
     }
     
-    // 5. Cargar logs del servidor
     setTimeout(() => {
       this.loadRecentLogs();
     }, 2000);
@@ -75,17 +70,13 @@ export const activityLogger = {
         timestamp: new Date().toISOString()
       };
 
-      // Agregar a memoria
       this.logs.unshift(logEntry);
       if (this.logs.length > this.maxLogsInMemory) {
         this.logs.pop();
       }
-
-      // Guardar en localStorage
       this.saveLogsToLocalStorage();
       this.updateBadge();
 
-      // Guardar en backend si hay token
       if (this.hasValidToken()) {
         await this.saveToBackend(logEntry);
         await this.processPendingLogs();
@@ -551,10 +542,7 @@ export const activityLogger = {
             </div>
         `);
     }
-    
-    // ====================================================================
-    // 🔬 FÓRMULA DEL PRODUCTO
-    // ====================================================================
+
     if (datosNuevos?.formula) {
         const formula = datosNuevos.formula;
         const hasFormula = formula.sphere !== 'N/A' || formula.cylinder !== 'N/A' || formula.addition !== 'N/A';
@@ -584,38 +572,30 @@ export const activityLogger = {
         }
     }
     
-    // ====================================================================
-    // 📊 DISTRIBUCIÓN DE STOCK (PRINCIPAL - NUEVO)
-    // ====================================================================
     const tieneDistribucion = 
         (datosNuevos?.stock_surtido !== undefined) || 
         (datosNuevos?.stock_almacenado !== undefined);
     
     if (tieneDistribucion) {
-        // Valores actuales
         const surtidoNuevo = datosNuevos?.stock_surtido ?? 0;
         const almacenadoNuevo = datosNuevos?.stock_almacenado ?? 0;
         const totalNuevo = surtidoNuevo + almacenadoNuevo;
         
-        // Valores anteriores
         const surtidoAnterior = datosAnteriores?.stock_surtido ?? 0;
         const almacenadoAnterior = datosAnteriores?.stock_almacenado ?? 0;
         const totalAnterior = surtidoAnterior + almacenadoAnterior;
-        
-        // Calcular cambios
+
         const cambioSurtido = surtidoNuevo - surtidoAnterior;
         const cambioAlmacenado = almacenadoNuevo - almacenadoAnterior;
         const cambioTotal = totalNuevo - totalAnterior;
-        
-        // Función auxiliar para generar indicador de cambio
+
         const generarCambio = (cambio) => {
             if (cambio === 0 || !datosAnteriores) return '';
             const color = cambio > 0 ? '#28a745' : '#dc3545';
             const icono = cambio > 0 ? '↑' : '↓';
             return `<span style="color: ${color}; font-weight: 600; margin-left: 6px; font-size: 0.85rem;">${icono} ${Math.abs(cambio)}</span>`;
         };
-        
-        // Calcular porcentajes
+
         const porcentajeSurtido = totalNuevo > 0 ? ((surtidoNuevo / totalNuevo) * 100).toFixed(0) : 0;
         const porcentajeAlmacenado = totalNuevo > 0 ? ((almacenadoNuevo / totalNuevo) * 100).toFixed(0) : 0;
         
@@ -680,9 +660,6 @@ export const activityLogger = {
         `);
     }
     
-    // ====================================================================
-    // 📦 STOCK TOTAL (Solo si no hay distribución o como info adicional)
-    // ====================================================================
     if (datosNuevos?.stock !== undefined && !tieneDistribucion) {
         const cambio = datosAnteriores?.stock !== undefined ? datosNuevos.stock - datosAnteriores.stock : null;
         const cambioHTML = cambio !== null ? `
@@ -697,8 +674,7 @@ export const activityLogger = {
             </div>
         `);
     }
-    
-    // Código de barras
+
     if (datosNuevos?.barcode) {
         items.push(`
             <div style="font-size: 0.85rem; margin-bottom: 6px;">
@@ -707,8 +683,7 @@ export const activityLogger = {
             </div>
         `);
     }
-    
-    // Tipo de modificación
+
     if (datosNuevos?.modificacion) {
         items.push(`
             <div style="font-size: 0.85rem; margin-top: 8px; padding: 6px 10px; background: #fff3cd; border-left: 3px solid #ffc107; border-radius: 4px;">

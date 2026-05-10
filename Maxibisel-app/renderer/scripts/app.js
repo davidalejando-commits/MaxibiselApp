@@ -6,12 +6,10 @@ import { eventManager } from './eventManager.js';
 import { BarcodeGenerator } from './barcode-generator.js';
 import { activityLogger } from './activityLogger.js';
 
-// ==================== VARIABLES GLOBALES ====================
 let barcodeGenerator = null;
 let currentUser = null;
 let isAuthenticated = false;
 
-// ==================== EXPONER MANAGERS ====================
 window.productManager = productManager;
 window.salesManager = salesManager;
 window.transactionManager = transactionManager;
@@ -21,7 +19,6 @@ window.activityLogger = activityLogger;
 
 console.log('✅ Managers expuestos globalmente');
 
-// ==================== VERIFICACIÓN DE BACKEND ====================
 
 async function checkBackend() {
     try {
@@ -34,7 +31,6 @@ async function checkBackend() {
     }
 }
 
-// ==================== INICIALIZACIÓN ====================
 
 async function initialize() {
     console.log('🚀 Iniciando aplicación...');
@@ -47,10 +43,8 @@ async function initialize() {
             return;
         }
 
-        // Configurar navegación
         setupNavigation();
 
-        // ✅ SIEMPRE MOSTRAR LOGIN PRIMERO
         console.log('ℹ️ Mostrando pantalla de login');
         showLogin();
 
@@ -61,7 +55,6 @@ async function initialize() {
     }
 }
 
-// ==================== GESTIÓN DE SESIÓN ====================
 
 async function clearSession() {
     currentUser = null;
@@ -71,7 +64,6 @@ async function clearSession() {
     console.log('🗑️ Sesión limpiada');
 }
 
-// ==================== PANTALLA DE LOGIN ====================
 
 function showLogin() {
     console.log('🔐 Mostrando login');
@@ -82,7 +74,6 @@ function showLogin() {
     if (authContainer) authContainer.classList.remove('d-none');
     if (appContainer) appContainer.classList.add('d-none');
 
-    // Limpiar campos
     const username = document.getElementById('username');
     const password = document.getElementById('password');
     const loginError = document.getElementById('login-error');
@@ -94,14 +85,12 @@ function showLogin() {
     if (password) password.value = '';
     if (loginError) loginError.classList.add('d-none');
 
-    // Configurar formulario
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
         loginForm.onsubmit = handleLogin;
     }
 }
 
-// ✅ FUNCIÓN MEJORADA: Manejo de errores específicos
 async function handleLogin(e) {
     e.preventDefault();
 
@@ -127,17 +116,14 @@ async function handleLogin(e) {
 
         console.log('🔐 Login en proceso...');
 
-        // ✅ VERIFICAR CONEXIÓN PRIMERO
         try {
             await window.api.health();
         } catch (healthError) {
             throw new Error('No hay conexión con el servidor. Verifica tu conexión a internet.');
         }
 
-        // Hacer login
         const response = await window.api.login({ username, password });
 
-        // ✅ VERIFICAR RESPUESTA COMPLETA
         console.log('📥 Respuesta recibida:', {
             hasResponse: !!response,
             hasToken: !!response?.token,
@@ -145,7 +131,6 @@ async function handleLogin(e) {
             success: response?.success
         });
 
-        // ✅ MANEJO MEJORADO: Verificar si es un error del servidor
         if (response && response.success === false) {
             // El servidor respondió con un error específico
             throw new Error(response.message || 'Usuario o contraseña incorrectos');
@@ -165,10 +150,8 @@ async function handleLogin(e) {
 
         console.log('✅ Login exitoso:', currentUser.username);
 
-        // Esperar a que el token se guarde
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        // Verificar token guardado
         const savedToken = await window.api.store.get('authToken');
         if (!savedToken) {
             throw new Error('Error al guardar la sesión. Intenta nuevamente.');
@@ -176,7 +159,6 @@ async function handleLogin(e) {
 
         console.log('✅ Token guardado y verificado');
 
-        // Registrar login en activity log
         activityLogger.log({
             tipo: 'USUARIO',
             accion: 'Inicio de sesión exitoso',
@@ -184,20 +166,16 @@ async function handleLogin(e) {
             entidad: 'Sesión'
         });
 
-        // Limpiar formulario
         document.getElementById('username').value = '';
         document.getElementById('password').value = '';
 
-        // Cargar aplicación
         await loadApplication();
 
     } catch (error) {
         console.error('❌ Error en login:', error);
         
-        // ✅ MENSAJES DE ERROR ESPECÍFICOS Y AMIGABLES
         let errorMessage = 'Error de autenticación';
         
-        // Errores de red/conexión
         if (error.message?.includes('servidor') || 
             error.message?.includes('conexión') ||
             error.message?.includes('internet') ||
@@ -207,7 +185,6 @@ async function handleLogin(e) {
             error.message?.includes('fetch')) {
             errorMessage = '🌐 Sin conexión al servidor. Verifica tu conexión a internet.';
         }
-        // Errores de credenciales del backend (en español)
         else if (error.message?.includes('usuario no existe')) {
             errorMessage = '👤 El usuario no existe';
         }
@@ -216,20 +193,17 @@ async function handleLogin(e) {
                  error.message?.includes('incorrecta')) {
             errorMessage = '🔒 Usuario o contraseña incorrectos';
         }
-        // Error genérico de credenciales
         else if (error.message?.includes('No se recibió token') ||
                  error.message?.includes('Invalid credentials') ||
                  !error.message) {
             errorMessage = '🔒 Usuario o contraseña incorrectos';
         }
-        // Otros errores específicos
         else if (error.message?.includes('campos')) {
             errorMessage = '📝 ' + error.message;
         }
         else if (error.message?.includes('guardar')) {
             errorMessage = '💾 ' + error.message;
         }
-        // Usar el mensaje del error si es descriptivo
         else if (error.message && error.message.length < 100) {
             errorMessage = error.message;
         }
@@ -254,26 +228,21 @@ function showError(message) {
     console.error('🚫', message);
 }
 
-// ==================== CARGA DE APLICACIÓN ====================
-
 async function loadApplication() {
     console.log('📱 Cargando aplicación...');
 
     try {
-        // Mostrar app
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
 
         if (authContainer) authContainer.classList.add('d-none');
         if (appContainer) appContainer.classList.remove('d-none');
 
-        // Actualizar usuario en UI
         const userDisplay = document.getElementById('user-display');
         if (userDisplay && currentUser) {
             userDisplay.textContent = currentUser.fullName || currentUser.username;
         }
 
-        // Mostrar/ocultar menú admin
         const adminMenu = document.getElementById('admin-menu-item');
         if (adminMenu && currentUser) {
             if (currentUser.role === 'admin') {
@@ -283,18 +252,15 @@ async function loadApplication() {
             }
         }
 
-        // Inicializar Activity Logger
         console.log('📊 Inicializando Activity Logger...');
         activityLogger.init();
 
         console.log('⏳ Esperando antes de cargar datos...');
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Cargar datos
         console.log('📦 Cargando productos...');
         await loadAllData();
 
-        // Mostrar vista de productos
         showView('products');
 
         console.log('✅ Aplicación cargada correctamente');
@@ -309,7 +275,6 @@ async function loadApplication() {
 async function loadAllData() {
     const errors = [];
 
-    // Cargar productos
     try {
         if (productManager && typeof productManager.loadProducts === 'function') {
             await productManager.loadProducts();
@@ -320,7 +285,6 @@ async function loadAllData() {
         errors.push('Productos');
     }
 
-    // Cargar datos de ventas
     try {
         if (salesManager && typeof salesManager.loadInitialData === 'function') {
             await salesManager.loadInitialData();
@@ -331,7 +295,6 @@ async function loadAllData() {
         errors.push('Ventas');
     }
 
-    // Cargar transacciones
     try {
         if (transactionManager && typeof transactionManager.loadProducts === 'function') {
             await transactionManager.loadProducts();
@@ -351,12 +314,9 @@ async function loadAllData() {
     }
 }
 
-// ==================== NAVEGACIÓN ====================
-
 function setupNavigation() {
     console.log('🧭 Configurando navegación...');
 
-    // Links de navegación
     document.querySelectorAll('[data-view]').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
@@ -365,7 +325,6 @@ function setupNavigation() {
         });
     });
 
-    // Botón de logout
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', handleLogout);
@@ -377,19 +336,16 @@ function setupNavigation() {
 function showView(viewName) {
     console.log(`📄 Mostrando vista: ${viewName}`);
 
-    // Ocultar todas las vistas
     const allViews = document.querySelectorAll('.view-container');
     allViews.forEach(view => {
         view.classList.add('d-none');
         view.style.display = 'none';
     });
 
-    // Desactivar todos los nav links
     document.querySelectorAll('[data-view]').forEach(link => {
         link.classList.remove('active');
     });
 
-    // Mostrar SOLO la vista seleccionada
     const targetView = document.getElementById(`${viewName}-view`);
     if (targetView) {
         targetView.classList.remove('d-none');
@@ -399,17 +355,14 @@ function showView(viewName) {
         console.error(`❌ Vista ${viewName}-view no encontrada`);
     }
 
-    // Activar nav link correspondiente
     const activeLink = document.querySelector(`[data-view="${viewName}"]`);
     if (activeLink) {
         activeLink.classList.add('active');
     }
 
-    // Inicializar vista
     initView(viewName);
 }
 
-// ==================== INICIALIZACIÓN DE VISTAS ====================
 
 function initView(viewName) {
     switch (viewName) {
@@ -427,8 +380,6 @@ function initView(viewName) {
             break;
     }
 }
-
-// ==================== GENERADOR DE CÓDIGOS DE BARRA ====================
 
 async function initBarcodeGenerator() {
     console.log('📊 Inicializando generador de códigos de barra...');
@@ -448,12 +399,9 @@ async function initBarcodeGenerator() {
     }
 }
 
-// ==================== LOGOUT ====================
-
 async function handleLogout() {
     console.log('👋 Cerrando sesión...');
 
-    // Registrar cierre de sesión
     if (currentUser) {
         activityLogger.log({
             tipo: 'USUARIO',
@@ -471,7 +419,6 @@ async function handleLogout() {
 
     await clearSession();
 
-    // Resetear managers
     if (productManager?.reset) productManager.reset();
     if (salesManager?.reset) salesManager.reset();
     
@@ -485,7 +432,6 @@ async function handleLogout() {
     uiManager.showAlert('Sesión cerrada', 'success');
 }
 
-// ==================== INICIO ====================
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialize);

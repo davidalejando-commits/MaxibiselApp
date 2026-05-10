@@ -1,4 +1,3 @@
-//Modelo de producto
 const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema({
@@ -58,22 +57,18 @@ const productSchema = new mongoose.Schema({
     }
 });
 
-// Índice para búsquedas más rápidas
+
 productSchema.index({ name: 1 });
 productSchema.index({ barcode: 1 });
 
-// Middleware mejorado para validar la consistencia del stock
 productSchema.pre('save', function (next) {
-    // Inicializar valores si no existen
     if (this.stock_surtido === undefined) this.stock_surtido = 0;
     if (this.stock_almacenado === undefined) this.stock_almacenado = this.stock;
 
-    // Si es un producto nuevo sin distribución específica, todo va a almacenado
     if (this.isNew && this.stock_surtido === 0 && this.stock_almacenado === 0) {
         this.stock_almacenado = this.stock;
     }
 
-    // Validar que la suma sea exactamente igual al stock total
     const total = (this.stock_surtido || 0) + (this.stock_almacenado || 0);
     if (total !== this.stock) {
         const error = new Error(
@@ -86,18 +81,15 @@ productSchema.pre('save', function (next) {
     next();
 });
 
-// Middleware para actualizaciones
 productSchema.pre('findOneAndUpdate', function (next) {
     const update = this.getUpdate();
 
-    // Si hay una actualización con $set
     if (update.$set || update) {
         const updateData = update.$set || update;
         const stock = updateData.stock;
         const stockSurtido = updateData.stock_surtido;
         const stockAlmacenado = updateData.stock_almacenado;
 
-        // Solo validar si se están actualizando los tres valores
         if (stock !== undefined && stockSurtido !== undefined && stockAlmacenado !== undefined) {
             if (stockSurtido + stockAlmacenado !== stock) {
                 const error = new Error(

@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const ActivityLog = require('../models/activityLog');
-
-// ===== CREAR LOG =====
 router.post('/', async (req, res) => {
   try {
     const logData = {
@@ -33,7 +31,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// ===== OBTENER LOGS CON FILTROS =====
 router.get('/', async (req, res) => {
   try {
     const filters = {
@@ -66,7 +63,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ===== OBTENER LOG POR ID =====
 router.get('/:id', async (req, res) => {
   try {
     const log = await ActivityLog.getById(req.params.id);
@@ -91,7 +87,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// ===== OBTENER ESTADÍSTICAS =====
 router.get('/stats/summary', async (req, res) => {
   try {
     const stats = await ActivityLog.getStats();
@@ -109,7 +104,6 @@ router.get('/stats/summary', async (req, res) => {
   }
 });
 
-// ===== LIMPIAR LOGS ANTIGUOS =====
 router.delete('/cleanup/old', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 90;
@@ -130,7 +124,6 @@ router.delete('/cleanup/old', async (req, res) => {
   }
 });
 
-// ===== LIMPIAR POR TIPO =====
 router.delete('/cleanup/by-type', async (req, res) => {
   try {
     const { tipo, days = 90 } = req.body;
@@ -158,10 +151,8 @@ router.delete('/cleanup/by-type', async (req, res) => {
   }
 });
 
-// ===== ELIMINAR TODOS (CON CONFIRMACIÓN) =====
 router.delete('/cleanup/all', async (req, res) => {
   try {
-    // Requiere confirmación explícita
     const confirmacion = req.body.confirmar;
 
     if (confirmacion !== 'ELIMINAR_TODOS') {

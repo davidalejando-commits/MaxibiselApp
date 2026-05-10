@@ -1,9 +1,5 @@
-// backend/controllers/remisionController.js
-const Remision = require('../models/remision');
 
-// ============================================================================
-// CREAR REMISIÓN
-// ============================================================================
+const Remision = require('../models/remision');
 exports.createRemision = async (req, res) => {
     try {
         console.log('\n📄 [REMISION] Creando nueva remisión...');
@@ -25,10 +21,8 @@ exports.createRemision = async (req, res) => {
             });
         }
         
-        // Generar número consecutivo
         const numeroRemision = await generarNumeroRemision();
         
-        // Calcular totales
         let subtotal = 0;
         const productosConSubtotal = productos.map(prod => {
             const subtotalProd = prod.cantidad * prod.precioUnitario;
@@ -43,7 +37,6 @@ exports.createRemision = async (req, res) => {
         const iva = req.body.iva || 0;
         const total = subtotal - descuento + iva;
         
-        // Crear remisión
         const remision = new Remision({
             empresa: empresa || getEmpresaPorDefecto(),
             numeroRemision,
@@ -78,9 +71,6 @@ exports.createRemision = async (req, res) => {
     }
 };
 
-// ============================================================================
-// OBTENER TODAS LAS REMISIONES
-// ============================================================================
 exports.getAllRemisiones = async (req, res) => {
     try {
         const remisiones = await Remision.find()
@@ -99,9 +89,6 @@ exports.getAllRemisiones = async (req, res) => {
     }
 };
 
-// ============================================================================
-// OBTENER REMISIÓN POR ID
-// ============================================================================
 exports.getRemisionById = async (req, res) => {
     try {
         const remision = await Remision.findById(req.params.id);
@@ -125,9 +112,6 @@ exports.getRemisionById = async (req, res) => {
     }
 };
 
-// ============================================================================
-// ACTUALIZAR REMISIÓN
-// ============================================================================
 exports.updateRemision = async (req, res) => {
     try {
         const remision = await Remision.findByIdAndUpdate(
@@ -156,9 +140,6 @@ exports.updateRemision = async (req, res) => {
     }
 };
 
-// ============================================================================
-// ELIMINAR REMISIÓN
-// ============================================================================
 exports.deleteRemision = async (req, res) => {
     try {
         const remision = await Remision.findByIdAndDelete(req.params.id);
@@ -182,9 +163,6 @@ exports.deleteRemision = async (req, res) => {
     }
 };
 
-// ============================================================================
-// FUNCIONES AUXILIARES
-// ============================================================================
 
 async function generarNumeroRemision() {
     const fecha = new Date();
@@ -206,7 +184,6 @@ async function generarNumeroRemision() {
 }
 
 function getEmpresaPorDefecto() {
-    // ⚠️ IMPORTANTE: Cambiar esta información por los datos de tu empresa
     return {
         nombre: 'TU EMPRESA ÓPTICA S.A.S',
         nit: '900.123.456-7',

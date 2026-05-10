@@ -26,7 +26,7 @@ const transactionSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: false // Puede ser null si no hay usuario autenticado
+        required: false 
     },
     notes: {
         type: String,
@@ -41,28 +41,24 @@ const transactionSchema = new mongoose.Schema({
         default: Date.now
     }
 }, {
-    timestamps: true // Esto maneja createdAt y updatedAt automáticamente
+    timestamps: true 
 });
 
-// Índices para mejorar rendimiento
 transactionSchema.index({ productId: 1 });
 transactionSchema.index({ type: 1 });
 transactionSchema.index({ createdAt: -1 });
 transactionSchema.index({ userId: 1 });
 
-// Middleware para actualizar updatedAt
 transactionSchema.pre('save', function(next) {
     this.updatedAt = Date.now();
     next();
 });
 
-// Métodos del esquema
 transactionSchema.methods.toJSON = function() {
     const transaction = this.toObject();
     return transaction;
 };
 
-// Métodos estáticos
 transactionSchema.statics.getByProduct = function(productId, limit = 10) {
     return this.find({ productId })
         .populate('userId', 'username fullName')
@@ -82,7 +78,6 @@ transactionSchema.statics.getByDateRange = function(startDate, endDate) {
         .sort({ createdAt: -1 });
 };
 
-// ✅ SOLUCIÓN AL ERROR: Verificar si el modelo ya existe antes de compilarlo
 const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);
 
 module.exports = Transaction;

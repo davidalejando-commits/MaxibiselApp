@@ -1,4 +1,3 @@
-// backend/config/database.js
 const mongoose = require('mongoose');
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
@@ -11,7 +10,6 @@ class DatabaseManager {
     this.sqliteConnection = null;
   }
 
-  // ===== MONGODB (Para inventario crítico) =====
   async connectMongoDB() {
     try {
       if (mongoose.connection.readyState === 1) {
@@ -33,10 +31,8 @@ class DatabaseManager {
     }
   }
 
-  // ===== SQLITE (Para facturas y logs locales) =====
   async connectSQLite() {
     try {
-      // Crear directorio de datos si no existe
       const dbPath = path.join(__dirname, '../data/local.db');
       const dbDir = path.dirname(dbPath);
       
@@ -45,7 +41,6 @@ class DatabaseManager {
         console.log('📁 Directorio /data creado');
       }
 
-      // Abrir conexión SQLite
       this.sqliteConnection = await open({
         filename: dbPath,
         driver: sqlite3.Database
@@ -53,7 +48,6 @@ class DatabaseManager {
 
       console.log('✅ SQLite conectado:', dbPath);
       
-      // Crear tablas
       await this.initializeSQLiteTables();
       
       return this.sqliteConnection;
@@ -63,13 +57,11 @@ class DatabaseManager {
     }
   }
 
-  // Crear estructura de tablas SQLite
   async initializeSQLiteTables() {
     const db = this.sqliteConnection;
 
     console.log('🔨 Inicializando tablas SQLite...');
 
-    // ===== TABLA DE FACTURAS =====
     await db.exec(`
       CREATE TABLE IF NOT EXISTS facturas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

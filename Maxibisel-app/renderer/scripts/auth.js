@@ -9,13 +9,11 @@ export const authManager = {
     async init() {
         console.log('🔧 Inicializando AuthManager...');
 
-        // Prevenir inicialización múltiple
         if (this.isInitialized) {
             console.warn('⚠️ AuthManager ya está inicializado');
             return;
         }
 
-        // Esperar a que el DOM esté listo
         if (document.readyState === 'loading') {
             await new Promise(resolve => {
                 document.addEventListener('DOMContentLoaded', resolve);
@@ -24,8 +22,6 @@ export const authManager = {
 
         this.setupEventListeners();
         
-        // ✅ CAMBIO: Ya NO intentamos recuperar sesión guardada automáticamente
-        // Siempre mostrar login al iniciar
         console.log('ℹ️ Iniciando en pantalla de login');
         this.showLoginScreen();
 
@@ -33,7 +29,6 @@ export const authManager = {
         console.log('✅ AuthManager inicializado');
     },
 
-    // ✅ ELIMINADO: checkStoredSession - Ya no necesitamos verificar sesión guardada
 
     async clearStoredSession() {
         await window.api.store.delete('authToken');
@@ -79,8 +74,6 @@ export const authManager = {
         if (appContainer) {
             appContainer.classList.add('d-none');
         }
-
-        // Limpiar y enfocar campos
         const usernameEl = this.safeGetElement('username');
         const passwordEl = this.safeGetElement('password');
         const errorEl = this.safeGetElement('login-error');
@@ -122,7 +115,6 @@ export const authManager = {
         const originalText = submitBtn ? submitBtn.innerHTML : '';
 
         try {
-            // Mostrar loading
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spin"></i>Iniciando sesión...';
@@ -131,11 +123,9 @@ export const authManager = {
             this.hideLoginError();
 
             console.log('🔐 Procesando login...');
-            
-            // Realizar login
+
             const response = await window.api.login({ username, password });
 
-            // ✅ MEJORA: Verificar si hay error en la respuesta
             if (!response.success && response.success === false) {
                 throw new Error(response.message || 'Error de autenticación');
             }
@@ -144,7 +134,6 @@ export const authManager = {
                 throw new Error('No se recibió token de autenticación');
             }
 
-            // Guardar en memoria SOLAMENTE (no en store)
             this.token = response.token;
             this.currentUser = response.user;
             this.isLoggedIn = true;
@@ -152,23 +141,19 @@ export const authManager = {
             console.log('✅ Login exitoso:', this.currentUser.username);
             console.log('ℹ️ Sesión guardada SOLO en memoria (no persiste al cerrar)');
 
-            // Inicializar aplicación
             await this.initializeApp();
 
-            // Emitir evento de login exitoso
             eventManager.emit('auth:login-success', this.currentUser);
 
         } catch (error) {
             console.error('❌ Error en login:', error);
-            
-            // ✅ MEJORA: Mensajes de error más específicos en español
+
             let errorMessage = 'Error de autenticación';
             
             if (error.message) {
                 errorMessage = error.message;
             }
-            
-            // Traducir mensajes comunes del backend
+
             if (error.message?.includes('Usuario o contraseña incorrectos')) {
                 errorMessage = 'Usuario o contraseña incorrectos';
             } else if (error.message?.includes('User not found')) {
@@ -195,16 +180,12 @@ export const authManager = {
         console.log('🚀 Inicializando aplicación...');
 
         try {
-            // Actualizar UI
             this.updateUIAfterLogin();
 
-            // Esperar un momento para asegurar que el DOM esté actualizado
             await new Promise(resolve => setTimeout(resolve, 200));
 
-            // Cargar datos críticos
             await this.loadCriticalData();
 
-            // Configurar vista por defecto
             this.setupDefaultView();
 
             console.log('✅ Aplicación inicializada correctamente');
@@ -219,7 +200,6 @@ export const authManager = {
         console.log('📦 Cargando datos críticos...');
 
         try {
-            // Esperar a que productManager esté disponible
             let attempts = 0;
             while (!window.productManager && attempts < 20) {
                 await new Promise(resolve => setTimeout(resolve, 100));
@@ -231,13 +211,9 @@ export const authManager = {
             }
 
             console.log('✅ ProductManager encontrado');
-
-            // Inicializar productManager si es necesario
             if (typeof window.productManager.init === 'function') {
                 await window.productManager.init();
             }
-
-            // Cargar productos
             if (typeof window.productManager.loadProducts === 'function') {
                 console.log('📥 Cargando productos...');
                 await window.productManager.loadProducts();
@@ -250,7 +226,6 @@ export const authManager = {
                 }
             }
 
-            // Inicializar otros managers si están disponibles
             if (window.salesManager && typeof window.salesManager.loadInitialData === 'function') {
                 console.log('🛒 Inicializando salesManager...');
                 await window.salesManager.loadInitialData();
@@ -261,7 +236,6 @@ export const authManager = {
                 await window.transactionManager.loadProducts();
             }
 
-            // Emitir evento de datos cargados
             eventManager.emit('auth:data-loaded', {
                 timestamp: Date.now(),
                 productsCount: window.productManager?.products?.length || 0
@@ -269,8 +243,7 @@ export const authManager = {
 
         } catch (error) {
             console.error('❌ Error cargando datos críticos:', error);
-            
-            // Mostrar advertencia pero no bloquear el login
+
             if (window.uiManager && typeof window.uiManager.showAlert === 'function') {
                 window.uiManager.showAlert(
                     'Algunos datos no se cargaron. Intenta recargar la aplicación.',
@@ -311,18 +284,14 @@ export const authManager = {
 
     setupDefaultView() {
         console.log('📄 Configurando vista por defecto...');
-
-        // Ocultar todas las secciones
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
         });
 
-        // Desactivar todos los nav links
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.remove('active');
         });
 
-        // Activar vista de productos
         const productsSection = this.safeGetElement('products-section');
         const productsNavLink = document.querySelector('[data-view="products"]');
 
@@ -334,7 +303,6 @@ export const authManager = {
             productsNavLink.classList.add('active');
         }
 
-        // Emitir evento de vista activada
         eventManager.emit('view:activated', {
             viewName: 'products',
             timestamp: Date.now()
@@ -363,20 +331,16 @@ export const authManager = {
         try {
             console.log('👋 Cerrando sesión...');
 
-            // Intentar logout en servidor
             try {
                 await window.api.logout();
             } catch (error) {
                 console.warn('⚠️ Error en logout del servidor:', error);
             }
 
-            // Limpiar sesión local
             await this.clearStoredSession();
 
-            // Resetear UI
             this.resetUIAfterLogout();
 
-            // Emitir evento de logout
             eventManager.emit('auth:logout');
 
             console.log('✅ Sesión cerrada');
@@ -400,7 +364,6 @@ export const authManager = {
             authContainer.classList.remove('d-none');
         }
 
-        // Limpiar campos
         const usernameEl = this.safeGetElement('username');
         const passwordEl = this.safeGetElement('password');
         const errorEl = this.safeGetElement('login-error');
@@ -418,7 +381,6 @@ export const authManager = {
             errorEl.classList.add('d-none');
         }
 
-        // Resetear managers si están disponibles
         if (window.productManager && typeof window.productManager.reset === 'function') {
             window.productManager.reset();
         }

@@ -1,8 +1,6 @@
-// backend/models/activityLog.js
 const dbManager = require('../config/database');
 
 class ActivityLog {
-  // ===== CREAR LOG =====
   static async create(logData) {
     try {
       const db = dbManager.getSQLite();
@@ -31,8 +29,6 @@ class ActivityLog {
       throw error;
     }
   }
-
-  // ===== OBTENER LOGS CON FILTROS =====
   static async getAll(filters = {}) {
     try {
       const db = dbManager.getSQLite();
@@ -40,46 +36,37 @@ class ActivityLog {
       let query = 'SELECT * FROM activity_logs WHERE 1=1';
       const params = [];
 
-      // Filtro por tipo
       if (filters.tipo) {
         query += ' AND tipo = ?';
         params.push(filters.tipo);
       }
-
-      // Filtro por usuario
       if (filters.usuario) {
         query += ' AND usuario LIKE ?';
         params.push(`%${filters.usuario}%`);
       }
 
-      // Filtro por entidad
       if (filters.entidad) {
         query += ' AND entidad = ?';
         params.push(filters.entidad);
       }
 
-      // Filtro por fecha desde
       if (filters.fechaDesde) {
         query += ' AND timestamp >= ?';
         params.push(filters.fechaDesde);
       }
 
-      // Filtro por fecha hasta
       if (filters.fechaHasta) {
         query += ' AND timestamp <= ?';
         params.push(filters.fechaHasta);
       }
 
-      // Búsqueda de texto
       if (filters.search) {
         query += ' AND (accion LIKE ? OR usuario LIKE ? OR entidad LIKE ?)';
         params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`);
       }
 
-      // Ordenar por más reciente primero
       query += ' ORDER BY timestamp DESC';
 
-      // Límite y offset
       if (filters.limit) {
         query += ' LIMIT ?';
         params.push(parseInt(filters.limit));
@@ -92,7 +79,6 @@ class ActivityLog {
 
       const logs = await db.all(query, params);
 
-      // Parsear JSON
       return logs.map(log => ({
         ...log,
         datos_anteriores: log.datos_anteriores ? JSON.parse(log.datos_anteriores) : null,
@@ -104,7 +90,6 @@ class ActivityLog {
     }
   }
 
-  // ===== OBTENER LOG POR ID =====
   static async getById(id) {
     try {
       const db = dbManager.getSQLite();
@@ -127,7 +112,6 @@ class ActivityLog {
     }
   }
 
-  // ===== CONTAR LOGS =====
   static async count(filters = {}) {
     try {
       const db = dbManager.getSQLite();
@@ -153,7 +137,6 @@ class ActivityLog {
     }
   }
 
-  // ===== ELIMINAR LOGS ANTIGUOS =====
   static async deleteOld(days = 90) {
     try {
       const db = dbManager.getSQLite();
@@ -174,7 +157,6 @@ class ActivityLog {
     }
   }
 
-  // ===== ELIMINAR POR TIPO =====
   static async deleteByType(tipo, days = 90) {
     try {
       const db = dbManager.getSQLite();
@@ -195,7 +177,6 @@ class ActivityLog {
     }
   }
 
-  // ===== ELIMINAR TODOS =====
   static async deleteAll() {
     try {
       const db = dbManager.getSQLite();
@@ -210,15 +191,12 @@ class ActivityLog {
     }
   }
 
-  // ===== ESTADÍSTICAS =====
   static async getStats() {
     try {
       const db = dbManager.getSQLite();
 
-      // Total de logs
       const total = await db.get('SELECT COUNT(*) as count FROM activity_logs');
 
-      // Logs por tipo
       const porTipo = await db.all(`
         SELECT tipo, COUNT(*) as count 
         FROM activity_logs 
@@ -226,7 +204,6 @@ class ActivityLog {
         ORDER BY count DESC
       `);
 
-      // Logs de hoy
       const hoy = new Date();
       hoy.setHours(0, 0, 0, 0);
       const logsHoy = await db.get(
@@ -234,7 +211,6 @@ class ActivityLog {
         [hoy.toISOString()]
       );
 
-      // Logs últimos 7 días
       const hace7dias = new Date();
       hace7dias.setDate(hace7dias.getDate() - 7);
       const logsUltimaSemana = await db.get(

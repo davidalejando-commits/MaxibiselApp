@@ -1,5 +1,3 @@
-// barcode-generator.js - Módulo para gestionar la generación de códigos de barra
-// AJUSTADO PARA HOJA CROQUELADA: Carta, 7x12, 30x22mm, márgenes 6mm/3mm
 
 export class BarcodeGenerator {
     constructor() {
@@ -9,7 +7,7 @@ export class BarcodeGenerator {
         this.filteredProducts = [];
         this.selectedReference = '';
         this.searchTerm = '';
-        this.BARCODES_PER_PAGE = 84; // 7 columnas x 12 filas (AJUSTADO A HOJA CROQUELADA)
+        this.BARCODES_PER_PAGE = 84; 
     }
 
     async init() {
@@ -417,7 +415,6 @@ renderProductList() {
     const container = document.getElementById('barcode-products-list');
     if (!container) return;
 
-    // Si no hay referencia seleccionada, mostrar mensaje
     if (!this.selectedReference) {
         container.innerHTML = `
             <div class="text-center text-muted py-5">
@@ -428,7 +425,6 @@ renderProductList() {
         return;
     }
 
-    // Si no hay término de búsqueda, mostrar todos los productos filtrados
     if (!this.searchTerm) {
         this.renderProductCards(this.filteredProducts);
         return;
@@ -436,10 +432,8 @@ renderProductList() {
 
     console.log('🔍 Buscando productos con término:', this.searchTerm);
 
-    // Normalizar término de búsqueda
     const searchTermNormalized = this.normalizarTerminoBusqueda(this.searchTerm);
 
-    // Filtrar productos usando función especializada
     const searchResults = this.filteredProducts.filter(product => 
         this.productoCoincideConBusqueda(product, searchTermNormalized)
     );
@@ -449,7 +443,6 @@ renderProductList() {
     this.renderProductCards(searchResults);
 }
 
-// ✅ NUEVA FUNCIÓN: Renderizar tarjetas de productos (extraída para reutilizar)
 renderProductCards(products) {
     const container = document.getElementById('barcode-products-list');
     if (!container) return;
@@ -479,24 +472,19 @@ renderProductCards(products) {
     }
 }
 
-// ✅ AGREGAR estas funciones auxiliares DESPUÉS de renderProductCards
-
-// Normalizar término de búsqueda
 normalizarTerminoBusqueda(termino) {
     if (!termino) return '';
     
     let normalizado = String(termino);
     normalizado = normalizado.trim();
     normalizado = normalizado.toLowerCase();
-    
-    // Reemplazar caracteres especiales
+
     normalizado = normalizado.replace(/'/g, '-');
     normalizado = normalizado.replace(/¡/g, '+');
     
     return normalizado;
 }
 
-// Normalizar código de barras
 normalizarCodigoBarras(barcode) {
     if (!barcode) return '';
     
@@ -510,11 +498,9 @@ normalizarCodigoBarras(barcode) {
     return codigo;
 }
 
-// Verificar si un producto coincide con la búsqueda
 productoCoincideConBusqueda(product, searchTerm) {
     if (!product) return false;
-    
-    // 1. BÚSQUEDA POR CÓDIGO DE BARRAS (prioridad alta)
+
     if (product.barcode) {
         const barcodeNormalizado = this.normalizarCodigoBarras(product.barcode);
         if (barcodeNormalizado === searchTerm || barcodeNormalizado.includes(searchTerm)) {
@@ -522,7 +508,6 @@ productoCoincideConBusqueda(product, searchTerm) {
         }
     }
 
-    // 2. BÚSQUEDA POR NOMBRE
     if (product.name) {
         const nombreNormalizado = product.name.toLowerCase().trim();
         if (nombreNormalizado.includes(searchTerm)) {
@@ -530,15 +515,13 @@ productoCoincideConBusqueda(product, searchTerm) {
         }
     }
 
-    // 3. BÚSQUEDA POR ESFERA
     if (product.sphere && product.sphere !== 'N' && product.sphere !== 'N/A') {
         const esferaNormalizada = String(product.sphere).toLowerCase().trim();
         
         if (esferaNormalizada === searchTerm || esferaNormalizada.includes(searchTerm)) {
             return true;
         }
-        
-        // Búsqueda sin signo
+
         const esferaSinSigno = esferaNormalizada.replace(/[+\-]/g, '');
         const terminoSinSigno = searchTerm.replace(/[+\-]/g, '');
         if (esferaSinSigno === terminoSinSigno) {
@@ -546,7 +529,6 @@ productoCoincideConBusqueda(product, searchTerm) {
         }
     }
 
-    // 4. BÚSQUEDA POR CILINDRO
     if (product.cylinder && product.cylinder !== '-' && product.cylinder !== 'N/A') {
         const cilindroNormalizado = String(product.cylinder).toLowerCase().trim();
         
@@ -561,7 +543,6 @@ productoCoincideConBusqueda(product, searchTerm) {
         }
     }
 
-    // 5. BÚSQUEDA POR ADICIÓN
     if (product.addition && product.addition !== '-' && product.addition !== 'N/A') {
         const adicionNormalizada = String(product.addition).toLowerCase().trim();
         
@@ -636,13 +617,6 @@ productoCoincideConBusqueda(product, searchTerm) {
     getMainHTML() {
         return `
             <style>
-                /* 
-                 * CONFIGURACIÓN PARA HOJA CROQUELADA TAMAÑO CARTA
-                 * - Tamaño: 215.9mm x 279.4mm
-                 * - Márgenes: Superior/Inferior 6mm, Laterales 3mm
-                 * - Cuadritos: 30mm x 22mm (sin espaciado entre ellos)
-                 * - Distribución: 7 columnas x 12 filas = 84 códigos por página
-                 */
                 
                 @media screen {
                     .barcode-page {
