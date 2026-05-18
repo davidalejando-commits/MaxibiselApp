@@ -1360,208 +1360,89 @@ salesManager.inyectarEstilosImpresion = function () {
 
     #factura-pos-print {
         display: none;
-        width: 80mm;
+        width: 72mm;
         margin: 0 auto;
+        box-sizing: border-box;
     }
 
     @page {
-        size: 80mm auto;
+        size: 76mm auto;
         margin: 0;
     }
 
     @media print {
-        * { box-sizing: border-box; }
+        *, *::before, *::after { box-sizing: border-box !important; }
 
         html, body {
             margin: 0 !important;
             padding: 0 !important;
-            width: 80mm !important;
+            width: 76mm !important;
             background: white !important;
         }
 
         body > *:not(#factura-pos-print) { display: none !important; }
+
         #factura-pos-print.factura-lista-imprimir {
             display: block !important;
             visibility: visible !important;
             position: static !important;
             left: auto !important;
-            width: 80mm !important;
+            width: 76mm !important;
             margin: 0 auto !important;
+            padding: 0 !important;
         }
 
         #factura-pos-print {
             display: block !important;
             visibility: visible !important;
-            width: 80mm !important;
+            width: 76mm !important;
             margin: 0 auto !important;
+            padding: 0 !important;
         }
 
         .factura-contenido {
-            width: 76mm !important;
-            max-width: 76mm !important;
-            margin: 0 auto !important;
-            padding: 2mm 2mm !important;
-            font-family: 'Courier New', Consolas, monospace !important;
-            font-size: 11px !important;
-            line-height: 1.4 !important;
-            color: #000 !important;
-            background: white !important;
+          width: 72mm !important;
+          max-width: 72mm !important;
+          margin: 0 !important;
+          padding: 3mm !important;
+          box-sizing: border-box !important;
+          font-family: 'Courier New', Consolas, monospace !important;
+          font-size: 14px !important;
+          line-height: 1.6 !important;
+          font-weight: 500 !important;
+          color: #000 !important;
+          background: white !important;
         }
 
-        /* Cabecera centrada */
-        .pos-header {
-            text-align: center !important;
-            margin-bottom: 3mm !important;
-        }
-        
-        .pos-logo {
-            display: block !important;
-            max-width: 120px !important;
-            max-height: 120px !important;
-            margin: 0 auto 2mm !important;
-            object-fit: contain !important;
+        /* ---- Logo ---- */
+        img {
+              width: 48mm !important;
+              height: 48mm !important;
+              object-fit: contain !important;
+              display: block !important;
+              margin: 0 auto 2mm !important;
+              image-rendering: auto !important;
+              -ms-interpolation-mode: bicubic !important;
         }
 
-        .pos-empresa-nombre {
-            font-weight: bold !important;
-            font-size: 13px !important;
-            text-align: center !important;
-            margin-bottom: 1mm !important;
-        }
-        .pos-empresa-info {
-            font-size: 9px !important;
-            text-align: center !important;
-            line-height: 1.5 !important;
-        }
-
-        /* Separadores */
-        .pos-linea-punteada {
-            border: none !important;
-            border-top: 1px dashed #000 !important;
-            margin: 2mm 0 !important;
+        /* ---- Tablas ---- */
+        table {
             width: 100% !important;
-        }
-        .pos-linea-solida {
-            border: none !important;
-            border-top: 1px solid #000 !important;
-            margin: 2mm 0 !important;
-            width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+            box-sizing: border-box !important;
         }
 
-        /* Título remisión */
-        .pos-titulo {
-            text-align: center !important;
-            margin: 2mm 0 !important;
-        }
-        .pos-titulo-principal {
-            font-weight: bold !important;
-            font-size: 13px !important;
-            text-align: center !important;
-            letter-spacing: 1px !important;
-        }
-        .pos-numero-factura {
-            font-weight: bold !important;
-            font-size: 11px !important;
-            text-align: center !important;
-        }
-
-        /* Fecha */
-        .pos-fecha {
-            text-align: center !important;
-            font-size: 9px !important;
-            margin-bottom: 2mm !important;
-        }
-
-        /* Cliente */
-        .pos-cliente {
-            font-size: 10px !important;
-            margin: 2mm 0 !important;
-            text-align: left !important;
-        }
-        .pos-cliente-label { font-weight: bold !important; }
-
-        /* Tabla de productos */
-        .flex-row {
-            display: flex !important;
-            flex-direction: row !important;
-            justify-content: space-between !important;
-            align-items: flex-start !important;
-            width: 100% !important;
-        }
-        .pos-tabla-header {
-            font-weight: bold !important;
-            font-size: 9px !important;
-            padding: 1mm 0 !important;
-            border-bottom: 1px solid #000 !important;
-            margin-bottom: 1mm !important;
-        }
-        .pos-col-cant {
-            flex: 0 0 10mm !important;
-            text-align: center !important;
-            font-size: 9px !important;
-        }
-        .pos-col-desc {
-            flex: 1 !important;
-            padding: 0 1mm !important;
-            font-size: 9px !important;
+        td, th {
             word-break: break-word !important;
-        }
-        .pos-col-total {
-            flex: 0 0 18mm !important;
-            text-align: right !important;
-            font-size: 9px !important;
+            overflow-wrap: break-word !important;
+            box-sizing: border-box !important;
         }
 
-        /* Productos */
-        .pos-producto-item {
-            margin-bottom: 2mm !important;
-            font-size: 9px !important;
-            page-break-inside: avoid !important;
-        }
-        .pos-producto-nombre {
-            font-weight: bold !important;
-            font-size: 10px !important;
-            word-break: break-word !important;
-        }
-        .pos-producto-descripcion {
-            font-size: 8px !important;
-            color: #333 !important;
-            margin-top: 0.5mm !important;
-        }
-        .pos-producto-precio {
-            font-size: 8px !important;
-            color: #444 !important;
-        }
-
-        /* Total */
-        .pos-total-container {
-            padding: 2mm 0 !important;
-            border-top: 2px solid #000 !important;
-            border-bottom: 2px solid #000 !important;
-            margin: 2mm 0 !important;
-            page-break-inside: avoid !important;
-        }
-        .pos-total-label, .pos-total-valor {
-            font-weight: bold !important;
-            font-size: 14px !important;
-        }
-
-        /* Footer */
-        .pos-footer {
-            text-align: center !important;
-            margin-top: 3mm !important;
-            font-size: 9px !important;
-        }
-        .pos-footer-mensaje {
-            font-weight: bold !important;
-            font-size: 10px !important;
-            margin-bottom: 1mm !important;
-        }
-        .pos-footer-sistema {
-            font-size: 8px !important;
-        }
-        .pos-espacio-corte {
-            height: 10mm !important;
+        /* ---- Texto ---- */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
     }
 `;
@@ -1583,12 +1464,9 @@ salesManager.imprimirFacturaPOS = function () {
     factura.classList.remove('factura-pos-oculta');
     factura.classList.add('factura-lista-imprimir');
 
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            window.print();
-o
-        });
-    });
+    setTimeout(() => {
+        window.print();
+    }, 300);
 };
 
 salesManager.hideVistaPrevia = function () {
@@ -1854,14 +1732,16 @@ salesManager.generarHTMLTicket = function (factura, modoImpresion = false) {
         ? factura.productos.reduce((sum, p) => sum + (p.cantidad || 0), 0)
         : 0;
 
+   
     const wrapperStyles = modoImpresion ? '' : `
-        width: 80mm;
-        max-width: 80mm;
+        width: 72mm;
+        max-width: 72mm;
         margin: 0 auto;
-        padding: 2mm;
+        padding: 3mm;
+        box-sizing: border-box;
         font-family: 'Courier New', Consolas, monospace;
-        font-size: 11px;
-        line-height: 1.4;
+        font-size: 12px;
+        line-height: 1.5;
         color: #000;
         background: white;
         box-shadow: 0 2px 12px rgba(0,0,0,0.15);
@@ -1869,17 +1749,48 @@ salesManager.generarHTMLTicket = function (factura, modoImpresion = false) {
     `;
 
     const productosHTML = factura.productos ? factura.productos.map(prod => `
-        <table style="width:100%; border-collapse:collapse; margin-bottom:2mm; font-size:9px;">
+        <table style="
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            margin-bottom: 3mm;
+            font-size: 10px;
+            box-sizing: border-box;
+        ">
+            <colgroup>
+                <col style="width: 8mm;">
+                <col style="width: auto;">
+                <col style="width: 22mm;">
+            </colgroup>
             <tr>
-                <td style="width:10mm; text-align:center; vertical-align:top; font-weight:bold;">
+                <td style="
+                    text-align: center;
+                    vertical-align: top;
+                    font-weight: bold;
+                    font-size: 11px;
+                    padding: 1mm 0;
+                    word-break: break-word;
+                ">
                     ${prod.cantidad || 0}
                 </td>
-                <td style="vertical-align:top; padding:0 1mm; word-break:break-word;">
-                    <div style="font-weight:bold; font-size:10px;">${prod.nombre || 'Producto'}</div>
-                    ${prod.descripcion ? `<div style="font-size:8px; color:#333;">${prod.descripcion}</div>` : ''}
-                    <div style="font-size:8px; color:#444;">P.Unit: $${(prod.precioUnitario || 0).toLocaleString('es-CO')}</div>
+                <td style="
+                    vertical-align: top;
+                    padding: 1mm 2mm;
+                    word-break: break-word;
+                    overflow-wrap: break-word;
+                ">
+                    <div style="font-weight: bold; font-size: 11px; word-break: break-word;">${prod.nombre || 'Producto'}</div>
+                    ${prod.descripcion ? `<div style="font-size: 11px; font-weight: 600; color: #000; margin-top: 1mm; word-break: break-word;">${prod.descripcion}</div>` : ''}
+                    <div style="font-size: 11px; font-weight: 600; color: #000; margin-top: 0.5mm;">P.Unit: $${(prod.precioUnitario || 0).toLocaleString('es-CO')}</div>
                 </td>
-                <td style="width:18mm; text-align:right; vertical-align:top; font-weight:bold;">
+                <td style="
+                    text-align: right;
+                    vertical-align: top;
+                    font-weight: bold;
+                    font-size: 11px;
+                    padding: 1mm 0;
+                    white-space: nowrap;
+                ">
                     $${(prod.subtotal || 0).toLocaleString('es-CO')}
                 </td>
             </tr>
@@ -1887,95 +1798,126 @@ salesManager.generarHTMLTicket = function (factura, modoImpresion = false) {
     `).join('') : '';
 
     return `
-        <div style="${wrapperStyles}
+        <div style="
+            ${wrapperStyles}
             font-family: 'Courier New', Consolas, monospace;
-            font-size: 11px;
-            line-height: 1.4;
+            font-size: 12px;
+            line-height: 1.5;
             color: #000;
+            box-sizing: border-box;
+            width: 100%;
         ">
-            <!-- Cabecera -->
-            <div style="text-align:center; margin-bottom:3mm;">
+            <!-- ===== CABECERA ===== -->
+            <div style="text-align: center; margin-bottom: 1mm;">
                 ${salesManager._logoBase64
                     ? `<img src="${salesManager._logoBase64}" alt="Logo"
-                        style="max-width:120px; max-height:120px; display:block; margin:0 auto 2mm; object-fit:contain;">`
+                        style="
+                            display: block;
+                            margin: 0 auto 2mm;
+                            width: 48mm;
+                            height: 48mm;
+                            object-fit: contain;
+                            image-rendering: auto;
+                        ">`
                     : ''}
-                <div style="font-size:9px; line-height:1.5;">
+                <div style="font-weight: bold; font-size: 13px; margin-bottom: 2mm; letter-spacing: 0.5px;">
+                    ${factura.empresa?.nombre ? `DISTRIBUIDORA ${factura.empresa.nombre}` : ''}
+                </div>
+                <div style="font-size: 12px; line-height: 1.8; color: #000;">
                     NIT: ${factura.empresa?.nit || '000.000.000-0'}<br>
-                    ${factura.empresa?.direccion || ''}<br>
+                    ${factura.empresa?.direccion ? factura.empresa.direccion + '<br>' : ''}
                     Tel: ${factura.empresa?.telefono || ''}
                 </div>
             </div>
 
-            <div style="border-top:1px dashed #000; margin:2mm 0;"></div>
+            <div style="border: none; border-top: 1px dashed #000; margin: 2mm 0;"></div>
 
-            <!-- Título -->
-            <div style="text-align:center; margin:2mm 0;">
-                <div style="font-weight:bold; font-size:13px; letter-spacing:1px;">REMISIÓN</div>
-                <div style="font-weight:bold; font-size:11px;">${factura.numeroFactura || 'N/A'}</div>
+            <!-- ===== TÍTULO ===== -->
+            <div style="text-align: center; margin: 3mm 0;">
+                <div style="font-weight: bold; font-size: 15px; letter-spacing: 2px;">REMISIÓN</div>
+                <div style="font-weight: bold; font-size: 12px; margin-top: 1mm;">${factura.numeroFactura || 'N/A'}</div>
             </div>
 
-            <div style="text-align:center; font-size:9px; margin-bottom:2mm;">
+            <div style="text-align: center; font-size: 12px; margin-bottom: 3mm; color: #000;">
                 Fecha: ${fechaStr} &nbsp; Hora: ${horaStr}
             </div>
 
-            <div style="border-top:1px dashed #000; margin:2mm 0;"></div>
+            <div style="border: none; border-top: 1px dashed #000; margin: 2mm 0;"></div>
 
-            <!-- Cliente -->
-            <div style="font-size:10px; margin:2mm 0;">
+            <!-- ===== CLIENTE ===== -->
+            <div style="font-size: 13px; margin: 2mm 0; word-break: break-word; color: #000;">
                 <strong>CLIENTE:</strong> ${factura.cliente?.nombre || 'N/A'}
             </div>
 
-            <div style="border-top:1px solid #000; margin:2mm 0;"></div>
+            <div style="border: none; border-top: 1px solid #000; margin: 2mm 0;"></div>
 
-            <!-- Encabezado tabla usando <table> para compatibilidad con impresoras térmicas -->
-            <table style="width:100%; border-collapse:collapse; font-size:9px; font-weight:bold;
-                border-bottom:1px solid #000; margin-bottom:1mm;">
+            <!-- ===== ENCABEZADO TABLA ===== -->
+            <table style="
+                width: 100%;
+                table-layout: fixed;
+                border-collapse: collapse;
+                font-size: 10px;
+                font-weight: bold;
+                border-bottom: 1px solid #000;
+                margin-bottom: 2mm;
+                box-sizing: border-box;
+            ">
+                <colgroup>
+                    <col style="width: 10mm;">
+                    <col style="width: auto;">
+                    <col style="width: 20mm;">
+                </colgroup>
                 <tr>
-                    <td style="width:10mm; text-align:center; padding:1mm 0;">Cant.</td>
-                    <td style="padding:1mm;">Descripción</td>
-                    <td style="width:18mm; text-align:right; padding:1mm 0;">Total</td>
+                    <td style="text-align: center; padding: 1mm 0;">Cant.</td>
+                    <td style="padding: 1mm 2mm;">Descripción</td>
+                    <td style="text-align: right; padding: 1mm 0;">Total</td>
                 </tr>
             </table>
 
-            <!-- Productos -->
-            <div style="margin-bottom:2mm;">
+            <!-- ===== PRODUCTOS ===== -->
+            <div style="margin-bottom: 2mm; width: 100%; box-sizing: border-box;">
                 ${productosHTML}
             </div>
 
-            <div style="border-top:1px solid #000; margin:2mm 0;"></div>
+            <div style="border: none; border-top: 1px solid #000; margin: 2mm 0;"></div>
 
-            <div style="font-size:9px; text-align:right; margin-bottom:1mm;">
+            <div style="font-size: 10px; text-align: right; margin-bottom: 1mm;">
                 Items: ${totalItems}
             </div>
 
-            <!-- Total -->
-            <table style="width:100%; border-collapse:collapse;
-                border-top:2px solid #000; border-bottom:2px solid #000;
-                padding:2mm 0; margin:2mm 0;">
+            <!-- ===== TOTAL ===== -->
+            <table style="
+                width: 100%;
+                table-layout: fixed;
+                border-collapse: collapse;
+                border-top: 2px solid #000;
+                border-bottom: 2px solid #000;
+                margin: 2mm 0;
+                box-sizing: border-box;
+            ">
                 <tr>
-                    <td style="font-weight:bold; font-size:14px; padding:2mm 0;">TOTAL:</td>
-                    <td style="font-weight:bold; font-size:14px; text-align:right; padding:2mm 0;">
+                    <td style="font-weight: bold; font-size: 15px; padding: 2mm 0;">TOTAL:</td>
+                    <td style="font-weight: bold; font-size: 15px; text-align: right; padding: 2mm 0; white-space: nowrap;">
                         $${(factura.total || 0).toLocaleString('es-CO')}
                     </td>
                 </tr>
             </table>
 
             ${factura.observaciones ? `
-                <div style="border-top:1px dashed #000; margin:2mm 0;"></div>
-                <div style="font-size:9px;">
+                <div style="border: none; border-top: 1px dashed #000; margin: 2mm 0;"></div>
+                <div style="font-size: 10px; word-break: break-word;">
                     <strong>OBS:</strong> ${factura.observaciones}
                 </div>
             ` : ''}
 
-            <div style="border-top:1px dashed #000; margin:2mm 0;"></div>
+            <div style="border: none; border-top: 1px dashed #000; margin: 2mm 0;"></div>
 
-            <!-- Footer -->
-            <div style="text-align:center; margin-top:3mm; font-size:9px;">
-                <div style="font-weight:bold; font-size:10px; margin-bottom:1mm;">¡Gracias por su compra!</div>
-                <div style="font-size:8px;">Software Maxibisel</div>
+            <!-- ===== FOOTER ===== -->
+            <div style="text-align: center; margin-top: 3mm; font-size: 10px;">
+                <div style="font-weight: bold; font-size: 12px; margin-bottom: 1.5mm;">¡Gracias por su compra!</div>
             </div>
 
-            <div style="height:10mm;"></div>
+            <div style="height: 12mm;"></div>
         </div>
     `;
 };

@@ -1820,13 +1820,45 @@ body:has(#auth-container:not(.d-none)) #app-container { display: none !important
    IMPRESIÓN
    ======================================== */
 @media print {
-    .remision-document,
-    .factura-document { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; box-shadow: none; }
+    /* --- Caso 1: Ticket POS 80mm (salesManager) --- */
+    body:has(#factura-pos-print.factura-lista-imprimir) * {
+        visibility: hidden !important;
+    }
 
-    body * { visibility: hidden; }
+    body:has(#factura-pos-print.factura-lista-imprimir) #factura-pos-print,
+    body:has(#factura-pos-print.factura-lista-imprimir) #factura-pos-print * {
+        visibility: visible !important;
+    }
 
-    .remision-document *,
-    .factura-document * { visibility: visible; }
+    body:has(#factura-pos-print.factura-lista-imprimir) #factura-pos-print {
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 80mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* --- Caso 2: Documentos tradicionales (remisiones) --- */
+    body:not(:has(#factura-pos-print.factura-lista-imprimir)) .remision-document,
+    body:not(:has(#factura-pos-print.factura-lista-imprimir)) .factura-document {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 20px;
+        box-shadow: none;
+    }
+
+    body:not(:has(#factura-pos-print.factura-lista-imprimir)) body * {
+        visibility: hidden;
+    }
+
+    body:not(:has(#factura-pos-print.factura-lista-imprimir)) .remision-document *,
+    body:not(:has(#factura-pos-print.factura-lista-imprimir)) .factura-document * {
+        visibility: visible;
+    }
 
     .preview-header,
     .preview-footer,
@@ -1834,7 +1866,7 @@ body:has(#auth-container:not(.d-none)) #app-container { display: none !important
     .modal-footer,
     .close-modal { display: none !important; }
 
-    @page { margin: 1cm; size: letter; }
+    @page { margin: 0; size: 80mm auto; }
 }
 
 /* ========================================
