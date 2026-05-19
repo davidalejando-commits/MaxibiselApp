@@ -32,30 +32,37 @@ class DatabaseManager {
   }
 
   async connectSQLite() {
-    try {
-      const dbPath = path.join(__dirname, '../data/local.db');
-      const dbDir = path.dirname(dbPath);
-      
-      if (!fs.existsSync(dbDir)) {
-        fs.mkdirSync(dbDir, { recursive: true });
-        console.log('📁 Directorio /data creado');
-      }
+  try {
+    let dbPath;
 
-      this.sqliteConnection = await open({
-        filename: dbPath,
-        driver: sqlite3.Database
-      });
-
-      console.log('✅ SQLite conectado:', dbPath);
-      
-      await this.initializeSQLiteTables();
-      
-      return this.sqliteConnection;
-    } catch (error) {
-      console.error('❌ Error conectando SQLite:', error);
-      throw error;
+    if (process.versions && process.versions.electron) {
+      const { app } = require('electron');
+      const userDataPath = app.getPath('userData');
+      dbPath = path.join(userDataPath, 'local.db');
+    } else {
+      dbPath = path.join(__dirname, '../data/local.db');
     }
+
+    const dbDir = path.dirname(dbPath);
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+      console.log('📁 Directorio creado:', dbDir);
+    }
+
+    this.sqliteConnection = await open({
+      filename: dbPath,
+      driver: sqlite3.Database
+    });
+
+    console.log('✅ SQLite conectado:', dbPath);
+    await this.initializeSQLiteTables();
+    return this.sqliteConnection;
+
+  } catch (error) {
+    console.error('❌ Error conectando SQLite:', error);
+    throw error;
   }
+}
 
   async initializeSQLiteTables() {
     const db = this.sqliteConnection;
